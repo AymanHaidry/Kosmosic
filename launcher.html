@@ -1,0 +1,2641 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kosmosic — Study OS</title>
+
+<!-- ════════════════════════════════════════════════
+   CONFIGURATION — PUT YOUR KEYS HERE
+   ════════════════════════════════════════════════ -->
+<script>
+// ═══ SUPABASE CONFIGURATION ═══
+// Replace these with your actual Supabase project credentials
+const SUPABASE_URL = 'https://todzlszlihqzytihejiq.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRvZHpsc3psaWhxenl0aWhlamlxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMjY3NTAsImV4cCI6MjA5MzkwMjc1MH0.PHP6lxns3R-jrL05pce7V4NoKwSUGgEx6fy27WJ0Ack';
+
+// ═══ AI API KEYS ═══
+// Claude API Key (optional — only if you want to use Claude instead of built-in)
+const CLAUDE_API_KEY = 'sk-ant-api03-your-key-here';
+
+// Gemini API Key (optional — only if you want to use Gemini)
+const GEMINI_API_KEY = 'AIza-your-key-here';
+</script>
+
+<!-- ═══ FAVICON (K symbol) ═══ -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23d4a853'/%3E%3Ctext x='50' y='68' font-family='Georgia,serif' font-size='55' font-weight='700' fill='%230c0b09' text-anchor='middle'%3EK%3C/text%3E%3C/svg%3E">
+
+<!-- ═══ ANTHROPIC SERIF FONT ═══ -->
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/devchauhann/fonts@v1.1.0/cdn/v1/css/all.css">
+
+<!-- ═══ SUPABASE CLIENT ═══ -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<!-- ═══ CHART.JS ═══ -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+/* ════════════════════════════════════════════════
+   KOSMOSIC — Premium Study OS
+   Anthropic Serif throughout. Steve Jobs aesthetic.
+   ════════════════════════════════════════════════ */
+
+:root {
+  --bg: #0c0b09; --bg2: #131210; --bg3: #1a1915;
+  --surface: rgba(255,251,240,0.04); --surface2: rgba(255,251,240,0.07); --surface3: rgba(255,251,240,0.10);
+  --border: rgba(255,251,240,0.09); --border2: rgba(255,251,240,0.15);
+  --text: #f5f0e8; --text2: #b8b0a0; --text3: #7a7468;
+  --accent: #d4a853; --accent2: #c9956a; --accent-soft: rgba(212,168,83,0.12);
+  --red: #c0574a; --green: #5c8c6e; --blue: #4a7a9b;
+  --glass-bg: rgba(18,17,14,0.75); --glass-border: rgba(255,251,240,0.08);
+  --shadow: 0 8px 32px rgba(0,0,0,0.4); --shadow-sm: 0 2px 12px rgba(0,0,0,0.3);
+  --r: 16px; --r-sm: 10px;
+}
+
+[data-theme="light"] {
+  --bg: #F0EEE6; --bg2: #E8E6DC; --bg3: #DDD9CE;
+  --surface: rgba(60,50,35,0.05); --surface2: rgba(60,50,35,0.08); --surface3: rgba(60,50,35,0.12);
+  --border: rgba(60,50,35,0.10); --border2: rgba(60,50,35,0.18);
+  --text: #1a1714; --text2: #5a5248; --text3: #9a9088;
+  --accent: #8b5e1a; --accent2: #a0633c; --accent-soft: rgba(139,94,26,0.10);
+  --red: #9b3d32; --green: #3d6b50; --blue: #2d5c7a;
+  --glass-bg: rgba(240,238,230,0.80); --glass-border: rgba(60,50,35,0.12);
+  --shadow: 0 8px 32px rgba(0,0,0,0.10); --shadow-sm: 0 2px 12px rgba(0,0,0,0.07);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent }
+html { scroll-behavior: smooth }
+
+body {
+  background: var(--bg); color: var(--text);
+  font-family: 'Anthropic Serif', Georgia, 'Times New Roman', serif;
+  min-height: 100vh; overflow-x: hidden;
+  transition: background 0.4s, color 0.4s; cursor: default;
+}
+
+/* ═══ STEVE JOBS ANIMATED BACKGROUND ═══ */
+body::before {
+  content: ''; position: fixed; inset: 0;
+  background:
+    radial-gradient(ellipse 800px 600px at 20% 20%, rgba(212,168,83,0.06), transparent),
+    radial-gradient(ellipse 600px 500px at 80% 80%, rgba(201,149,106,0.05), transparent),
+    radial-gradient(ellipse 400px 300px at 50% 50%, rgba(212,168,83,0.03), transparent);
+  pointer-events: none; z-index: 0;
+  animation: bgPulse 12s ease-in-out infinite;
+}
+@keyframes bgPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.05); }
+}
+
+/* Floating particles — Steve Jobs "think different" ethereal feel */
+.particles { position: fixed; inset: 0; pointer-events: none; z-index: 1; overflow: hidden; }
+.particle {
+  position: absolute; width: 3px; height: 3px;
+  background: var(--accent); border-radius: 50%; opacity: 0;
+  animation: floatParticle 15s linear infinite;
+}
+@keyframes floatParticle {
+  0% { transform: translateY(100vh) scale(0); opacity: 0; }
+  10% { opacity: 0.4; } 90% { opacity: 0.4; }
+  100% { transform: translateY(-10vh) scale(1.5); opacity: 0; }
+}
+
+/* NOISE GRAIN */
+body::after {
+  content: ''; position: fixed; inset: 0; opacity: 0.015;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 999;
+}
+
+/* ═══ CLICK FEEDBACK ═══ */
+.click-ripple {
+  position: fixed; border-radius: 50%; background: var(--accent);
+  opacity: 0.3; pointer-events: none; transform: scale(0);
+  animation: rippleEffect 0.5s ease-out forwards; z-index: 10000;
+}
+@keyframes rippleEffect { to { transform: scale(4); opacity: 0; } }
+
+button, .tab, .icon-btn, .chip, .cal-cell, .event-row, .music-result-row, .gift-card, .feature-card, .music-btn, .exam-chip {
+  transition: transform 0.1s ease, box-shadow 0.2s ease;
+}
+button:active, .tab:active, .icon-btn:active, .chip:active, .cal-cell:active, .event-row:active, .music-result-row:active, .gift-card:active, .feature-card:active, .music-btn:active, .exam-chip:active {
+  transform: scale(0.97);
+}
+
+/* ═══ COMPONENTS ═══ */
+.glass {
+  background: var(--glass-bg); backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  border: 1px solid var(--glass-border); border-radius: var(--r);
+}
+.glass-sm {
+  background: var(--surface); backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border); border-radius: var(--r-sm);
+}
+
+/* ═══ BURGER MENU (Mobile Nav) ═══ */
+.burger-btn {
+  display: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  z-index: 102;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+.burger-btn:hover {
+  background: var(--surface2);
+  border-color: var(--accent);
+}
+.burger-btn span {
+  display: block;
+  width: 14px;
+  height: 1.5px;
+  background: var(--text2);
+  border-radius: 1px;
+  transition: all 0.3s ease;
+}
+.burger-btn.open span:nth-child(1) {
+  transform: rotate(45deg) translate(3.5px, 3.5px);
+}
+.burger-btn.open span:nth-child(2) {
+  opacity: 0;
+}
+.burger-btn.open span:nth-child(3) {
+  transform: rotate(-45deg) translate(3.5px, -3.5px);
+}
+
+.mobile-nav-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: var(--glass-bg);
+  backdrop-filter: blur(32px) saturate(1.6);
+  -webkit-backdrop-filter: blur(32px) saturate(1.6);
+  z-index: 99;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s ease;
+}
+.mobile-nav-overlay.open {
+  opacity: 1;
+  pointer-events: all;
+}
+.mobile-nav-overlay a {
+  font-family: 'Anthropic Serif', Georgia, serif;
+  font-size: 1.6rem;
+  color: var(--text);
+  text-decoration: none;
+  transition: color 0.2s ease;
+  padding: 8px 24px;
+}
+.mobile-nav-overlay a:hover { color: var(--accent); }
+.mobile-nav-overlay a.active { color: var(--accent); }
+
+/* Show burger on mobile, hide desktop tabs */
+@media (max-width: 640px) {
+  .nav-tabs { display: none !important; }
+  .burger-btn { display: flex !important; }
+  .mobile-nav-overlay { display: flex; }
+}
+
+/* ═══ NAVIGATION ═══ */
+.nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 24px; height: 60px;
+  background: var(--glass-bg); backdrop-filter: blur(32px) saturate(1.6);
+  -webkit-backdrop-filter: blur(32px) saturate(1.6);
+  border-bottom: 1px solid var(--border);
+}
+.nav-logo {
+  font-family: 'Anthropic Serif', Georgia, serif; font-size: 1.3rem;
+  font-weight: 700; color: var(--text); letter-spacing: 0.02em;
+  display: flex; align-items: center; gap: 8px;
+}
+.nav-logo-mark {
+  width: 28px; height: 28px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border-radius: 8px; display: grid; place-items: center;
+  font-size: 0.75rem; color: #fff; font-weight: 700;
+  font-family: 'Anthropic Serif', Georgia, serif;
+}
+.nav-tabs { display: flex; gap: 2px; background: var(--surface); border: 1px solid var(--border); border-radius: 40px; padding: 4px; }
+.tab {
+  padding: 5px 14px; border-radius: 30px; border: none; background: none;
+  color: var(--text3); font-family: 'Anthropic Serif', Georgia, serif;
+  font-size: 0.72rem; font-weight: 500; cursor: pointer;
+  transition: all 0.2s ease; letter-spacing: 0.02em; white-space: nowrap;
+}
+.tab:hover { color: var(--text2) }
+.tab.active { background: var(--accent); color: #fff; font-weight: 600; }
+.nav-right { display: flex; align-items: center; gap: 8px; }
+.icon-btn {
+  width: 34px; height: 34px; border-radius: 50%; background: var(--surface);
+  border: 1px solid var(--border); color: var(--text2); font-size: 0.85rem;
+  cursor: pointer; display: grid; place-items: center; transition: all 0.2s;
+}
+.icon-btn:hover { background: var(--surface2); border-color: var(--accent); color: var(--accent); }
+
+/* ═══ PAGES ═══ */
+.page { display: none; padding: 80px 24px 40px; max-width: 920px; margin: 0 auto; animation: fadeUp 0.35s ease }
+.page.active { display: block }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: none } }
+
+/* ═══ CARDS ═══ */
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 20px; position: relative; overflow: hidden;
+  transition: border-color 0.2s;
+}
+.card:hover { border-color: var(--border2) }
+.card-premium { background: linear-gradient(135deg, rgba(212,168,83,0.08) 0%, var(--surface) 60%); border-color: rgba(212,168,83,0.2); }
+.card-inner { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 14px; }
+
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px }
+.grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px }
+.grid4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px }
+@media (max-width: 640px) { .grid2, .grid3, .grid4 { grid-template-columns: 1fr } .nav-tabs { display: none } }
+
+/* ═══ TYPOGRAPHY ═══ */
+.display, .mono { font-family: 'Anthropic Serif', Georgia, serif; }
+.mono { font-variant-numeric: tabular-nums; }
+.sec-label {
+  font-size: 0.65rem; font-weight: 600; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--text3); margin-bottom: 10px;
+  font-family: 'Anthropic Serif', Georgia, serif;
+}
+.heading { font-family: 'Anthropic Serif', Georgia, serif; font-size: 1.5rem; font-weight: 700; color: var(--text); line-height: 1.2; }
+.heading-sm { font-family: 'Anthropic Serif', Georgia, serif; font-size: 1.1rem; font-weight: 600; color: var(--text); }
+
+/* ═══ STAT CELLS ═══ */
+.stat-cell { text-align: center; padding: 12px 8px }
+.stat-num { font-family: 'Anthropic Serif', Georgia, serif; font-size: 2rem; font-weight: 700; line-height: 1; color: var(--text); }
+.stat-label { font-size: 0.62rem; color: var(--text3); letter-spacing: 0.08em; text-transform: uppercase; margin-top: 4px; font-family: 'Anthropic Serif', Georgia, serif; }
+
+/* ═══ BUTTONS ═══ */
+.btn {
+  padding: 9px 20px; border-radius: 30px; border: none;
+  font-family: 'Anthropic Serif', Georgia, serif; font-weight: 500;
+  font-size: 0.82rem; cursor: pointer; transition: all 0.2s;
+  letter-spacing: 0.01em; display: inline-flex; align-items: center; gap: 6px;
+}
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { opacity: 0.88; transform: translateY(-1px) }
+.btn-ghost { background: var(--surface2); border: 1px solid var(--border); color: var(--text2); }
+.btn-ghost:hover { border-color: var(--accent); color: var(--accent) }
+.btn-danger { background: rgba(192,87,74,0.15); border: 1px solid rgba(192,87,74,0.25); color: var(--red); }
+.btn-sm { padding: 6px 14px; font-size: 0.75rem }
+.btn-xs { padding: 4px 10px; font-size: 0.7rem }
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center }
+
+/* ═══ PROGRESS BARS ═══ */
+.progress-track { height: 5px; background: var(--surface3); border-radius: 3px; overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width 0.6s cubic-bezier(0.4,0,0.2,1); }
+
+/* ═══ STREAK ═══ */
+.streak-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px 16px; position: relative; }
+.streak-ring { width: 90px; height: 90px; border-radius: 50%; border: 2px solid var(--border2); display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; background: radial-gradient(circle, var(--accent-soft), transparent); }
+.streak-num { font-family: 'Anthropic Serif', Georgia, serif; font-size: 2.4rem; font-weight: 900; color: var(--accent); line-height: 1; }
+.streak-label { font-size: 0.6rem; color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase; font-family: 'Anthropic Serif', Georgia, serif; }
+
+/* ═══ TIMER ═══ */
+.timer-wrap { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 8px 0; }
+.timer-circle-wrap { position: relative; width: 220px; height: 220px; }
+.timer-circle-wrap svg { transform: rotate(-90deg) }
+.timer-circle-bg { fill: none; stroke: var(--surface3); stroke-width: 6 }
+.timer-circle-fg { fill: none; stroke: var(--accent); stroke-width: 6; stroke-linecap: round; stroke-dasharray: 628; stroke-dashoffset: 628; transition: stroke-dashoffset 0.8s linear; filter: drop-shadow(0 0 8px rgba(212,168,83,0.5)); }
+.timer-inner { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+.timer-time { font-family: 'Anthropic Serif', Georgia, serif; font-variant-numeric: tabular-nums; font-size: 3rem; font-weight: 400; color: var(--text); letter-spacing: -0.02em; }
+.timer-mode-label { font-size: 0.65rem; color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase; font-family: 'Anthropic Serif', Georgia, serif; }
+
+/* ═══ CHIPS ═══ */
+.chip-group { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center }
+.chip {
+  padding: 5px 14px; border-radius: 20px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text3); font-size: 0.72rem;
+  font-weight: 500; cursor: pointer; transition: all 0.2s;
+  font-family: 'Anthropic Serif', Georgia, serif;
+}
+.chip:hover { border-color: var(--border2); color: var(--text2) }
+.chip.active { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+
+/* ═══ CALENDAR ═══ */
+.cal-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 4px }
+.cal-head-cell { text-align: center; font-size: 0.62rem; color: var(--text3); letter-spacing: 0.08em; padding: 6px 0; text-transform: uppercase; font-family: 'Anthropic Serif', Georgia, serif; }
+.cal-cell { aspect-ratio: 1; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 500; cursor: pointer; border: 1px solid transparent; transition: all 0.15s; position: relative; color: var(--text2); }
+.cal-cell:hover { border-color: var(--border2) }
+.cal-cell.today { border-color: var(--accent); color: var(--accent); font-weight: 700 }
+.cal-cell.studied { background: rgba(92,140,110,0.18); color: var(--green) }
+.cal-cell.missed { background: rgba(192,87,74,0.12); color: var(--red) }
+.cal-cell.empty { opacity: 0; pointer-events: none }
+.cal-cell-dot { position: absolute; bottom: 4px; width: 4px; height: 4px; border-radius: 50%; background: var(--accent); }
+
+/* ═══ EVENTS ═══ */
+.event-row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--surface2); border-radius: var(--r-sm); margin-bottom: 8px; border: 1px solid var(--border); transition: all 0.2s; }
+.event-row:hover { border-color: var(--border2) }
+.event-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0 }
+.event-info { flex: 1 }
+.event-title { font-size: 0.85rem; font-weight: 500; color: var(--text) }
+.event-note { font-size: 0.7rem; color: var(--text3); margin-top: 2px }
+.event-date { font-family: 'Anthropic Serif', Georgia, serif; font-variant-numeric: tabular-nums; font-size: 0.68rem; color: var(--text3) }
+
+/* ═══ SUBJECT ROWS ═══ */
+.subject-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.subject-row:last-child { border: none }
+.subject-name { font-size: 0.82rem; font-weight: 500; min-width: 80px; color: var(--text) }
+.subject-bar-track { flex: 1; height: 5px; background: var(--surface3); border-radius: 3px; overflow: hidden }
+.subject-bar-fill { height: 100%; border-radius: 3px; transition: width 0.6s }
+.subject-pct { font-family: 'Anthropic Serif', Georgia, serif; font-variant-numeric: tabular-nums; font-size: 0.72rem; color: var(--text3); min-width: 36px; text-align: right }
+
+/* ═══ DIARY ═══ */
+.diary-entry { border-left: 2px solid var(--accent); padding: 10px 14px; margin-bottom: 10px; background: var(--surface2); border-radius: 0 var(--r-sm) var(--r-sm) 0; }
+.diary-ts { font-family: 'Anthropic Serif', Georgia, serif; font-variant-numeric: tabular-nums; font-size: 0.62rem; color: var(--text3) }
+.diary-text { font-size: 0.85rem; color: var(--text2); margin-top: 5px; line-height: 1.5 }
+
+/* ═══ GIFTS ═══ */
+.gift-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px,1fr)); gap: 10px }
+.gift-card { aspect-ratio: 1; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border: 1px solid var(--border); background: var(--surface); font-size: 0.58rem; color: var(--text3); text-align: center; transition: all 0.2s; cursor: default; padding: 8px; }
+.gift-card.unlocked { background: linear-gradient(135deg, rgba(212,168,83,0.1), var(--surface)); border-color: rgba(212,168,83,0.35); color: var(--accent); }
+.gift-icon { font-size: 1.5rem; line-height: 1 }
+
+/* ═══ AI PAGE ═══ */
+.ai-tag { display: inline-flex; align-items: center; gap: 5px; background: var(--accent-soft); border: 1px solid rgba(212,168,83,0.25); border-radius: 20px; padding: 3px 10px; font-size: 0.65rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); font-family: 'Anthropic Serif', Georgia, serif; }
+.ai-response-box { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 16px; font-size: 0.85rem; line-height: 1.65; color: var(--text2); min-height: 80px; white-space: pre-wrap; }
+.ai-thinking { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: pulse 0.8s ease infinite; margin-right: 6px; }
+@keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: 0.3 } }
+.ai-target-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: var(--surface2); border-radius: var(--r-sm); margin-bottom: 6px; border: 1px solid var(--border); }
+
+/* ═══ QUOTE BOX ═══ */
+.quote-card { background: linear-gradient(135deg, rgba(212,168,83,0.08), transparent); border: 1px solid rgba(212,168,83,0.18); border-radius: var(--r); padding: 20px 24px; position: relative; }
+.quote-mark { font-family: 'Anthropic Serif', Georgia, serif; font-size: 4rem; color: rgba(212,168,83,0.2); position: absolute; top: -10px; left: 16px; line-height: 1; }
+.quote-text { font-family: 'Anthropic Serif', Georgia, serif; font-style: italic; font-size: 1rem; color: var(--text); line-height: 1.5; position: relative; }
+.quote-author { font-size: 0.7rem; color: var(--text3); margin-top: 8px; letter-spacing: 0.05em; font-family: 'Anthropic Serif', Georgia, serif; }
+
+/* ═══ HEATMAP ═══ */
+.heatmap-row { display: flex; gap: 5px; flex-wrap: wrap }
+.heat-cell { width: 30px; height: 30px; border-radius: 6px; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 0.6rem; font-weight: 600; font-family: 'Anthropic Serif', Georgia, serif; color: var(--text3); transition: all 0.2s; }
+.heat-cell.studied { background: rgba(92,140,110,0.2); color: var(--green); border-color: rgba(92,140,110,0.3) }
+.heat-cell.missed { background: rgba(192,87,74,0.14); color: var(--red); border-color: rgba(192,87,74,0.2) }
+
+/* ═══ INPUTS / FORMS ═══ */
+.form-group { margin-bottom: 14px }
+.form-label { display: block; font-size: 0.72rem; font-weight: 500; color: var(--text3); margin-bottom: 6px; letter-spacing: 0.03em; font-family: 'Anthropic Serif', Georgia, serif; }
+input[type=text], input[type=number], input[type=email], input[type=password], textarea, select {
+  width: 100%; background: var(--surface2); border: 1px solid var(--border2); border-radius: 10px;
+  color: var(--text); font-family: 'Anthropic Serif', Georgia, serif; font-size: 0.85rem;
+  padding: 9px 12px; outline: none; transition: border-color 0.2s; appearance: none;
+}
+input:focus, textarea:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+input::placeholder, textarea::placeholder { color: var(--text3) }
+textarea { resize: vertical; min-height: 80px; line-height: 1.5 }
+select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px;
+}
+
+/* ═══ TOGGLE ═══ */
+.toggle-wrap { display: flex; align-items: center; justify-content: space-between; padding: 10px 0 }
+.toggle-info { flex: 1 }
+.toggle-name { font-size: 0.85rem; font-weight: 500; color: var(--text) }
+.toggle-sub { font-size: 0.7rem; color: var(--text3); margin-top: 2px }
+.toggle { width: 42px; height: 22px; border-radius: 11px; background: var(--surface3); border: 1px solid var(--border2); cursor: pointer; position: relative; transition: background 0.2s; flex-shrink: 0; }
+.toggle.on { background: var(--accent); border-color: var(--accent) }
+.toggle::after { content: ''; position: absolute; width: 16px; height: 16px; border-radius: 50%; background: #fff; top: 2px; left: 2px; transition: left 0.2s; box-shadow: 0 1px 4px rgba(0,0,0,0.2); }
+.toggle.on::after { left: 22px }
+
+/* ═══ MODAL ═══ */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); z-index: 200; align-items: center; justify-content: center; padding: 20px; }
+.modal-overlay.open { display: flex }
+.modal-box { background: var(--bg2); border: 1px solid var(--border2); border-radius: 20px; padding: 28px; width: 100%; max-width: 440px; max-height: 88vh; overflow-y: auto; }
+.modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.modal-title { font-family: 'Anthropic Serif', Georgia, serif; font-size: 1.15rem; font-weight: 600 }
+.modal-close { width: 28px; height: 28px; border-radius: 50%; background: var(--surface2); border: 1px solid var(--border); color: var(--text3); cursor: pointer; display: grid; place-items: center; font-size: 0.75rem; }
+.modal-close:hover { color: var(--text); border-color: var(--border2) }
+
+/* ═══ NOTIFICATIONS ═══ */
+.notif { position: fixed; top: 72px; right: 16px; background: var(--bg2); border: 1px solid var(--border2); color: var(--text); padding: 10px 16px; border-radius: 12px; font-size: 0.82rem; font-weight: 500; z-index: 300; transform: translateX(calc(100% + 20px)); transition: transform 0.3s cubic-bezier(0.4,0,0.2,1); max-width: 280px; box-shadow: var(--shadow); display: flex; align-items: center; gap: 8px; font-family: 'Anthropic Serif', Georgia, serif; }
+.notif.show { transform: none }
+.notif-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0 }
+
+/* ═══ TICKER ═══ */
+.ticker { overflow: hidden; white-space: nowrap; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 7px 0; margin-top: 60px; }
+.ticker-track { display: inline-block; animation: tickerScroll 40s linear infinite }
+.ticker-track span { color: var(--text3); margin: 0 40px; font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 500; font-family: 'Anthropic Serif', Georgia, serif; }
+.ticker-track span.accent { color: var(--accent) }
+@keyframes tickerScroll { from { transform: translateX(0) } to { transform: translateX(-50%) } }
+
+/* ═══ MUSIC PLAYER ═══ */
+.music-player { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r); padding: 16px; margin-bottom: 14px; }
+.music-meta { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.music-art { width: 44px; height: 44px; border-radius: 8px; background: linear-gradient(135deg, var(--accent-soft), var(--surface3)); display: grid; place-items: center; font-size: 1.2rem; flex-shrink: 0; border: 1px solid var(--border2); overflow: hidden; }
+.music-art img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px }
+.music-info-text { flex: 1; min-width: 0 }
+.music-title { font-size: 0.85rem; font-weight: 500; color: var(--text); truncate: nowrap; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.music-artist { font-size: 0.7rem; color: var(--text3); margin-top: 2px }
+.music-controls { display: flex; align-items: center; gap: 8px; justify-content: center; margin-bottom: 10px }
+.music-btn { width: 32px; height: 32px; border-radius: 50%; background: var(--surface3); border: 1px solid var(--border); color: var(--text2); display: grid; place-items: center; cursor: pointer; transition: all 0.2s; font-size: 0.75rem; }
+.music-btn:hover { border-color: var(--accent); color: var(--accent) }
+.music-btn.play { width: 40px; height: 40px; background: var(--accent); color: #fff; border-color: var(--accent); font-size: 0.9rem; }
+.music-progress-wrap { position: relative; cursor: pointer }
+.music-progress-track { height: 3px; background: var(--surface3); border-radius: 2px; overflow: hidden }
+.music-progress-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s linear; width: 0% }
+.music-search-wrap { margin-top: 12px }
+.music-search-results { max-height: 180px; overflow-y: auto; }
+.music-result-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; cursor: pointer; transition: background 0.15s; }
+.music-result-row:hover { background: var(--surface2) }
+.music-result-thumb { width: 36px; height: 36px; border-radius: 6px; background: var(--surface3); overflow: hidden; flex-shrink: 0; }
+.music-result-thumb img { width: 100%; height: 100%; object-fit: cover }
+.music-result-info { flex: 1; min-width: 0 }
+.music-result-title { font-size: 0.78rem; font-weight: 500; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.music-result-artist { font-size: 0.65rem; color: var(--text3) }
+
+/* ═══ AUTH PAGE ═══ */
+.auth-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+.auth-box { width: 100%; max-width: 400px; background: var(--bg2); border: 1px solid var(--border2); border-radius: 20px; padding: 36px 32px; }
+.auth-logo { text-align: center; margin-bottom: 28px }
+.auth-title { font-family: 'Anthropic Serif', Georgia, serif; font-size: 1.4rem; font-weight: 700; text-align: center; margin-bottom: 6px }
+.auth-sub { font-size: 0.8rem; color: var(--text3); text-align: center; margin-bottom: 24px }
+.auth-divider { display: flex; align-items: center; gap: 10px; margin: 16px 0; color: var(--text3); font-size: 0.72rem; }
+.auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: var(--border) }
+.auth-btn-google { width: 100%; padding: 11px; border-radius: 12px; border: 1px solid var(--border2); background: var(--surface2); color: var(--text); font-family: 'Anthropic Serif', Georgia, serif; font-size: 0.85rem; font-weight: 500; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; }
+.auth-btn-google:hover { border-color: var(--accent); background: var(--accent-soft) }
+.btn-auth { width: 100%; padding: 11px; border-radius: 12px; background: var(--accent); color: #fff; border: none; font-family: 'Anthropic Serif', Georgia, serif; font-size: 0.9rem; font-weight: 600; cursor: pointer; margin-top: 4px; transition: opacity 0.2s; }
+.btn-auth:hover { opacity: 0.88 }
+.auth-switch { text-align: center; font-size: 0.78rem; color: var(--text3); margin-top: 18px }
+.auth-switch a { color: var(--accent); cursor: pointer; text-decoration: none; font-weight: 500 }
+.auth-switch a:hover { text-decoration: underline }
+.auth-error { background: rgba(192,87,74,0.12); border: 1px solid rgba(192,87,74,0.25); border-radius: 8px; padding: 8px 12px; font-size: 0.78rem; color: var(--red); margin-top: 12px; display: none; }
+.auth-error.show { display: block }
+
+/* ═══ WEBCAM ═══ */
+.webcam-container { border-radius: 12px; overflow: hidden; background: var(--surface3); aspect-ratio: 16/9; display: none; position: relative; }
+.webcam-container.active { display: block }
+#webcam { width: 100%; height: 100%; object-fit: cover }
+.webcam-badge { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.6); backdrop-filter: blur(10px); border-radius: 20px; padding: 4px 10px; font-size: 0.7rem; color: #fff; display: flex; align-items: center; gap: 5px; }
+.webcam-live { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 1.2s ease infinite }
+
+/* ═══ SCROLLBAR ═══ */
+::-webkit-scrollbar { width: 4px }
+::-webkit-scrollbar-track { background: transparent }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px }
+
+/* ═══ DIVIDER ═══ */
+.divider { height: 1px; background: var(--border); margin: 16px 0 }
+.section-gap { height: 14px }
+
+/* ═══ USER AVATAR ═══ */
+.user-avatar { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent2)); display: grid; place-items: center; font-size: 0.75rem; font-weight: 700; color: #fff; cursor: pointer; border: 2px solid var(--border2); overflow: hidden; }
+
+/* ═══ SETTINGS SECTION ═══ */
+.settings-section { margin-bottom: 14px; }
+.settings-section-title { font-size: 0.62rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text3); padding: 0 0 8px; font-family: 'Anthropic Serif', Georgia, serif; }
+
+/* ═══ EXAM SELECTOR ═══ */
+.exam-selector { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+.exam-chip { padding: 5px 14px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); color: var(--text3); font-size: 0.72rem; font-weight: 500; cursor: pointer; transition: all 0.2s; font-family: 'Anthropic Serif', Georgia, serif; }
+.exam-chip:hover { border-color: var(--border2); color: var(--text2) }
+.exam-chip.active { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+
+/* ═══ EXAM COMPARISON TABLE ═══ */
+.exam-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+.exam-table th { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border2); color: var(--text3); font-weight: 600; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em; }
+.exam-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); color: var(--text2); }
+.exam-table tr:hover td { background: var(--surface2); }
+
+</style>
+</head>
+<body>
+<div id="js-fallback" style="position:fixed;inset:0;background:#0c0b09;z-index:1000;display:flex;align-items:center;justify-content:center;color:#f5f0e8;font-family:sans-serif;">
+  <div style="text-align:center;">
+    <div style="font-size:2rem;margin-bottom:10px;">⏳</div>
+    <div>Loading Kosmosic...</div>
+    <noscript><div style="color:#c0574a;margin-top:10px;">JavaScript is required.</div></noscript>
+  </div>
+</div>
+
+<!-- Floating particles for Steve Jobs ethereal aesthetic -->
+<div class="particles" id="particles"></div>
+
+<!-- ═══ VIEWS ═══ -->
+<div id="view-auth" style="display:none"></div>
+<div id="view-app" style="display:none"></div>
+
+<!-- NOTIFICATION -->
+<div class="notif" id="notif">
+  <div class="notif-dot"></div>
+  <span id="notif-text"></span>
+</div>
+
+<script>
+/* ════════════════════════════════════════════════════════
+   KOSMOSIC — Study OS
+   Anthropic Serif. Steve Jobs Aesthetic.
+   Supabase Backend. Zero LocalStorage.
+   ════════════════════════════════════════════════════════ */
+
+// ── SUPABASE CLIENT ──
+// NOTE: Supabase CDN creates global 'supabase'. Don't use 'let' here or it conflicts.
+var currentUser = null;
+var authMode = 'login';
+
+// ── APP STATE (in-memory only, synced to Supabase) ──
+let S = {
+  streak: 0, studiedDays: [], missedDays: [], totalMinutes: 0, todayMinutes: 0,
+  events: [], diary: [], marks: [], exams: [],
+  subjects: ['Mathematics', 'Science', 'English', 'History', 'Physics'],
+  dailyGoal: 120, targetPct: 98, gifts: [], aiTargets: [],
+  aiProvider: 'claude', settings: { music: false, toxic: true, darkMode: true },
+  did: '', plan: '', calYear: new Date().getFullYear(), calMonth: new Date().getMonth(),
+  timerSecs: 1500, timerMode: 'focus', sessions: [], distractionCount: 0,
+  lastStudiedDate: null, musicQueue: [], currentTrackIdx: 0,
+};
+
+// ── INIT SUPABASE ──
+function initSupabase() {
+  // Wait up to 3 seconds for CDN to load, checking every 100ms
+  if (typeof window.supabase === 'undefined') {
+    console.warn('Supabase JS not loaded from CDN yet. Will retry...');
+    return false;
+  }
+  try {
+    // Use window.supabase from CDN — assign to outer variable, don't redeclare with let
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    console.log('✅ Supabase initialized');
+    return true;
+  } catch(e) {
+    console.error('Supabase init failed:', e);
+    return false;
+  }
+}
+
+// ── HELPERS ──
+const today = () => new Date().toISOString().split('T')[0];
+
+function notify(msg, dur = 3500) {
+  const n = document.getElementById('notif');
+  document.getElementById('notif-text').textContent = msg;
+  n.classList.add('show');
+  setTimeout(() => n.classList.remove('show'), dur);
+}
+
+function openModal(id) { document.getElementById(id).classList.add('open') }
+function closeModal(id) { document.getElementById(id).classList.remove('open') }
+
+// ── CLICK RIPPLE FEEDBACK ──
+document.addEventListener('click', function(e) {
+  const ripple = document.createElement('div');
+  ripple.className = 'click-ripple';
+  ripple.style.left = e.clientX + 'px';
+  ripple.style.top = e.clientY + 'px';
+  ripple.style.width = '20px';
+  ripple.style.height = '20px';
+  ripple.style.marginLeft = '-10px';
+  ripple.style.marginTop = '-10px';
+  document.body.appendChild(ripple);
+  setTimeout(() => ripple.remove(), 500);
+});
+
+// ── THEME ──
+function setTheme(dark) {
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  S.settings.darkMode = dark;
+  const btn = document.getElementById('theme-btn');
+  if (btn) btn.textContent = dark ? '☀' : '☾';
+}
+
+// ── PARTICLES ──
+function initParticles() {
+  const container = document.getElementById('particles');
+  if (!container) return;
+  for (let i = 0; i < 30; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.left = Math.random() * 100 + '%';
+    p.style.animationDelay = Math.random() * 15 + 's';
+    p.style.animationDuration = (10 + Math.random() * 10) + 's';
+    p.style.width = (2 + Math.random() * 2) + 'px';
+    p.style.height = p.style.width;
+    container.appendChild(p);
+  }
+}
+
+// ════════════════════════════════════════════════════════
+// SUPABASE DATA SYNC
+// ════════════════════════════════════════════════════════
+
+async function loadUserData() {
+  if (!supabase || !currentUser) { console.log('Skipping load — no Supabase session.'); return; }
+  try {
+    const { data, error } = await supabase
+      .from('user_data')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .single();
+    if (error && error.code !== 'PGRST116') { console.error('Load error:', error); return; }
+    if (data) {
+      S = { ...S, ...data.data };
+      S.subjects = data.data.subjects || S.subjects;
+      S.events = data.data.events || [];
+      S.diary = data.data.diary || [];
+      S.marks = data.data.marks || [];
+      S.exams = data.data.exams || [];
+      S.aiTargets = data.data.aiTargets || [];
+      S.gifts = data.data.gifts || [];
+      S.musicQueue = data.data.musicQueue || [];
+      S.sessions = data.data.sessions || [];
+      S.settings = data.data.settings || S.settings;
+    }
+    setTheme(S.settings.darkMode !== false);
+  } catch (e) { console.error('Load failed:', e); }
+}
+
+async function saveUserData() {
+  if (!supabase || !currentUser) { console.log('Skipping save — no Supabase session.'); return; }
+  try {
+    const { error } = await supabase
+      .from('user_data')
+      .upsert({ user_id: currentUser.id, data: S, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+    if (error) console.error('Save error:', error);
+  } catch (e) { console.error('Save failed:', e); }
+}
+
+let saveTimeout;
+function queueSave() {
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(saveUserData, 1000);
+}
+
+// ════════════════════════════════════════════════════════
+// AUTH
+// ════════════════════════════════════════════════════════
+function renderAuth() {
+  const isLogin = authMode === 'login';
+  document.getElementById('view-auth').innerHTML = `
+<div class="auth-wrap">
+  <div class="auth-box">
+    <div class="auth-logo">
+      <div class="nav-logo" style="justify-content:center;margin-bottom:4px">
+        <div class="nav-logo-mark">K</div>
+        Kosmosic
+      </div>
+    </div>
+    <div class="auth-title">${isLogin ? 'Welcome back' : 'Create account'}</div>
+    <div class="auth-sub">${isLogin ? 'Sign in to your study OS' : 'Start your journey to 98%'}</div>
+    <button class="auth-btn-google" onclick="signInWithGoogle()">
+      <svg width="16" height="16" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      Continue with Google
+    </button>
+    <div class="auth-divider">or</div>
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input type="email" id="auth-email" placeholder="you@example.com">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <input type="password" id="auth-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')handleAuth()">
+    </div>
+    ${!isLogin ? `
+    <div class="form-group">
+      <label class="form-label">Full Name</label>
+      <input type="text" id="auth-name" placeholder="Alex Chen">
+    </div>` : ''}
+    <div class="auth-error" id="auth-error"></div>
+    <button class="btn-auth" onclick="handleAuth()">${isLogin ? 'Sign In' : 'Create Account'}</button>
+    <div class="auth-switch">
+      ${isLogin ? `Don't have an account? <a onclick="switchAuth('signup')">Sign up free</a>` : `Already have an account? <a onclick="switchAuth('login')">Sign in</a>`}
+    </div>
+  </div>
+</div>`;
+}
+
+async function handleAuth() {
+  if (!supabase) { notify('Supabase not initialized.'); return; }
+  const email = document.getElementById('auth-email')?.value?.trim();
+  const pass = document.getElementById('auth-pass')?.value;
+  const errEl = document.getElementById('auth-error');
+  if (!email || !pass) { errEl.textContent = 'Please fill in all fields.'; errEl.classList.add('show'); return; }
+  errEl.classList.remove('show');
+  if (authMode === 'signup') {
+    const name = document.getElementById('auth-name')?.value?.trim() || email.split('@')[0];
+    const { data, error } = await supabase.auth.signUp({ email, password: pass, options: { data: { full_name: name } } });
+    if (error) { errEl.textContent = error.message; errEl.classList.add('show'); return; }
+    currentUser = data.user;
+    notify('Account created! Welcome to Kosmosic ✦');
+  } else {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
+    if (error) { errEl.textContent = error.message; errEl.classList.add('show'); return; }
+    currentUser = data.user;
+    notify('Welcome back ✦');
+  }
+  await loadUserData();
+  showApp();
+}
+
+async function signInWithGoogle() {
+  if (!supabase) { notify('Supabase not configured. Add your keys first.'); return; }
+  const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } });
+  if (error) notify(error.message);
+}
+
+function switchAuth(mode) { authMode = mode; renderAuth(); }
+
+async function signOut() {
+  try { if (supabase) await supabase.auth.signOut(); } catch(e) {}
+  currentUser = null;
+  S = { streak: 0, studiedDays: [], missedDays: [], totalMinutes: 0, todayMinutes: 0, events: [], diary: [], marks: [], exams: [], subjects: ['Mathematics','Science','English','History','Physics'], dailyGoal: 120, targetPct: 98, gifts: [], aiTargets: [], aiProvider: 'claude', settings: { music: false, toxic: true, darkMode: true }, did: '', plan: '', calYear: new Date().getFullYear(), calMonth: new Date().getMonth(), timerSecs: 1500, timerMode: 'focus', sessions: [], distractionCount: 0, lastStudiedDate: null, musicQueue: [], currentTrackIdx: 0 };
+  document.getElementById('view-app').style.display = 'none';
+  document.getElementById('view-auth').style.display = 'block';
+  renderAuth();
+  notify('Signed out.');
+}
+
+// ════════════════════════════════════════════════════════
+// APP RENDER
+// ════════════════════════════════════════════════════════
+function showApp() {
+  document.getElementById('view-auth').style.display = 'none';
+  document.getElementById('view-app').style.display = 'block';
+  renderApp();
+  initApp();
+}
+
+function renderApp() {
+  const initials = currentUser
+    ? (currentUser.user_metadata?.full_name || currentUser.email || 'User').split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase()
+    : 'KS';
+
+  document.getElementById('view-app').innerHTML = `
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-logo">
+    <div class="nav-logo-mark">K</div>
+    Kosmosic
+  </div>
+  <div class="nav-tabs" id="nav-tabs">
+    <button class="tab active" onclick="showPage('dash')">Home</button>
+    <button class="tab" onclick="showPage('timer')">Focus</button>
+    <button class="tab" onclick="showPage('music')">Music</button>
+    <button class="tab" onclick="showPage('cal')">Calendar</button>
+    <button class="tab" onclick="showPage('marks')">Marks</button>
+    <button class="tab" onclick="showPage('diary')">Diary</button>
+    <button class="tab" onclick="showPage('gifts')">Awards</button>
+    <button class="tab" onclick="showPage('ai')">AI Coach</button>
+    <button class="tab" onclick="showPage('settings')">Settings</button>
+  </div>
+  <div class="nav-right">
+    <button class="icon-btn" id="theme-btn" onclick="toggleTheme()" title="Toggle theme">☀</button>
+    <div class="user-avatar" onclick="showPage('settings')" title="Settings">${initials}</div>
+    <!-- Burger button for mobile -->
+    <button class="burger-btn" id="burger-btn" onclick="toggleMobileNav()" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+<!-- Mobile Nav Overlay -->
+<div class="mobile-nav-overlay" id="mobile-nav-overlay">
+  <a href="#" onclick="mobileNavPage('dash')">Home</a>
+  <a href="#" onclick="mobileNavPage('timer')">Focus</a>
+  <a href="#" onclick="mobileNavPage('music')">Music</a>
+  <a href="#" onclick="mobileNavPage('cal')">Calendar</a>
+  <a href="#" onclick="mobileNavPage('marks')">Marks</a>
+  <a href="#" onclick="mobileNavPage('diary')">Diary</a>
+  <a href="#" onclick="mobileNavPage('gifts')">Awards</a>
+  <a href="#" onclick="mobileNavPage('ai')">AI Coach</a>
+  <a href="#" onclick="mobileNavPage('settings')">Settings</a>
+</div>
+
+<!-- TICKER -->
+<div class="ticker" style="margin-top:60px">
+  <div class="ticker-track">
+    <span>BEAT MEDIOCRITY</span><span class="accent">◆</span>
+    <span>98% IS THE FLOOR</span><span class="accent">◆</span>
+    <span>FAANG OR NOTHING</span><span class="accent">◆</span>
+    <span>STAY HUNGRY STAY FOOLISH</span><span class="accent">◆</span>
+    <span>BUILD THE FUTURE</span><span class="accent">◆</span>
+    <span>FLY HIGH ✈</span><span class="accent">◆</span>
+    <span>NO DAYS OFF</span><span class="accent">◆</span>
+    <span>BEAT MEDIOCRITY</span><span class="accent">◆</span>
+    <span>98% IS THE FLOOR</span><span class="accent">◆</span>
+    <span>FAANG OR NOTHING</span><span class="accent">◆</span>
+    <span>STAY HUNGRY STAY FOOLISH</span><span class="accent">◆</span>
+    <span>BUILD THE FUTURE</span><span class="accent">◆</span>
+    <span>FLY HIGH ✈</span><span class="accent">◆</span>
+    <span>NO DAYS OFF</span><span class="accent">◆</span>
+  </div>
+</div>
+
+<!-- ═══ DASHBOARD ═══ -->
+<div class="page active" id="page-dash">
+  <div class="grid2" style="margin-bottom:14px">
+    <div class="card card-premium" style="display:flex;flex-direction:column;justify-content:center">
+      <div class="sec-label">Current Streak</div>
+      <div class="streak-wrap" style="padding:10px 0">
+        <div class="streak-ring">
+          <div class="streak-num" id="streak-display">0</div>
+          <div class="streak-label">days</div>
+        </div>
+        <div style="font-size:0.78rem;color:var(--text3);margin-top:8px;text-align:center">🔥 Keep going</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="sec-label">Overview</div>
+      <div class="grid2">
+        <div class="stat-cell">
+          <div class="stat-num" id="stat-studied" style="color:var(--green)">0</div>
+          <div class="stat-label">Days Studied</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-num" id="stat-missed" style="color:var(--red)">0</div>
+          <div class="stat-label">Missed</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-num" id="stat-total" style="color:var(--accent)">0h</div>
+          <div class="stat-label">Total Study</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-num" id="stat-today" style="color:var(--blue)">0m</div>
+          <div class="stat-label">Today</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div class="sec-label" style="margin:0">Today's Goal</div>
+      <div style="font-family:'Anthropic Serif',Georgia,serif;font-variant-numeric:tabular-nums;font-size:0.78rem;color:var(--text3)"><span id="goal-done">0</span> / <span id="goal-target">120</span> min</div>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="goal-bar" style="width:0%"></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-top:6px">
+      <span style="font-family:'Anthropic Serif',Georgia,serif;font-size:1.1rem;font-weight:700;color:var(--accent)" id="goal-pct">0%</span>
+    </div>
+  </div>
+  <div class="quote-card" style="margin-bottom:14px">
+    <div class="quote-mark">"</div>
+    <div class="quote-text" id="quote-text">Stay hungry, stay foolish.</div>
+    <div class="quote-author" id="quote-author">— Steve Jobs</div>
+  </div>
+  <div class="grid2" style="margin-bottom:14px">
+    <div class="card">
+      <div class="sec-label">What I Did Today</div>
+      <textarea id="did-today" placeholder="Write what you accomplished..." style="min-height:72px" oninput="saveDay()"></textarea>
+    </div>
+    <div class="card">
+      <div class="sec-label">Plan for Tomorrow</div>
+      <textarea id="plan-tmr" placeholder="Set tomorrow's agenda..." style="min-height:72px" oninput="saveDay()"></textarea>
+    </div>
+  </div>
+  <div class="card">
+    <div class="sec-label">Last 14 Days</div>
+    <div class="heatmap-row" id="heatmap"></div>
+  </div>
+</div>
+
+<!-- ═══ TIMER ═══ -->
+<div class="page" id="page-timer">
+  <div class="card" style="margin-bottom:14px">
+    <div class="sec-label" style="text-align:center">Focus Timer</div>
+    <div class="timer-wrap">
+      <div class="timer-circle-wrap">
+        <svg width="220" height="220" viewBox="0 0 220 220">
+          <circle class="timer-circle-bg" cx="110" cy="110" r="100"/>
+          <circle class="timer-circle-fg" cx="110" cy="110" r="100" id="timer-circle"/>
+        </svg>
+        <div class="timer-inner">
+          <div class="timer-time" id="timer-display">25:00</div>
+          <div class="timer-mode-label" id="timer-mode-label">Focus</div>
+        </div>
+      </div>
+      <div class="chip-group">
+        <button class="chip active" onclick="setMode('focus',25)" id="mode-focus">25m Focus</button>
+        <button class="chip" onclick="setMode('short',5)" id="mode-short">5m Break</button>
+        <button class="chip" onclick="setMode('long',15)" id="mode-long">15m Break</button>
+        <button class="chip" onclick="setMode('custom',0)" id="mode-custom">Custom</button>
+      </div>
+      <div id="custom-time-wrap" style="display:none;text-align:center">
+        <label class="form-label" style="display:inline-block;margin-right:8px">Minutes:</label>
+        <input type="number" id="custom-mins" value="45" min="1" max="300" style="width:80px;display:inline-block">
+        <button class="btn btn-ghost btn-sm" style="margin-left:8px" onclick="applyCustom()">Apply</button>
+      </div>
+      <div class="btn-row" style="justify-content:center">
+        <button class="btn btn-primary" onclick="startTimer()">▶ Start</button>
+        <button class="btn btn-ghost" onclick="pauseTimer()">⏸ Pause</button>
+        <button class="btn btn-ghost" onclick="resetTimer()">↺ Reset</button>
+      </div>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div>
+        <div class="heading-sm">AI Focus Detection</div>
+        <div style="font-size:0.72rem;color:var(--text3);margin-top:3px">Webcam monitors your attention</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="toggleWebcam()" id="webcam-toggle-btn">Enable</button>
+    </div>
+    <div class="webcam-container" id="webcam-wrap">
+      <video id="webcam" autoplay muted playsinline></video>
+      <div class="webcam-badge">
+        <div class="webcam-live"></div>
+        <span id="webcam-status">Watching...</span>
+      </div>
+    </div>
+    <div style="font-size:0.78rem;color:var(--text3);margin-top:8px">
+      Distractions today: <span id="distract-num" style="color:var(--red);font-weight:600">0</span>
+    </div>
+  </div>
+  <div class="card">
+    <div class="sec-label">Session Log</div>
+    <div id="session-log" style="font-size:0.8rem;color:var(--text3)">No sessions yet today.</div>
+  </div>
+</div>
+
+<!-- ═══ MUSIC ═══ -->
+<div class="page" id="page-music">
+  <div class="music-player card" style="margin-bottom:14px">
+    <div class="sec-label">Now Playing</div>
+    <div class="music-meta">
+      <div class="music-art" id="music-art">🎵</div>
+      <div class="music-info-text">
+        <div class="music-title" id="music-title">No track selected</div>
+        <div class="music-artist" id="music-artist">Search below to add music</div>
+      </div>
+      <div style="font-family:'Anthropic Serif',Georgia,serif;font-variant-numeric:tabular-nums;font-size:0.72rem;color:var(--text3)" id="music-time">0:00 / 0:00</div>
+    </div>
+    <div class="music-controls">
+      <div class="music-btn" onclick="prevTrack()" title="Previous">⏮</div>
+      <div class="music-btn play" id="music-play-btn" onclick="togglePlay()">▶</div>
+      <div class="music-btn" onclick="nextTrack()" title="Next">⏭</div>
+      <div class="music-btn" onclick="toggleShuffle()" id="shuffle-btn" title="Shuffle">⇌</div>
+    </div>
+    <div class="music-progress-wrap" onclick="seekMusic(event)" id="music-progress-wrap">
+      <div class="music-progress-track">
+        <div class="music-progress-fill" id="music-progress"></div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:10px">
+      <span style="font-size:0.72rem;color:var(--text3)">Vol</span>
+      <input type="range" id="vol-slider" min="0" max="100" value="80" style="flex:1;height:3px;accent-color:var(--accent);cursor:pointer" oninput="setVolume(this.value)">
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:14px">
+    <div class="sec-label">Search Music</div>
+    <div style="display:flex;gap:8px">
+      <input type="text" id="music-search-input" placeholder="Search YouTube for any song..." onkeydown="if(event.key==='Enter')searchMusic()">
+      <button class="btn btn-primary btn-sm" onclick="searchMusic()" style="white-space:nowrap">Search</button>
+    </div>
+    <div class="music-search-results" id="music-results"></div>
+  </div>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div class="sec-label" style="margin:0">Queue</div>
+      <button class="btn btn-ghost btn-xs" onclick="clearQueue()">Clear</button>
+    </div>
+    <div id="music-queue"></div>
+  </div>
+  <iframe id="yt-iframe" style="display:none" width="1" height="1" frameborder="0" allow="autoplay"></iframe>
+</div>
+
+<!-- ═══ CALENDAR ═══ -->
+<div class="page" id="page-cal">
+  <div class="card" style="margin-bottom:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <button class="icon-btn" onclick="prevMonth()">‹</button>
+      <div class="heading-sm" id="cal-title"></div>
+      <button class="icon-btn" onclick="nextMonth()">›</button>
+    </div>
+    <div class="cal-grid" id="cal-head"></div>
+    <div class="cal-grid" id="cal-body" style="margin-top:6px"></div>
+  </div>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div class="sec-label" style="margin:0">Events & Exams</div>
+      <button class="btn btn-primary btn-sm" onclick="openModal('event-modal')">+ Add</button>
+    </div>
+    <div id="events-list"></div>
+  </div>
+</div>
+
+<!-- ═══ MARKS (WITH EXAM SYSTEM) ═══ -->
+<div class="page" id="page-marks">
+  <div class="card" style="margin-bottom:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div class="heading-sm">Marks Tracker</div>
+      <button class="btn btn-primary btn-sm" onclick="openModal('marks-modal')">+ Entry</button>
+    </div>
+    <div class="sec-label" style="margin-bottom:8px">Filter by Exam</div>
+    <div class="exam-selector" id="exam-selector">
+      <div class="exam-chip active" onclick="selectExam('all')">All Exams</div>
+    </div>
+    <div id="subjects-list"></div>
+  </div>
+  <div class="card" style="margin-bottom:14px">
+    <div class="sec-label">Exam Comparison</div>
+    <div id="exam-comparison" style="overflow-x:auto">
+      <div style="color:var(--text3);font-size:0.8rem">Add marks to see exam comparisons.</div>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:14px">
+    <div class="sec-label">Performance — Bar Chart</div>
+    <canvas id="barChart" height="200"></canvas>
+  </div>
+  <div class="card">
+    <div class="sec-label">Subject Radar</div>
+    <div style="position:relative;height:260px"><canvas id="spiderChart"></canvas></div>
+  </div>
+</div>
+
+<!-- ═══ DIARY ═══ -->
+<div class="page" id="page-diary">
+  <div class="card" style="margin-bottom:14px">
+    <div class="sec-label">Study Diary</div>
+    <textarea id="diary-input" placeholder="What are you thinking right now? Log your thoughts, breakthroughs, struggles..." style="min-height:100px"></textarea>
+    <button class="btn btn-primary" style="margin-top:10px;width:100%;justify-content:center" onclick="addDiaryEntry()">Save Entry</button>
+  </div>
+  <div id="diary-list"></div>
+</div>
+
+<!-- ═══ GIFTS ═══ -->
+<div class="page" id="page-gifts">
+  <div class="card" style="margin-bottom:14px">
+    <div class="sec-label">Your Achievements</div>
+    <p style="font-size:0.78rem;color:var(--text3);margin-bottom:16px">Unlock cards as you hit milestones. Each represents a step closer to exceptional. ✈️</p>
+    <div class="gift-grid" id="gift-grid"></div>
+  </div>
+  <div class="card">
+    <div class="sec-label">Next Unlock</div>
+    <div id="next-gift" style="font-size:0.85rem;color:var(--text3)">Keep studying to unlock more!</div>
+  </div>
+</div>
+
+<!-- ═══ AI COACH ═══ -->
+<div class="page" id="page-ai">
+  <div class="card" style="margin-bottom:14px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <div class="ai-tag">✦ AI Coach</div>
+      <div style="font-size:0.72rem;color:var(--text3)">Powered by Claude</div>
+    </div>
+    <div class="sec-label">Ask Your Study Coach</div>
+    <textarea id="ai-prompt" placeholder="e.g. I scored 75 in Physics. Give me a 2-week improvement plan. OR Give me a brutal motivation speech." style="min-height:90px"></textarea>
+    <div class="btn-row" style="margin-top:12px">
+      <button class="btn btn-primary" onclick="askAI()">Ask Coach →</button>
+      <button class="btn btn-ghost btn-sm" onclick="quickAI('toxic')">💀 Brutal Mode</button>
+      <button class="btn btn-ghost btn-sm" onclick="quickAI('target')">🎯 Set Targets</button>
+      <button class="btn btn-ghost btn-sm" onclick="quickAI('plan')">📋 Study Plan</button>
+      <button class="btn btn-ghost btn-sm" onclick="quickAI('jobs')">💡 Jobs Quote</button>
+    </div>
+    <div style="margin-top:14px" id="ai-loader" style="display:none">
+      <div style="display:flex;align-items:center;gap:6px;color:var(--text3);font-size:0.8rem">
+        <div class="ai-thinking"></div> Thinking...
+      </div>
+    </div>
+    <div class="ai-response-box" id="ai-response" style="margin-top:10px">Your AI coach response will appear here...</div>
+  </div>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div class="sec-label" style="margin:0">AI-Set Targets</div>
+      <button class="btn btn-ghost btn-xs" onclick="clearAITargets()">Clear</button>
+    </div>
+    <div id="ai-targets"></div>
+  </div>
+</div>
+
+<!-- ═══ SETTINGS ═══ -->
+<div class="page" id="page-settings">
+  <div class="card" style="margin-bottom:14px">
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">
+      <div class="user-avatar" style="width:50px;height:50px;font-size:1.1rem">${initials}</div>
+      <div>
+        <div style="font-weight:600;font-size:0.95rem">${currentUser?.user_metadata?.full_name || currentUser?.email || 'Student'}</div>
+        <div style="font-size:0.75rem;color:var(--text3)">${currentUser?.email || ''}</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="signOut()">Sign Out</button>
+    </div>
+  </div>
+  <div class="card settings-section" style="margin-bottom:14px">
+    <div class="settings-section-title">Goals</div>
+    <div class="toggle-wrap">
+      <div class="toggle-info"><div class="toggle-name">Daily Study Goal (minutes)</div></div>
+      <input type="number" id="s-goal" value="120" style="width:80px;text-align:center" oninput="saveSetting('dailyGoal',this.value)">
+    </div>
+    <div class="toggle-wrap">
+      <div class="toggle-info"><div class="toggle-name">Target Percentage</div><div class="toggle-sub">Your academic goal</div></div>
+      <input type="number" id="s-target-pct" value="98" style="width:80px;text-align:center" oninput="saveSetting('targetPct',this.value)">
+    </div>
+  </div>
+  <div class="card settings-section" style="margin-bottom:14px">
+    <div class="settings-section-title">Subjects</div>
+    <div id="subjects-settings" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px"></div>
+    <div style="display:flex;gap:8px">
+      <input type="text" id="new-subject" placeholder="Add subject...">
+      <button class="btn btn-primary btn-sm" onclick="addSubject()" style="white-space:nowrap">Add</button>
+    </div>
+  </div>
+  <div class="card settings-section" style="margin-bottom:14px">
+    <div class="settings-section-title">AI Coach</div>
+    <div class="form-group">
+      <label class="form-label">AI Provider</label>
+      <select id="s-provider" onchange="saveSetting('aiProvider',this.value)">
+        <option value="claude">Claude (built-in)</option>
+        <option value="gemini">Gemini</option>
+      </select>
+    </div>
+  </div>
+  <div class="card settings-section" style="margin-bottom:14px">
+    <div class="settings-section-title">Preferences</div>
+    <div class="toggle-wrap">
+      <div class="toggle-info"><div class="toggle-name">Toxic Motivation Mode</div><div class="toggle-sub">Harsh, no-excuses AI coaching</div></div>
+      <div class="toggle on" id="s-toxic-toggle" onclick="toggleSetting('toxic')"></div>
+    </div>
+    <div class="divider"></div>
+    <div class="toggle-wrap">
+      <div class="toggle-info"><div class="toggle-name">Desktop Notifications</div><div class="toggle-sub">Timer & milestone alerts</div></div>
+      <div class="toggle" id="s-notif-toggle" onclick="requestNotifPermission()"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="settings-section-title">Data</div>
+    <div class="btn-row">
+      <button class="btn btn-danger btn-sm" onclick="if(confirm('Reset all data? This cannot be undone.'))resetData()">🗑 Reset All</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODALS ═══ -->
+<div class="modal-overlay" id="event-modal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <div class="modal-title">Add Event</div>
+      <button class="modal-close" onclick="closeModal('event-modal')">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Title</label>
+      <input type="text" id="ev-title" placeholder="Physics Exam">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Date (YYYY-MM-DD)</label>
+      <input type="text" id="ev-date" placeholder="2025-06-15">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Type</label>
+      <select id="ev-type">
+        <option value="exam">Exam</option>
+        <option value="study">Study Session</option>
+        <option value="deadline">Deadline</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Note (optional)</label>
+      <textarea id="ev-note" placeholder="Chapters 1-5, focus on mechanics..." style="min-height:60px"></textarea>
+    </div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="addEvent()">Save Event</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="marks-modal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <div class="modal-title">Add Marks</div>
+      <button class="modal-close" onclick="closeModal('marks-modal')">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Exam Name</label>
+      <input type="text" id="mk-exam-name" placeholder="Unit Test 1" oninput="updateExamSelect()">
+      <select id="mk-existing-exam" style="margin-top:6px" onchange="fillExamName()">
+        <option value="">-- Or select existing exam --</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Subject</label>
+      <select id="mk-subject"></select>
+    </div>
+    <div class="grid2">
+      <div class="form-group">
+        <label class="form-label">Marks Obtained</label>
+        <input type="number" id="mk-marks" placeholder="85" min="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Total Marks</label>
+        <input type="number" id="mk-total" placeholder="100" min="1">
+      </div>
+    </div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="addMarks()">Save Marks</button>
+  </div>
+</div>
+`;
+}
+
+// ════════════════════════════════════════════════════════
+// PAGE NAVIGATION
+// ════════════════════════════════════════════════════════
+function showPage(p) {
+  document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+  const pg = document.getElementById('page-' + p);
+  if (pg) pg.classList.add('active');
+  const pages = ['dash','timer','music','cal','marks','diary','gifts','ai','settings'];
+  const idx = pages.indexOf(p);
+  document.querySelectorAll('.tab')[idx]?.classList.add('active');
+
+  if (p === 'marks') { renderSubjectsMarks(); renderExamSelector(); renderExamComparison(); renderCharts(); }
+  if (p === 'cal') renderCal();
+  if (p === 'gifts') renderGifts();
+  if (p === 'diary') renderDiary();
+  if (p === 'settings') loadSettings();
+  if (p === 'ai') renderAITargets();
+  if (p === 'music') renderMusicQueue();
+  if (p === 'dash') updateDash();
+}
+
+// ════════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════════
+function initApp() {
+  updateDash();
+  renderCal();
+  renderSubjectsMarks();
+  renderCharts();
+  renderDiary();
+  renderGifts();
+  loadSettings();
+  renderSessionLog();
+  renderAITargets();
+  renderMusicQueue();
+  renderExamSelector();
+  renderExamComparison();
+  setTheme(S.settings?.darkMode !== false);
+  startQuoteRotation();
+  initParticles();
+}
+
+// ════════════════════════════════════════════════════════
+// THEME
+// ════════════════════════════════════════════════════════
+function toggleTheme() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  setTheme(!isDark);
+  queueSave();
+}
+
+// ════════════════════════════════════════════════════════
+// QUOTES
+// ════════════════════════════════════════════════════════
+const QUOTES = [
+  { q: "Stay hungry, stay foolish.", a: "Steve Jobs" },
+  { q: "Your time is limited. Don't waste it living someone else's life.", a: "Steve Jobs" },
+  { q: "Innovation distinguishes between a leader and a follower.", a: "Steve Jobs" },
+  { q: "The people who are crazy enough to think they can change the world are the ones who do.", a: "Steve Jobs" },
+  { q: "Details matter, it's worth waiting to get it right.", a: "Steve Jobs" },
+  { q: "I'm the only person I know that's lost a quarter of a billion dollars in one year. It's very character-building.", a: "Steve Jobs" },
+  { q: "The harder you work, the luckier you get.", a: "Gary Player" },
+  { q: "Pain is temporary. Quitting lasts forever.", a: "Lance Armstrong" },
+  { q: "Don't let the noise of others' opinions drown out your own inner voice.", a: "Steve Jobs" },
+  { q: "We're here to put a dent in the universe.", a: "Steve Jobs" },
+];
+let qIdx = 0;
+
+function startQuoteRotation() {
+  updateQuote();
+  setInterval(updateQuote, 15000);
+}
+
+function updateQuote() {
+  qIdx = (qIdx + 1) % QUOTES.length;
+  const qt = document.getElementById('quote-text');
+  const qa = document.getElementById('quote-author');
+  if (qt) {
+    qt.style.opacity = '0';
+    setTimeout(() => {
+      qt.textContent = QUOTES[qIdx].q;
+      if (qa) qa.textContent = '— ' + QUOTES[qIdx].a;
+      qt.style.transition = 'opacity 0.6s';
+      qt.style.opacity = '1';
+    }, 400);
+  }
+}
+
+// ════════════════════════════════════════════════════════
+// STREAK + DASH
+// ════════════════════════════════════════════════════════
+const today_str = () => new Date().toISOString().split('T')[0];
+
+function checkStreak() {
+  const t = today_str();
+  if (S.lastStudiedDate === t) return;
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yd = yesterday.toISOString().split('T')[0];
+
+  if (S.lastStudiedDate === yd) {
+    S.streak++;
+  } else if (S.lastStudiedDate && S.lastStudiedDate !== t) {
+    const start = new Date(S.lastStudiedDate);
+    const end = new Date(t);
+    let d = new Date(start);
+    d.setDate(d.getDate() + 1);
+    while (d < end) {
+      const ds = d.toISOString().split('T')[0];
+      if (!S.studiedDays.includes(ds) && !S.missedDays.includes(ds)) S.missedDays.push(ds);
+      d.setDate(d.getDate() + 1);
+    }
+    S.streak = 1;
+  } else {
+    S.streak = 1;
+  }
+
+  S.lastStudiedDate = t;
+  if (!S.studiedDays.includes(t)) S.studiedDays.push(t);
+  queueSave();
+  updateDash();
+}
+
+function updateDash() {
+  const el = id => document.getElementById(id);
+  if (!el('streak-display')) return;
+  el('streak-display').textContent = S.streak;
+  el('stat-studied').textContent = S.studiedDays.length;
+  el('stat-missed').textContent = S.missedDays.length;
+  el('stat-total').textContent = Math.floor(S.totalMinutes / 60) + 'h';
+  el('stat-today').textContent = S.todayMinutes + 'm';
+  const goal = parseInt(S.dailyGoal) || 120;
+  const pct = Math.min(100, Math.round((S.todayMinutes / goal) * 100));
+  el('goal-bar').style.width = pct + '%';
+  el('goal-done').textContent = S.todayMinutes;
+  el('goal-target').textContent = goal;
+  el('goal-pct').textContent = pct + '%';
+  if (el('did-today')) el('did-today').value = S.did || '';
+  if (el('plan-tmr')) el('plan-tmr').value = S.plan || '';
+  renderHeatmap();
+  checkGifts();
+}
+
+function saveDay() {
+  S.did = document.getElementById('did-today')?.value || '';
+  S.plan = document.getElementById('plan-tmr')?.value || '';
+  queueSave();
+}
+
+function renderHeatmap() {
+  const wrap = document.getElementById('heatmap');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  const t = new Date();
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(t);
+    d.setDate(d.getDate() - i);
+    const ds = d.toISOString().split('T')[0];
+    const el = document.createElement('div');
+    el.className = 'heat-cell';
+    el.title = ds;
+    if (S.studiedDays.includes(ds)) {
+      el.classList.add('studied');
+      el.textContent = '✓';
+    } else if (S.missedDays.includes(ds)) {
+      el.classList.add('missed');
+      el.textContent = '✗';
+    } else {
+      el.textContent = d.getDate();
+    }
+    wrap.appendChild(el);
+  }
+}
+
+// ════════════════════════════════════════════════════════
+// TIMER
+// ════════════════════════════════════════════════════════
+let timerInterval = null;
+let timerTotal = 1500;
+
+function setMode(mode, mins) {
+  ['focus','short','long','custom'].forEach(m => {
+    document.getElementById('mode-' + m)?.classList.remove('active');
+  });
+  document.getElementById('mode-' + mode)?.classList.add('active');
+  document.getElementById('custom-time-wrap').style.display = mode === 'custom' ? 'block' : 'none';
+  if (mode !== 'custom') {
+    S.timerMode = mode;
+    S.timerSecs = mins * 60;
+    timerTotal = mins * 60;
+    resetTimerDisplay();
+  }
+}
+
+function applyCustom() {
+  const m = parseInt(document.getElementById('custom-mins').value) || 25;
+  S.timerSecs = m * 60;
+  timerTotal = m * 60;
+  S.timerMode = 'custom';
+  resetTimerDisplay();
+}
+
+function resetTimerDisplay() {
+  clearInterval(timerInterval);
+  timerInterval = null;
+  const disp = document.getElementById('timer-display');
+  if (disp) disp.textContent = formatTime(S.timerSecs);
+  const circle = document.getElementById('timer-circle');
+  if (circle) circle.style.strokeDashoffset = 628;
+  const lbl = document.getElementById('timer-mode-label');
+  if (lbl) lbl.textContent = S.timerMode.charAt(0).toUpperCase() + S.timerMode.slice(1);
+}
+
+function formatTime(s) {
+  return `${String(Math.floor(s / 60)).padStart(2,'0')}:${String(s % 60).padStart(2,'0')}`;
+}
+
+function startTimer() {
+  if (timerInterval) return;
+  timerInterval = setInterval(() => {
+    S.timerSecs--;
+    if (S.timerSecs <= 0) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+      onTimerDone();
+      return;
+    }
+    const disp = document.getElementById('timer-display');
+    if (disp) disp.textContent = formatTime(S.timerSecs);
+    const prog = 1 - (S.timerSecs / timerTotal);
+    const circle = document.getElementById('timer-circle');
+    if (circle) circle.style.strokeDashoffset = 628 * (1 - prog);
+    if (S.timerSecs % 60 === 0 && S.timerMode === 'focus') {
+      S.todayMinutes++;
+      S.totalMinutes++;
+      checkStreak();
+      queueSave();
+      updateDash();
+    }
+  }, 1000);
+}
+
+function pauseTimer() { clearInterval(timerInterval); timerInterval = null; }
+
+function resetTimer() {
+  clearInterval(timerInterval);
+  timerInterval = null;
+  S.timerSecs = timerTotal;
+  resetTimerDisplay();
+}
+
+function onTimerDone() {
+  notify('Session complete! Outstanding work. ✦');
+  const mins = Math.floor(timerTotal / 60);
+  if (S.timerMode === 'focus') {
+    S.todayMinutes += mins;
+    S.totalMinutes += mins;
+    S.sessions.push({ time: new Date().toLocaleTimeString(), mins, date: today_str() });
+    checkStreak();
+    queueSave();
+    updateDash();
+    renderSessionLog();
+    checkGifts();
+  }
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification('Kosmosic', { body: 'Study session complete. You earned it.' });
+  }
+}
+
+function renderSessionLog() {
+  const log = document.getElementById('session-log');
+  if (!log) return;
+  const todaySessions = S.sessions.filter(s => s.date === today_str());
+  if (!todaySessions.length) {
+    log.innerHTML = '<span style="color:var(--text3)">No sessions yet today.</span>';
+    return;
+  }
+  log.innerHTML = todaySessions.map(s =>
+    `<div style="padding:8px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+      <span style="font-family:'Anthropic Serif',Georgia,serif;font-variant-numeric:tabular-nums;font-size:0.72rem;color:var(--accent)">${s.time}</span>
+      <span style="font-size:0.8rem;color:var(--text2)">${s.mins}m focus</span>
+    </div>`
+  ).join('');
+}
+
+// ════════════════════════════════════════════════════════
+// WEBCAM
+// ════════════════════════════════════════════════════════
+let webcamActive = false, webcamStream = null;
+
+async function toggleWebcam() {
+  const btn = document.getElementById('webcam-toggle-btn');
+  if (webcamActive) {
+    webcamStream?.getTracks().forEach(t => t.stop());
+    const wrap = document.getElementById('webcam-wrap');
+    if (wrap) wrap.classList.remove('active');
+    webcamActive = false;
+    if (btn) btn.textContent = 'Enable';
+    return;
+  }
+  try {
+    webcamStream = await navigator.mediaDevices.getUserMedia({ video: true });
+    const vid = document.getElementById('webcam');
+    if (vid) vid.srcObject = webcamStream;
+    const wrap = document.getElementById('webcam-wrap');
+    if (wrap) wrap.classList.add('active');
+    webcamActive = true;
+    if (btn) btn.textContent = 'Disable';
+    setInterval(() => {
+      if (webcamActive && timerInterval) simulateDetection();
+    }, 8000);
+  } catch(e) {
+    notify('Camera access denied.');
+  }
+}
+
+function simulateDetection() {
+  if (Math.random() < 0.08) {
+    S.distractionCount = (S.distractionCount || 0) + 1;
+    const dn = document.getElementById('distract-num');
+    if (dn) dn.textContent = S.distractionCount;
+    const ws = document.getElementById('webcam-status');
+    if (ws) ws.textContent = '⚠ Focus! Eyes on screen!';
+    notify('👁 Stay focused! Back to work.');
+    setTimeout(() => {
+      const ws2 = document.getElementById('webcam-status');
+      if (ws2) ws2.textContent = 'Watching...';
+    }, 3000);
+  }
+}
+
+// ════════════════════════════════════════════════════════
+// CALENDAR
+// ════════════════════════════════════════════════════════
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DAYS_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+function renderCal() {
+  const titleEl = document.getElementById('cal-title');
+  if (!titleEl) return;
+  titleEl.textContent = MONTHS[S.calMonth] + ' ' + S.calYear;
+  const head = document.getElementById('cal-head');
+  head.innerHTML = DAYS_SHORT.map(d => `<div class="cal-head-cell">${d}</div>`).join('');
+  const first = new Date(S.calYear, S.calMonth, 1).getDay();
+  const days = new Date(S.calYear, S.calMonth + 1, 0).getDate();
+  const t = today_str();
+  let html = '';
+  for (let i = 0; i < first; i++) html += `<div class="cal-cell empty"></div>`;
+  for (let d = 1; d <= days; d++) {
+    const ds = `${S.calYear}-${String(S.calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday = ds === t;
+    const studied = S.studiedDays.includes(ds);
+    const missed = S.missedDays.includes(ds);
+    const hasEv = S.events.some(e => e.date === ds);
+    html += `<div class="cal-cell${isToday?' today':''}${studied?' studied':''}${missed?' missed':''}" onclick="calDayClick('${ds}')">${d}${hasEv ? '<div class="cal-cell-dot"></div>' : ''}</div>`;
+  }
+  document.getElementById('cal-body').innerHTML = html;
+  renderEvents();
+}
+
+function prevMonth() {
+  S.calMonth--;
+  if (S.calMonth < 0) { S.calMonth = 11; S.calYear--; }
+  renderCal();
+}
+
+function nextMonth() {
+  S.calMonth++;
+  if (S.calMonth > 11) { S.calMonth = 0; S.calYear++; }
+  renderCal();
+}
+
+function calDayClick(ds) {
+  const ev = document.getElementById('ev-date');
+  if (ev) ev.value = ds;
+  openModal('event-modal');
+}
+
+function addEvent() {
+  const ev = {
+    title: document.getElementById('ev-title').value,
+    date: document.getElementById('ev-date').value,
+    type: document.getElementById('ev-type').value,
+    note: document.getElementById('ev-note').value,
+    id: Date.now()
+  };
+  if (!ev.title || !ev.date) { notify('Fill in title and date.'); return; }
+  S.events.push(ev);
+  queueSave();
+  closeModal('event-modal');
+  renderCal();
+  notify('Event saved ✦');
+  document.getElementById('ev-title').value = '';
+  document.getElementById('ev-note').value = '';
+}
+
+function renderEvents() {
+  const list = document.getElementById('events-list');
+  if (!list) return;
+  if (!S.events.length) {
+    list.innerHTML = '<div style="color:var(--text3);font-size:0.8rem">No events yet.</div>';
+    return;
+  }
+  const colors = { exam: 'var(--red)', study: 'var(--green)', deadline: 'var(--accent)', other: 'var(--blue)' };
+  list.innerHTML = S.events
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map(e => `
+      <div class="event-row">
+        <div class="event-dot" style="background:${colors[e.type]||'var(--text3)'}"></div>
+        <div class="event-info">
+          <div class="event-title">${e.title}</div>
+          ${e.note ? `<div class="event-note">${e.note}</div>` : ''}
+        </div>
+        <div class="event-date">${e.date}</div>
+        <button class="btn btn-xs btn-danger" onclick="delEvent(${e.id})">✕</button>
+      </div>`)
+    .join('');
+}
+
+function delEvent(id) {
+  S.events = S.events.filter(e => e.id !== id);
+  queueSave();
+  renderEvents();
+  renderCal();
+}
+
+// ════════════════════════════════════════════════════════
+// MARKS WITH EXAM SYSTEM
+// ════════════════════════════════════════════════════════
+let selectedExam = 'all';
+
+function renderExamSelector() {
+  const container = document.getElementById('exam-selector');
+  if (!container) return;
+
+  const examNames = [...new Set(S.marks.map(m => m.exam).filter(Boolean))];
+  if (S.exams) {
+    S.exams.forEach(ex => { if (!examNames.includes(ex)) examNames.push(ex); });
+  }
+
+  let html = `<div class="exam-chip ${selectedExam === 'all' ? 'active' : ''}" onclick="selectExam('all')">All Exams</div>`;
+  examNames.forEach(exam => {
+    html += `<div class="exam-chip ${selectedExam === exam ? 'active' : ''}" onclick="selectExam('${exam.replace(/'/g, "\'")}")">${exam}</div>`;
+  });
+  container.innerHTML = html;
+
+  // Update modal dropdown
+  const select = document.getElementById('mk-existing-exam');
+  if (select) {
+    let opts = '<option value="">-- Or select existing exam --</option>';
+    examNames.forEach(ex => {
+      opts += `<option value="${ex.replace(/"/g, '&quot;')}">${ex}</option>`;
+    });
+    select.innerHTML = opts;
+  }
+}
+
+function selectExam(exam) {
+  selectedExam = exam;
+  renderExamSelector();
+  renderSubjectsMarks();
+  renderExamComparison();
+}
+
+function fillExamName() {
+  const select = document.getElementById('mk-existing-exam');
+  const input = document.getElementById('mk-exam-name');
+  if (select && input && select.value) {
+    input.value = select.value;
+  }
+}
+
+function updateExamSelect() {
+  // This is called on input to potentially auto-suggest
+}
+
+function renderSubjectsMarks() {
+  const list = document.getElementById('subjects-list');
+  const sel = document.getElementById('mk-subject');
+  if (sel) sel.innerHTML = S.subjects.map(s => `<option>${s}</option>`).join('');
+  if (!list) return;
+
+  let marksToShow = S.marks;
+  if (selectedExam !== 'all') {
+    marksToShow = S.marks.filter(m => m.exam === selectedExam);
+  }
+
+  if (!marksToShow.length) {
+    list.innerHTML = '<div style="color:var(--text3);font-size:0.8rem;padding:8px 0">No marks entered yet.</div>';
+    return;
+  }
+
+  const bySubject = {};
+  S.subjects.forEach(s => { bySubject[s] = [] });
+  marksToShow.forEach(m => { if (bySubject[m.subject]) bySubject[m.subject].push(m.pct) });
+  const palette = ['#d4a853','#5c8c6e','#4a7a9b','#c9956a','#8b7355','#7a9b4a'];
+  list.innerHTML = S.subjects.map((s, i) => {
+    const avgs = bySubject[s];
+    const avg = avgs.length ? Math.round(avgs.reduce((a,b) => a+b, 0) / avgs.length) : 0;
+    return `<div class="subject-row">
+      <div class="subject-name">${s}</div>
+      <div class="subject-bar-track">
+        <div class="subject-bar-fill" style="width:${avg}%;background:${palette[i % palette.length]}"></div>
+      </div>
+      <div class="subject-pct">${avg || '—'}%</div>
+    </div>`;
+  }).join('');
+}
+
+function renderExamComparison() {
+  const container = document.getElementById('exam-comparison');
+  if (!container) return;
+
+  const examNames = [...new Set(S.marks.map(m => m.exam).filter(Boolean))];
+  if (examNames.length < 2) {
+    container.innerHTML = '<div style="color:var(--text3);font-size:0.8rem">Add marks for at least 2 different exams to see comparisons.</div>';
+    return;
+  }
+
+  // Build comparison table
+  let html = '<table class="exam-table"><thead><tr><th>Subject</th>';
+  examNames.forEach(ex => {
+    html += `<th>${ex}</th>`;
+  });
+  html += '<th>Avg</th><th>Best</th></tr></thead><tbody>';
+
+  S.subjects.forEach(sub => {
+    const subjectMarks = S.marks.filter(m => m.subject === sub);
+    if (!subjectMarks.length) return;
+
+    html += `<tr><td style="font-weight:500">${sub}</td>`;
+    let total = 0, count = 0, best = 0;
+
+    examNames.forEach(ex => {
+      const mark = subjectMarks.find(m => m.exam === ex);
+      if (mark) {
+        html += `<td style="color:var(--accent);font-weight:600">${mark.pct}%</td>`;
+        total += mark.pct;
+        count++;
+        if (mark.pct > best) best = mark.pct;
+      } else {
+        html += `<td style="color:var(--text3)">—</td>`;
+      }
+    });
+
+    const avg = count ? Math.round(total / count) : 0;
+    html += `<td style="color:var(--text2)">${avg}%</td>`;
+    html += `<td style="color:var(--green);font-weight:600">${best}%</td>`;
+    html += '</tr>';
+  });
+
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+function addMarks() {
+  const examName = document.getElementById('mk-exam-name')?.value?.trim();
+  const subject = document.getElementById('mk-subject')?.value;
+  const marks = parseFloat(document.getElementById('mk-marks')?.value);
+  const total = parseFloat(document.getElementById('mk-total')?.value);
+
+  if (!examName) { notify('Enter an exam name.'); return; }
+  if (!marks || !total) { notify('Enter marks and total.'); return; }
+
+  const pct = Math.round((marks / total) * 100);
+  const m = {
+    subject, marks, total, exam: examName,
+    pct, date: today_str(), id: Date.now()
+  };
+
+  // Add to exams list if new
+  if (!S.exams.includes(examName)) {
+    S.exams.push(examName);
+  }
+
+  S.marks.push(m);
+  queueSave();
+  closeModal('marks-modal');
+  renderSubjectsMarks();
+  renderExamSelector();
+  renderExamComparison();
+  renderCharts();
+  notify(`Saved — ${pct}% in ${subject} (${examName}) ✦`);
+  checkGifts();
+
+  if (pct < 90) {
+    const target = Math.min(100, pct + 10);
+    S.aiTargets.push({ subject, current: pct, target, exam: examName });
+    queueSave();
+    notify(`AI Target: ${target}% next ${subject} test`);
+  }
+
+  document.getElementById('mk-marks').value = '';
+  document.getElementById('mk-exam-name').value = '';
+}
+
+let barChartInst = null, spiderChartInst = null;
+
+function renderCharts() {
+  let marksToChart = S.marks;
+  if (selectedExam !== 'all') {
+    marksToChart = S.marks.filter(m => m.exam === selectedExam);
+  }
+
+  const bySubject = {};
+  S.subjects.forEach(s => { bySubject[s] = [] });
+  marksToChart.forEach(m => { if (bySubject[m.subject]) bySubject[m.subject].push(m.pct) });
+  const avgs = S.subjects.map(s => {
+    const a = bySubject[s];
+    return a.length ? Math.round(a.reduce((x,y) => x+y, 0) / a.length) : 0;
+  });
+  const palette = ['#d4a853','#5c8c6e','#4a7a9b','#c9956a','#8b7355','#7a9b4a'];
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)';
+  const tickColor = isDark ? '#7a7468' : '#9a9088';
+
+  if (barChartInst) barChartInst.destroy();
+  const bc = document.getElementById('barChart');
+  if (bc) barChartInst = new Chart(bc, {
+    type: 'bar',
+    data: {
+      labels: S.subjects,
+      datasets: [{
+        label: 'Average %',
+        data: avgs,
+        backgroundColor: palette.map(c => c + '55'),
+        borderColor: palette,
+        borderWidth: 2,
+        borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { min: 0, max: 100, ticks: { color: tickColor }, grid: { color: gridColor } },
+        x: { ticks: { color: tickColor }, grid: { color: gridColor } }
+      }
+    }
+  });
+
+  if (spiderChartInst) spiderChartInst.destroy();
+  const sc = document.getElementById('spiderChart');
+  if (sc) spiderChartInst = new Chart(sc, {
+    type: 'radar',
+    data: {
+      labels: S.subjects,
+      datasets: [
+        {
+          label: 'Performance',
+          data: avgs,
+          backgroundColor: 'rgba(212,168,83,0.1)',
+          borderColor: '#d4a853',
+          pointBackgroundColor: '#d4a853',
+          borderWidth: 2
+        },
+        {
+          label: 'Target',
+          data: S.subjects.map(() => S.targetPct || 98),
+          backgroundColor: 'rgba(192,87,74,0.04)',
+          borderColor: '#c0574a',
+          borderDash: [4,4],
+          borderWidth: 1,
+          pointBackgroundColor: '#c0574a'
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        r: {
+          min: 0, max: 100,
+          ticks: { display: false },
+          grid: { color: gridColor },
+          pointLabels: { color: tickColor, font: { size: 11 } }
+        }
+      },
+      plugins: { legend: { labels: { color: tickColor, font: { size: 11 } } } }
+    }
+  });
+}
+
+// ════════════════════════════════════════════════════════
+// DIARY
+// ════════════════════════════════════════════════════════
+function addDiaryEntry() {
+  const text = document.getElementById('diary-input')?.value?.trim();
+  if (!text) { notify('Write something first.'); return; }
+  S.diary.unshift({ text, ts: new Date().toLocaleString(), date: today_str() });
+  queueSave();
+  document.getElementById('diary-input').value = '';
+  renderDiary();
+  notify('Entry saved ✦');
+}
+
+function renderDiary() {
+  const list = document.getElementById('diary-list');
+  if (!list) return;
+  if (!S.diary.length) {
+    list.innerHTML = '<div class="card" style="color:var(--text3);font-size:0.8rem">No diary entries yet.</div>';
+    return;
+  }
+  list.innerHTML = S.diary.map(e => `
+    <div class="diary-entry">
+      <div class="diary-ts">${e.ts}</div>
+      <div class="diary-text">${e.text}</div>
+    </div>`).join('');
+}
+
+// ════════════════════════════════════════════════════════
+// GIFTS
+// ════════════════════════════════════════════════════════
+const GIFT_DEFS = [
+  { id: 'g1', icon: '✈️', name: 'First Flight', desc: 'Study 1 day', cond: () => S.studiedDays.length >= 1 },
+  { id: 'g2', icon: '🛫', name: 'Takeoff', desc: '3 day streak', cond: () => S.streak >= 3 },
+  { id: 'g3', icon: '🌍', name: 'Globe Trotter', desc: '7 day streak', cond: () => S.streak >= 7 },
+  { id: 'g4', icon: '🚀', name: 'Rocket', desc: 'Study 10 days', cond: () => S.studiedDays.length >= 10 },
+  { id: 'g5', icon: '🏆', name: 'Champion', desc: 'Score 90%+', cond: () => S.marks.some(m => m.pct >= 90) },
+  { id: 'g6', icon: '💎', name: 'Diamond', desc: '30 day streak', cond: () => S.streak >= 30 },
+  { id: 'g7', icon: '⭐', name: 'Star', desc: '10 diary entries', cond: () => S.diary.length >= 10 },
+  { id: 'g8', icon: '🎯', name: 'Precision', desc: 'Score 95%+', cond: () => S.marks.some(m => m.pct >= 95) },
+  { id: 'g9', icon: '🔥', name: 'On Fire', desc: '14 day streak', cond: () => S.streak >= 14 },
+  { id: 'g10', icon: '👑', name: 'Apex', desc: '98%+ average', cond: () => { const a = S.marks.map(m=>m.pct); return a.length && a.reduce((x,y)=>x+y,0)/a.length >= 98 } },
+  { id: 'g11', icon: '📚', name: 'Scholar', desc: 'Study 50h total', cond: () => S.totalMinutes >= 3000 },
+  { id: 'g12', icon: '🏅', name: 'Medalist', desc: '20 day streak', cond: () => S.streak >= 20 },
+];
+
+function checkGifts() {
+  let newUnlock = false;
+  GIFT_DEFS.forEach(g => {
+    if (!S.gifts.includes(g.id) && g.cond()) {
+      S.gifts.push(g.id);
+      newUnlock = true;
+      notify('🎁 Unlocked: ' + g.name + ' ' + g.icon);
+    }
+  });
+  if (newUnlock) queueSave();
+}
+
+function renderGifts() {
+  const grid = document.getElementById('gift-grid');
+  if (!grid) return;
+  grid.innerHTML = GIFT_DEFS.map(g => {
+    const unlocked = S.gifts.includes(g.id);
+    return `<div class="gift-card${unlocked ? ' unlocked' : ''}">
+      <div class="gift-icon">${unlocked ? g.icon : '🔒'}</div>
+      <div style="font-weight:600">${g.name}</div>
+      <div style="font-size:0.55rem;color:var(--text3)">${g.desc}</div>
+    </div>`;
+  }).join('');
+  const next = GIFT_DEFS.find(g => !S.gifts.includes(g.id));
+  const nxt = document.getElementById('next-gift');
+  if (nxt) nxt.innerHTML = next
+    ? `<span style="font-size:1.3rem">${next.icon}</span> <strong>${next.name}</strong> — ${next.desc}`
+    : 'All achievements unlocked! 🎉';
+}
+
+// ════════════════════════════════════════════════════════
+// AI COACH
+// ════════════════════════════════════════════════════════
+async function askAI() {
+  const prompt = document.getElementById('ai-prompt')?.value?.trim();
+  if (!prompt) { notify('Enter a prompt.'); return; }
+  const resp = document.getElementById('ai-response');
+  const loader = document.getElementById('ai-loader');
+  if (resp) resp.textContent = '';
+  if (loader) loader.style.display = 'flex';
+
+  const marksData = S.marks.slice(-8).map(m => `${m.subject}: ${m.pct}% (${m.exam})`).join(', ');
+  const toxicMode = S.settings?.toxic !== false;
+
+  const systemPrompt = `You are an elite AI study coach named Kosmos for a high school student aiming for ${S.targetPct || 98}%+ and a career at top tech companies or as a pilot/founder.
+
+Student data:
+- Current streak: ${S.streak} days
+- Total study time: ${Math.floor(S.totalMinutes / 60)} hours
+- Recent marks: ${marksData || 'none yet'}
+- Daily goal: ${S.dailyGoal} minutes
+
+Coaching style: ${toxicMode ? 'Be brutally direct, harsh, no excuses — like a demanding coach who genuinely wants them to succeed. Be concise but impactful.' : 'Be encouraging, precise, and actionable.'}
+
+Keep responses under 200 words. Be specific and tactical, not generic.`;
+
+  try {
+    if (S.aiProvider === 'gemini' && GEMINI_API_KEY && GEMINI_API_KEY !== 'AIza-your-key-here') {
+      await callGemini(prompt, systemPrompt);
+    } else if (CLAUDE_API_KEY && CLAUDE_API_KEY !== 'sk-ant-api03-your-key-here') {
+      await callClaudeAI(prompt, systemPrompt);
+    } else {
+      // Fallback mock response if no API keys configured
+      if (resp) {
+        const fallbackText = toxicMode 
+          ? `Listen up. You asked for it, here it is:
+
+${prompt}
+
+Stop making excuses. Your streak is ${S.streak} days. That's ${S.streak > 0 ? 'something' : 'pathetic'}. You want ${S.targetPct || 98}%? Then put in the work. No one is coming to save you.
+
+Action items:
+1. Study ${S.dailyGoal} minutes TODAY. Not tomorrow.
+2. Review your weakest subject until you dream about it.
+3. Stop reading this and go study.`
+          : `Great question! Here's my advice:
+
+${prompt}
+
+You're doing well with a ${S.streak}-day streak. Keep building that momentum!
+
+Key recommendations:
+1. Maintain your ${S.dailyGoal}-minute daily goal
+2. Focus on consistent practice rather than cramming
+3. Review mistakes carefully — they are your best teachers
+
+You've got this! 🎯`;
+
+        let i = 0;
+        const interval = setInterval(() => {
+          if (i < fallbackText.length) {
+            resp.textContent += fallbackText[i];
+            i++;
+          } else {
+            clearInterval(interval);
+          }
+        }, 8);
+      }
+    }
+  } catch(e) {
+    if (resp) resp.textContent = 'AI error: ' + e.message;
+  } finally {
+    if (loader) loader.style.display = 'none';
+  }
+}
+
+async function callClaudeAI(prompt, systemPrompt) {
+  const resp = document.getElementById('ai-response');
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 
+      'Content-Type': 'application/json',
+      'x-api-key': CLAUDE_API_KEY,
+      'anthropic-version': '2023-06-01'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 400,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: prompt }]
+    })
+  });
+  const data = await res.json();
+  const text = data.content?.map(b => b.text || '').join('') || 'No response received.';
+  if (resp) {
+    resp.textContent = '';
+    let i = 0;
+    const interval = setInterval(() => {
+      if (i < text.length) {
+        resp.textContent += text[i];
+        i++;
+      } else {
+        clearInterval(interval);
+      }
+    }, 8);
+  }
+}
+
+async function callGemini(prompt, ctx) {
+  const resp = document.getElementById('ai-response');
+
+  const url =
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              {
+                text: ctx + '\n\n' + prompt
+              }
+            ]
+          }
+        ]
+      })
+    });
+
+    const data = await res.json();
+
+    console.log(data);
+
+    const text =
+      data.candidates?.[0]?.content?.parts?.[0]?.text ||
+      'No response.';
+
+    if (resp) {
+      resp.textContent = '';
+
+      let i = 0;
+
+      const interval = setInterval(() => {
+        if (i < text.length) {
+          resp.textContent += text[i];
+          i++;
+        } else {
+          clearInterval(interval);
+        }
+      }, 8);
+    }
+  } catch (err) {
+    console.error('Gemini API Error:', err);
+
+    if (resp) {
+      resp.textContent = 'Error contacting Gemini API.';
+    }
+  }
+}
+
+function quickAI(type) {
+  const marksStr = S.marks.slice(-5).map(m => `${m.subject}: ${m.pct}% (${m.exam})`).join(', ') || 'not yet entered';
+  const prompts = {
+    toxic: "Give me a brutal, no-excuses motivation speech. Make it hurt. I need to feel the cost of wasting today.",
+    target: `Based on my recent marks (${marksStr}), set specific improvement targets for each subject for the next 2 weeks. Be precise and tactical.`,
+    plan: `Create a focused 7-day study plan for me. My subjects: ${S.subjects.join(', ')}. Daily goal: ${S.dailyGoal} minutes.`,
+    jobs: "Give me the most powerful Steve Jobs insight about excellence, building something great, and refusing mediocrity. Make it hit like a quote I'll never forget."
+  };
+  document.getElementById('ai-prompt').value = prompts[type];
+  askAI();
+}
+
+function renderAITargets() {
+  const el = document.getElementById('ai-targets');
+  if (!el) return;
+  if (!S.aiTargets?.length) {
+    el.innerHTML = '<div style="color:var(--text3);font-size:0.8rem">No AI targets set yet. Add your marks to get personalized targets.</div>';
+    return;
+  }
+  el.innerHTML = S.aiTargets.map(t => `
+    <div class="ai-target-row">
+      <div>
+        <div style="font-size:0.85rem;font-weight:500">${t.subject}</div>
+        <div style="font-size:0.7rem;color:var(--text3)">${t.exam || 'Last exam'}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-family:'Anthropic Serif',Georgia,serif;font-variant-numeric:tabular-nums;font-size:0.78rem;color:var(--red)">${t.current}%</span>
+        <span style="color:var(--text3);font-size:0.8rem">→</span>
+        <span style="font-family:'Anthropic Serif',Georgia,serif;font-variant-numeric:tabular-nums;font-size:0.78rem;color:var(--accent);font-weight:600">${t.target}%</span>
+      </div>
+    </div>`).join('');
+}
+
+function clearAITargets() {
+  S.aiTargets = [];
+  queueSave();
+  renderAITargets();
+}
+
+// ════════════════════════════════════════════════════════
+// MUSIC — YouTube IFrame API
+// ════════════════════════════════════════════════════════
+let ytPlayer = null;
+let ytReady = false;
+let isPlaying = false;
+let shuffleOn = false;
+let musicProgressInterval = null;
+
+function loadYTAPI() {
+  if (window.YT) return;
+  // Don't load YT API when running from file:// (CORS/security blocked)
+  if (window.location.protocol === 'file:') {
+    console.log('YT API skipped: file:// protocol not supported for iframe API');
+    return;
+  }
+  const tag = document.createElement('script');
+  tag.src = 'https://www.youtube.com/iframe_api';
+  document.head.appendChild(tag);
+}
+
+window.onYouTubeIframeAPIReady = function() {
+  ytReady = true;
+};
+
+loadYTAPI();
+
+function createYTPlayer(videoId) {
+  const container = document.getElementById('yt-iframe');
+  if (!container) return;
+  if (window.location.protocol === 'file:') {
+    notify('Music player requires http/https server. Run via localhost or deploy.');
+    return;
+  }
+
+  if (ytPlayer) {
+    ytPlayer.loadVideoById(videoId);
+    ytPlayer.playVideo();
+    return;
+  }
+
+  const div = document.createElement('div');
+  div.id = 'yt-player';
+  container.parentNode.insertBefore(div, container);
+  container.remove();
+
+  ytPlayer = new YT.Player('yt-player', {
+    height: '1',
+    width: '1',
+    videoId: videoId,
+    playerVars: { autoplay: 1, controls: 0 },
+    events: {
+      onReady: (e) => { e.target.playVideo(); updatePlayBtn(true); setVolume(80); startProgressUpdate(); },
+      onStateChange: (e) => {
+        if (e.data === YT.PlayerState.PLAYING) { updatePlayBtn(true); startProgressUpdate(); }
+        if (e.data === YT.PlayerState.PAUSED) { updatePlayBtn(false); }
+        if (e.data === YT.PlayerState.ENDED) { nextTrack(); }
+      }
+    }
+  });
+}
+
+function playTrack(idx) {
+  if (idx < 0 || idx >= S.musicQueue.length) return;
+  S.currentTrackIdx = idx;
+  const track = S.musicQueue[idx];
+  updateNowPlaying(track);
+
+  if (ytReady) {
+    createYTPlayer(track.videoId);
+  } else {
+    setTimeout(() => createYTPlayer(track.videoId), 1000);
+  }
+  renderMusicQueue();
+}
+
+function togglePlay() {
+  if (!ytPlayer || !ytPlayer.getPlayerState) return;
+  const state = ytPlayer.getPlayerState();
+  if (state === 1) { ytPlayer.pauseVideo(); isPlaying = false; }
+  else { ytPlayer.playVideo(); isPlaying = true; }
+  updatePlayBtn(isPlaying);
+}
+
+function updatePlayBtn(playing) {
+  isPlaying = playing;
+  const btn = document.getElementById('music-play-btn');
+  if (btn) btn.innerHTML = playing ? '⏸' : '▶';
+}
+
+function prevTrack() {
+  let idx = S.currentTrackIdx - 1;
+  if (idx < 0) idx = S.musicQueue.length - 1;
+  if (S.musicQueue.length) playTrack(idx);
+}
+
+function nextTrack() {
+  if (!S.musicQueue.length) return;
+  let idx;
+  if (shuffleOn) { idx = Math.floor(Math.random() * S.musicQueue.length); }
+  else { idx = (S.currentTrackIdx + 1) % S.musicQueue.length; }
+  playTrack(idx);
+}
+
+function toggleShuffle() {
+  shuffleOn = !shuffleOn;
+  const btn = document.getElementById('shuffle-btn');
+  if (btn) {
+    btn.style.color = shuffleOn ? 'var(--accent)' : '';
+    btn.style.borderColor = shuffleOn ? 'var(--accent)' : '';
+  }
+}
+
+function setVolume(val) {
+  if (ytPlayer && ytPlayer.setVolume) ytPlayer.setVolume(parseInt(val));
+}
+
+function seekMusic(e) {
+  if (!ytPlayer || !ytPlayer.getDuration) return;
+  const wrap = document.getElementById('music-progress-wrap');
+  if (!wrap) return;
+  const rect = wrap.getBoundingClientRect();
+  const pct = (e.clientX - rect.left) / rect.width;
+  const dur = ytPlayer.getDuration();
+  ytPlayer.seekTo(dur * pct, true);
+}
+
+function startProgressUpdate() {
+  clearInterval(musicProgressInterval);
+  musicProgressInterval = setInterval(() => {
+    if (!ytPlayer || !ytPlayer.getCurrentTime) return;
+    const cur = ytPlayer.getCurrentTime();
+    const dur = ytPlayer.getDuration() || 1;
+    const pct = (cur / dur) * 100;
+    const prog = document.getElementById('music-progress');
+    if (prog) prog.style.width = pct + '%';
+    const timeEl = document.getElementById('music-time');
+    if (timeEl) timeEl.textContent = `${fmtMusicTime(cur)} / ${fmtMusicTime(dur)}`;
+  }, 500);
+}
+
+function fmtMusicTime(s) {
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  return `${m}:${String(sec).padStart(2,'0')}`;
+}
+
+function updateNowPlaying(track) {
+  const title = document.getElementById('music-title');
+  const artist = document.getElementById('music-artist');
+  const art = document.getElementById('music-art');
+  if (title) title.textContent = track.title;
+  if (artist) artist.textContent = track.artist || 'YouTube';
+  if (art) art.innerHTML = track.thumb
+    ? `<img src="${track.thumb}" alt="${track.title}">`
+    : '🎵';
+}
+
+async function searchMusic() {
+  const query = document.getElementById('music-search-input')?.value?.trim();
+  if (!query) return;
+  const resultsEl = document.getElementById('music-results');
+  if (resultsEl) resultsEl.innerHTML = '<div style="color:var(--text3);font-size:0.8rem;padding:8px">Searching...</div>';
+
+  try {
+    const res = await fetch(`https://pipedapi.kavin.rocks/search?q=${encodeURIComponent(query)}&filter=videos`);
+    const data = await res.json();
+    const items = (data.items || []).slice(0, 8);
+
+    if (!items.length) {
+      if (resultsEl) resultsEl.innerHTML = '<div style="color:var(--text3);font-size:0.8rem;padding:8px">No results.</div>';
+      return;
+    }
+
+    if (resultsEl) resultsEl.innerHTML = items.map((item, i) => {
+      const videoId = item.url?.replace('/watch?v=', '') || '';
+      const thumb = item.thumbnail || '';
+      const title = item.title || 'Unknown';
+      const uploader = item.uploaderName || '';
+      const durSecs = item.duration || 0;
+      const dur = durSecs > 0 ? fmtMusicTime(durSecs) : '';
+      return `<div class="music-result-row" onclick="addToQueue('${videoId}','${title.replace(/'/g,"\'")}','${uploader.replace(/'/g,"\'")}','${thumb}')">
+        <div class="music-result-thumb"><img src="${thumb}" alt="" onerror="this.style.display='none'"></div>
+        <div class="music-result-info">
+          <div class="music-result-title">${title}</div>
+          <div class="music-result-artist">${uploader}${dur ? ' · ' + dur : ''}</div>
+        </div>
+        <button class="btn btn-xs btn-ghost">+ Add</button>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    if (resultsEl) resultsEl.innerHTML = `<div style="color:var(--text3);font-size:0.8rem;padding:8px">Search unavailable. Try adding a YouTube video ID directly.</div>
+      <div style="padding:8px">
+        <div style="font-size:0.72rem;color:var(--text3);margin-bottom:6px">Add by YouTube video ID or URL:</div>
+        <div style="display:flex;gap:6px">
+          <input type="text" id="manual-vid-id" placeholder="Video ID or URL" style="flex:1;font-size:0.78rem">
+          <button class="btn btn-primary btn-xs" onclick="addManualTrack()">Add</button>
+        </div>
+      </div>`;
+  }
+}
+
+function addManualTrack() {
+  let val = document.getElementById('manual-vid-id')?.value?.trim();
+  if (!val) return;
+  const match = val.match(/(?:v=|youtu\.be\/|embed\/)([a-zA-Z0-9_-]{11})/);
+  const videoId = match ? match[1] : val;
+  addToQueue(videoId, 'Track ' + (S.musicQueue.length + 1), 'YouTube', '');
+}
+
+function addToQueue(videoId, title, artist, thumb) {
+  if (!videoId) return;
+  title = title.replace(/\'/g, "'");
+  artist = artist.replace(/\'/g, "'");
+  S.musicQueue.push({ videoId, title, artist, thumb });
+  queueSave();
+  renderMusicQueue();
+  notify('Added to queue: ' + title.slice(0,40));
+  if (S.musicQueue.length === 1) playTrack(0);
+}
+
+function clearQueue() {
+  S.musicQueue = [];
+  S.currentTrackIdx = 0;
+  queueSave();
+  renderMusicQueue();
+  if (ytPlayer) ytPlayer.stopVideo?.();
+}
+
+function renderMusicQueue() {
+  const el = document.getElementById('music-queue');
+  if (!el) return;
+  if (!S.musicQueue.length) {
+    el.innerHTML = '<div style="color:var(--text3);font-size:0.8rem">Queue is empty. Search for music above.</div>';
+    return;
+  }
+  el.innerHTML = S.musicQueue.map((t, i) => `
+    <div class="music-result-row" style="background:${i === S.currentTrackIdx ? 'var(--accent-soft)' : ''}">
+      <div class="music-result-thumb">
+        ${t.thumb ? `<img src="${t.thumb}" alt="">` : '<div style="background:var(--surface3);width:100%;height:100%;display:grid;place-items:center;font-size:0.8rem">🎵</div>'}
+      </div>
+      <div class="music-result-info" onclick="playTrack(${i})" style="cursor:pointer">
+        <div class="music-result-title" style="color:${i === S.currentTrackIdx ? 'var(--accent)' : ''}">${t.title}</div>
+        <div class="music-result-artist">${t.artist || ''}</div>
+      </div>
+      <button class="btn btn-xs btn-ghost" onclick="removeFromQueue(${i})">✕</button>
+    </div>`).join('');
+}
+
+function removeFromQueue(idx) {
+  S.musicQueue.splice(idx, 1);
+  if (S.currentTrackIdx >= S.musicQueue.length) S.currentTrackIdx = 0;
+  queueSave();
+  renderMusicQueue();
+}
+
+// ════════════════════════════════════════════════════════
+// SETTINGS
+// ════════════════════════════════════════════════════════
+function loadSettings() {
+  const el = id => document.getElementById(id);
+  if (el('s-goal')) el('s-goal').value = S.dailyGoal || 120;
+  if (el('s-target-pct')) el('s-target-pct').value = S.targetPct || 98;
+  if (el('s-provider')) el('s-provider').value = S.aiProvider || 'claude';
+  if (el('s-toxic-toggle')) el('s-toxic-toggle').className = 'toggle' + (S.settings?.toxic !== false ? ' on' : '');
+  renderSubjectsSettings();
+}
+
+function saveSetting(key, val) {
+  S[key] = val;
+  if (key === 'dailyGoal') {
+    const gt = document.getElementById('goal-target');
+    if (gt) gt.textContent = val;
+  }
+  queueSave();
+}
+
+function toggleSetting(key) {
+  S.settings = S.settings || {};
+  S.settings[key] = !S.settings[key];
+  queueSave();
+  loadSettings();
+}
+
+function renderSubjectsSettings() {
+  const el = document.getElementById('subjects-settings');
+  if (!el) return;
+  el.innerHTML = S.subjects.map((s, i) =>
+    `<div class="chip active" onclick="removeSubject(${i})" style="cursor:pointer">${s} ×</div>`
+  ).join('');
+}
+
+function addSubject() {
+  const v = document.getElementById('new-subject')?.value?.trim();
+  if (!v || S.subjects.includes(v)) return;
+  S.subjects.push(v);
+  queueSave();
+  document.getElementById('new-subject').value = '';
+  renderSubjectsSettings();
+}
+
+function removeSubject(i) {
+  S.subjects.splice(i, 1);
+  queueSave();
+  renderSubjectsSettings();
+}
+
+function requestNotifPermission() {
+  if ('Notification' in window) {
+    Notification.requestPermission().then(p => {
+      const tog = document.getElementById('s-notif-toggle');
+      if (tog) tog.className = 'toggle' + (p === 'granted' ? ' on' : '');
+    });
+  }
+}
+
+// ════════════════════════════════════════════════════════
+// DATA MANAGEMENT
+// ════════════════════════════════════════════════════════
+async function resetData() {
+  if (supabase && currentUser) {
+    try {
+      await supabase.from('user_data').delete().eq('user_id', currentUser.id);
+    } catch(e) {}
+  }
+  S = {
+    streak: 0, studiedDays: [], missedDays: [], totalMinutes: 0, todayMinutes: 0,
+    events: [], diary: [], marks: [], exams: [], subjects: ['Mathematics','Science','English','History','Physics'],
+    dailyGoal: 120, targetPct: 98, gifts: [], aiTargets: [], aiProvider: 'claude',
+    settings: { music: false, toxic: true, darkMode: true }, did: '', plan: '',
+    calYear: new Date().getFullYear(), calMonth: new Date().getMonth(),
+    timerSecs: 1500, timerMode: 'focus', sessions: [], distractionCount: 0,
+    lastStudiedDate: null, musicQueue: [], currentTrackIdx: 0
+  };
+  notify('All data reset.');
+  initApp();
+}
+
+// ════════════════════════════════════════════════════════
+// ENTRY POINT
+// ════════════════════════════════════════════════════════
+async function init() {
+  // ALWAYS remove loading screen first, no matter what
+  const fallback = document.getElementById('js-fallback');
+  if (fallback) fallback.remove();
+
+  try {
+    initParticles();
+
+    const hasRealKeys = SUPABASE_URL && !SUPABASE_URL.includes('your-project') && SUPABASE_ANON_KEY && !SUPABASE_ANON_KEY.includes('your-anon');
+
+    if (hasRealKeys) {
+      const initialized = initSupabase();
+      if (initialized && supabase) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            currentUser = session.user;
+            await loadUserData();
+            showApp();
+            return;
+          }
+        } catch(e) {
+          console.error('Session check failed:', e);
+        }
+      }
+    } else {
+      showKeyWarning();
+    }
+
+    // Show auth screen
+    document.getElementById('view-auth').style.display = 'block';
+    renderAuth();
+
+  } catch (err) {
+    console.error('Init error:', err);
+    // Show error but don't leave user on loading screen
+    const viewAuth = document.getElementById('view-auth');
+    if (viewAuth) {
+      viewAuth.style.display = 'block';
+      viewAuth.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text)"><h2>Something went wrong</h2><p style="color:var(--text3)">' + err.message + '</p><button onclick="location.reload()" class="btn btn-primary" style="margin-top:20px">Reload</button></div>';
+    }
+  }
+}
+
+function showKeyWarning() {
+  const warn = document.createElement('div');
+  warn.id = 'key-warning';
+  warn.innerHTML = `
+    <div style="position:fixed;top:60px;left:0;right:0;z-index:150;background:var(--red);color:#fff;padding:10px 16px;text-align:center;font-size:0.8rem;font-family:'Anthropic Serif',Georgia,serif;">
+      ⚠️ Supabase keys not configured. Open this file in a text editor and replace the placeholder keys at the top.
+      <button onclick="document.getElementById('key-warning').remove()" style="margin-left:10px;background:rgba(255,255,255,0.2);border:none;color:#fff;padding:3px 10px;border-radius:20px;cursor:pointer;font-family:inherit;font-size:0.75rem;">Dismiss</button>
+    </div>`;
+  document.body.appendChild(warn);
+}
+
+// Defer init until DOM is fully ready + small delay for CDN scripts
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('DOM ready, starting init...');
+  // Give CDN scripts a moment to load
+  setTimeout(function() {
+    try {
+      init();
+      console.log('Init completed');
+    } catch(e) {
+      console.error('Init crashed:', e);
+      document.body.innerHTML = '<div style="padding:40px;color:#fff;font-family:sans-serif;"><h2>Error</h2><pre style="background:#222;padding:20px;border-radius:8px;">' + e.toString() + '<br>' + (e.stack || '') + '</pre></div>';
+    }
+  }, 300);
+});
+function toggleMobileNav() {
+  const btn = document.getElementById('burger-btn');
+  const overlay = document.getElementById('mobile-nav-overlay');
+  btn.classList.toggle('open');
+  overlay.classList.toggle('open');
+  document.body.style.overflow = overlay.classList.contains('open') ? 'hidden' : '';
+}
+
+function mobileNavPage(page) {
+  toggleMobileNav();
+  showPage(page);
+}
+
+// Close mobile nav on resize to desktop
+window.addEventListener('resize', () => {
+  if (window.innerWidth > 640) {
+    const btn = document.getElementById('burger-btn');
+    const overlay = document.getElementById('mobile-nav-overlay');
+    if (btn) btn.classList.remove('open');
+    if (overlay) overlay.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+});
+</script>
+</body>
+</html>
