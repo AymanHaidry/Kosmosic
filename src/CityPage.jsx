@@ -403,7 +403,7 @@ function InfoPanel({users,myZone,myTier,hovered,todKey,seas}) {
             ⏱ {(hovered.total_hours||0).toFixed(1)}h<br/>
             🔥 {hovered.streak||0} day streak<br/>
             📅 {hovered.studied_days||0} days<br/>
-            {hovered.is_studying&&<<span style={{color:'#69f0ae'}}>● Studying now</span>}
+            {hovered.is_studying&&<span style={{color:'#69f0ae'}}>● Studying now</span>}
             {(hovered.goals_hit||0)>=5&&<> · <span style={{color:'#ff8a65'}}>🎉 Goal crusher</span></>}
           </div>
         </div>
