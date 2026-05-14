@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from './supabase.js'
+import CityPage from './CityPage.jsx'
 
 const QUOTES = [
   { text: 'Stay hungry, stay foolish.', author: 'Steve Jobs' },
@@ -283,9 +284,9 @@ export default function StudyOS({ session }) {
 
       {/* MOBILE NAV OVERLAY */}
       <div className={`mobile-nav-overlay ${mobileOpen ? 'open' : ''}`}>
-        {['dash','timer','music','cal','marks','diary','awards','ai','settings'].map(p => (
+        {['city','dash','timer','music','cal','marks','diary','awards','ai','settings'].map(p => (
           <a key={p} href="#" className={page === p ? 'active' : ''} onClick={e => { e.preventDefault(); setPage(p); setMobileOpen(false) }}>
-            {{ dash:'Home', timer:'Focus', music:'Music', cal:'Calendar', marks:'Marks', diary:'Diary', awards:'Awards', ai:'AI Coach', settings:'Settings' }[p]}
+            {{ city:'City', dash:'Home', timer:'Focus', music:'Music', cal:'Calendar', marks:'Marks', diary:'Diary', awards:'Awards', ai:'AI Coach', settings:'Settings' }[p]}
           </a>
         ))}
       </div>
@@ -297,7 +298,7 @@ export default function StudyOS({ session }) {
           Kosmosic
         </div>
         <div className="nav-tabs">
-          {[['dash','Home'],['timer','Focus'],['music','Music'],['cal','Calendar'],['marks','Marks'],['diary','Diary'],['awards','Awards'],['ai','AI Coach'],['settings','Settings']].map(([p, label]) => (
+          {[['city','City 🏙'],['dash','Home'],['timer','Focus'],['music','Music'],['cal','Calendar'],['marks','Marks'],['diary','Diary'],['awards','Awards'],['ai','AI Coach'],['settings','Settings']].map(([p, label]) => (
             <button key={p} className={`tab ${page === p ? 'active' : ''}`} onClick={() => setPage(p)}>{label}</button>
           ))}
         </div>
@@ -310,15 +311,22 @@ export default function StudyOS({ session }) {
         </div>
       </nav>
 
-      {/* TICKER */}
-      <div className="ticker">
-        <div className="ticker-track">
-          {['BEAT MEDIOCRITY','◆','98% IS THE FLOOR','◆','FAANG OR NOTHING','◆','STAY HUNGRY STAY FOOLISH','◆','BUILD THE FUTURE','◆','FLY HIGH ✈','◆','NO DAYS OFF','◆',
-            'BEAT MEDIOCRITY','◆','98% IS THE FLOOR','◆','FAANG OR NOTHING','◆','STAY HUNGRY STAY FOOLISH','◆','BUILD THE FUTURE','◆','FLY HIGH ✈','◆','NO DAYS OFF','◆'].map((t, i) => (
-            <span key={i} className={t === '◆' ? 'accent' : ''}>{t}</span>
-          ))}
+      {/* TICKER — only show outside city page */}
+      {page !== 'city' && (
+        <div className="ticker">
+          <div className="ticker-track">
+            {['BEAT MEDIOCRITY','◆','98% IS THE FLOOR','◆','FAANG OR NOTHING','◆','STAY HUNGRY STAY FOOLISH','◆','BUILD THE FUTURE','◆','FLY HIGH ✈','◆','NO DAYS OFF','◆',
+              'BEAT MEDIOCRITY','◆','98% IS THE FLOOR','◆','FAANG OR NOTHING','◆','STAY HUNGRY STAY FOOLISH','◆','BUILD THE FUTURE','◆','FLY HIGH ✈','◆','NO DAYS OFF','◆'].map((t, i) => (
+              <span key={i} className={t === '◆' ? 'accent' : ''}>{t}</span>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* ══ CITY ══ */}
+      {page === 'city' && (
+        <CityPage S={S} session={session} isStudying={timerRunning && timerMode === 'focus'} studyMode={timerMode} />
+      )}
 
       {/* ══ DASHBOARD ══ */}
       <div className={`page ${page === 'dash' ? 'active' : ''}`}>
