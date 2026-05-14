@@ -2,17 +2,87 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from './supabase.js'
 
 /* ─── helpers ─── */
-const getBuildingSpec = (hours, streak) => {
-  const level = Math.min(6, Math.floor(Math.log2(Math.max(hours + 1, 1))))
-  const height = Math.min(20, Math.max(3, Math.floor(hours / 15) + 3))
-  const width = Math.min(70, Math.max(30, 28 + level * 4))
+/* ─── deterministic shape picker ─── */
+const hashString = (str) => {
+  let h = 2166136261
+  for (let i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 16777619)
+  return Math.abs(h >>> 0)
+}
+
+/* ─── shape catalog per tier ─── */
+// tier 1=Studio … tier 6=Skyline
+const SHAPE_CATALOG = {
+  1: [ // 8 studios
+    { h: 3, w: 22, floors: 1, wp: 2, roof: 'peak',  name: 'Cottage' },
+    { h: 3, w: 30, floors: 1, wp: 3, roof: 'flat',  name: 'Bungalow' },
+    { h: 4, w: 18, floors: 2, wp: 2, roof: 'none',  name: 'Micro-tower' },
+    { h: 2, w: 34, floors: 1, wp: 4, roof: 'flat',  name: 'Garage' },
+    { h: 3, w: 26, floors: 1, wp: 2, roof: 'dome',  name: 'Pod' },
+    { h: 4, w: 20, floors: 2, wp: 2, roof: 'slant', name: 'Shed' },
+    { h: 3, w: 28, floors: 1, wp: 3, roof: 'flat',  name: 'Loft' },
+    { h: 5, w: 16, floors: 2, wp: 1, roof: 'spire', name: 'Pencil-studio' },
+  ],
+  2: [ // 6 apartments
+    { h: 5, w: 32, floors: 2, wp: 3, roof: 'flat',  name: 'Walk-up' },
+    { h: 6, w: 38, floors: 2, wp: 4, roof: 'peak',  name: 'Townhouse' },
+    { h: 5, w: 28, floors: 2, wp: 2, roof: 'none',  name: 'Brownstone' },
+    { h: 7, w: 30, floors: 3, wp: 3, roof: 'flat',  name: 'Triplex' },
+    { h: 6, w: 36, floors: 2, wp: 4, roof: 'dome',  name: 'Mansionette' },
+    { h: 8, w: 26, floors: 3, wp: 2, roof: 'none',  name: 'Stacked' },
+  ],
+  3: [ // 5 mid-rise
+    { h: 8,  w: 40, floors: 3, wp: 4, roof: 'none',   name: 'Block' },
+    { h: 9,  w: 36, floors: 4, wp: 3, roof: 'setback',name: 'Stepped' },
+    { h: 8,  w: 44, floors: 3, wp: 5, roof: 'none',   name: 'Wide' },
+    { h: 10, w: 32, floors: 4, wp: 3, roof: 'none',   name: 'Slim' },
+    { h: 9,  w: 38, floors: 3, wp: 4, roof: 'peak',   name: 'Clock-tower' },
+  ],
+  4: [ // 5 high-rise
+    { h: 12, w: 50, floors: 5, wp: 5, roof: 'none',    name: 'Glass Box' },
+    { h: 14, w: 46, floors: 6, wp: 4, roof: 'setback', name: 'Ziggurat' },
+    { h: 13, w: 52, floors: 5, wp: 5, roof: 'none',    name: 'Corporate' },
+    { h: 12, w: 42, floors: 5, wp: 4, roof: 'spire',   name: 'Needle' },
+    { h: 15, w: 48, floors: 6, wp: 5, roof: 'none',    name: 'Tower' },
+  ],
+  5: [ // 5 penthouses
+    { h: 16, w: 60, floors: 7, wp: 6, roof: 'none',    name: 'Terrace' },
+    { h: 17, w: 56, floors: 7, wp: 5, roof: 'setback', name: 'Cascade' },
+    { h: 16, w: 62, floors: 6, wp: 6, roof: 'none',    name: 'Estate' },
+    { h: 18, w: 54, floors: 8, wp: 5, roof: 'spire',   name: 'Spire-top' },
+    { h: 17, w: 58, floors: 7, wp: 6, roof: 'dome',    name: 'Observatory' },
+  ],
+  6: [ // 4 skyscrapers
+    { h: 20, w: 70, floors: 9, wp: 7, roof: 'none',  name: 'Monolith' },
+    { h: 22, w: 64, floors: 10, wp: 6, roof: 'spire',name: 'Shard' },
+    { h: 21, w: 68, floors: 9, wp: 7, roof: 'none',  name: 'Mega-block' },
+    { h: 23, w: 60, floors: 11, wp: 5, roof: 'spire',name: 'Pinnacle' },
+  ],
+}
+const getBuildingSpec = (hours, streak, userId = '') => {
+  const tier = Math.min(6, Math.floor(Math.log2(Math.max(hours + 1, 1))))
+  const catalog = SHAPE_CATALOG[tier] || SHAPE_CATALOG[1]
+  const seed = hashString(userId || 'anon')
+  const shape = catalog[seed % catalog.length]
+
+  // Slight growth within tier so buildings don't look cloned
+  const growth = Math.min(1.25, 1 + (hours % 50) / 160)
 
   let style = 'default'
   if (hours >= 200) style = 'cyberpunk'
   else if (hours >= 100) style = 'glass'
   else if (hours >= 50) style = 'modern'
 
-  return { height, width, floors: height, windowsPerFloor: Math.floor(width / 14), level, style }
+  return {
+    height: Math.floor(shape.h * growth),
+    width: Math.floor(shape.w * growth),
+    floors: shape.floors,
+    windowsPerFloor: shape.wp,
+    level: tier,
+    style,
+    roof: shape.roof,
+    seed,
+    name: shape.name,
+  }
 }
 
 const getRankLabel = (hours) => {
@@ -73,7 +143,7 @@ create trigger city_profiles_ts
 
 /* ─── single building component ─── */
 function Building({ user, spec, x, isMe, onClick, studying, mode, animOffset }) {
-  const { height, width, floors, windowsPerFloor, style } = spec
+  const { height, width, floors, windowsPerFloor, level, style, roof, seed } = spec
   const pxH = height * 18
 
   const getBuildingBg = () => {
@@ -98,6 +168,65 @@ function Building({ user, spec, x, isMe, onClick, studying, mode, animOffset }) 
     return 'none'
   }
 
+  const bColor = getBorderColor()
+
+  /* ── roof renderer ── */
+  const renderRoof = () => {
+    if (!roof || roof === 'none') return null
+    if (roof === 'peak') {
+      return (
+        <div style={{
+          position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)',
+          width: 0, height: 0,
+          borderLeft: `${width * 0.18}px solid transparent`,
+          borderRight: `${width * 0.18}px solid transparent`,
+          borderBottom: `10px solid ${bColor}`,
+          opacity: 0.6,
+        }} />
+      )
+    }
+    if (roof === 'dome') {
+      return (
+        <div style={{
+          position: 'absolute', top: -8, left: '50%', transform: 'translateX(-50%)',
+          width: width * 0.5, height: 8,
+          background: bColor, opacity: 0.5,
+          borderRadius: '50% 50% 0 0',
+        }} />
+      )
+    }
+    if (roof === 'slant') {
+      return (
+        <div style={{
+          position: 'absolute', top: -6, left: '50%', transform: 'translateX(-50%) skewX(-12deg)',
+          width: width * 0.55, height: 6,
+          background: bColor, opacity: 0.5,
+        }} />
+      )
+    }
+    if (roof === 'spire') {
+      return (
+        <div style={{
+          position: 'absolute', top: -20, left: '50%', transform: 'translateX(-50%)',
+          width: 2, height: 20,
+          background: isMe ? '#d4a853' : style === 'cyberpunk' ? 'rgba(100,80,255,0.8)' : 'rgba(255,251,240,0.3)',
+          boxShadow: isMe ? '0 0 8px rgba(212,168,83,0.6)' : 'none',
+        }} />
+      )
+    }
+    if (roof === 'setback') {
+      return (
+        <div style={{
+          position: 'absolute', top: -4, left: '10%',
+          width: '80%', height: 4,
+          background: bColor, opacity: 0.35,
+          borderRadius: '2px 2px 0 0',
+        }} />
+      )
+    }
+    return null
+  }
+
   return (
     <div
       onClick={onClick}
@@ -105,7 +234,7 @@ function Building({ user, spec, x, isMe, onClick, studying, mode, animOffset }) 
         position: 'absolute', bottom: 40, left: x,
         width, height: pxH,
         background: getBuildingBg(),
-        border: `1px solid ${getBorderColor()}`,
+        border: `1px solid ${bColor}`,
         borderBottom: 'none',
         borderRadius: '3px 3px 0 0',
         boxShadow: getGlow(),
@@ -125,12 +254,16 @@ function Building({ user, spec, x, isMe, onClick, studying, mode, animOffset }) 
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, transparent 0%, rgba(80,160,200,0.05) 50%, transparent 100%)' }} />
       )}
 
+      {/* Roof */}
+      {renderRoof()}
+
       {/* Windows */}
       <div style={{ padding: '6px 4px', display: 'flex', flexDirection: 'column', gap: 3, height: '100%' }}>
         {Array.from({ length: floors }, (_, f) => (
           <div key={f} style={{ display: 'flex', gap: 3, justifyContent: 'center', flex: 1, alignItems: 'center' }}>
             {Array.from({ length: windowsPerFloor }, (_, w) => {
-              const isLit = studying && Math.sin(f * 7 + w * 13 + animOffset) > 0.1
+              // each building gets its own flicker phase via seed
+              const isLit = studying && Math.sin(f * 7 + w * 13 + animOffset + seed) > 0.1
               const color = isLit
                 ? mode === 'deep'  ? 'rgba(80,120,255,0.9)'
                 : mode === 'exam'  ? 'rgba(220,80,80,0.9)'
@@ -153,8 +286,8 @@ function Building({ user, spec, x, isMe, onClick, studying, mode, animOffset }) 
         ))}
       </div>
 
-      {/* Spire */}
-      {height >= 12 && (
+      {/* Spire (tiers 5-6 only, but skip if roof already has spire) */}
+      {height >= 12 && roof !== 'spire' && (
         <div style={{
           position: 'absolute', top: -16, left: '50%', transform: 'translateX(-50%)',
           width: 2, height: 16,
@@ -197,7 +330,7 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
   const [showSQL, setShowSQL] = useState(false)
 
   const myHours = Math.floor((S?.totalMinutes || 0) / 60)
-  const mySpec = getBuildingSpec(myHours, S?.streak || 0)
+  const mySpec = getBuildingSpec(myHours, S?.streak || 0, session?.user?.id)
   const myName = session?.user?.user_metadata?.full_name || session?.user?.email?.split('@')[0] || 'You'
   const myRank = getRankLabel(myHours)
 
@@ -314,7 +447,7 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
   const buildingData = []
   let xCursor = 20
   displayOrder.forEach(user => {
-    const spec = getBuildingSpec(user.hours, user.streak)
+    const spec = getBuildingSpec(user.hours, user.streak, user.id)
     buildingData.push({ user, spec, x: xCursor })
     xCursor += spec.width + 8
   })
