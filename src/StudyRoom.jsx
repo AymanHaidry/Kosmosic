@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+study_room = r'''import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from './supabase.js'
 
 function generateCode() {
@@ -12,106 +12,170 @@ function fmtTime(secs) {
 }
 
 export default function StudyRoom({ S, session, isStudying, timerSecs, timerMode }) {
-  const [view, setView] = useState('lobby') // lobby | room
+  const [view, setView] = useState('lobby')
   const [roomCode, setRoomCode] = useState('')
   const [joinCode, setJoinCode] = useState('')
   const [members, setMembers] = useState([])
   const [messages, setMessages] = useState([])
   const [chatInput, setChatInput] = useState('')
   const [error, setError] = useState('')
-  const channelRef = useRef(null)
+  const [loading, setLoading] = useState(false)
+  const heartbeatRef = useRef(null)
   const chatRef = useRef(null)
+  const channelRef = useRef(null)
 
   const myName = session?.user?.user_metadata?.full_name || session?.user?.email?.split('@')[0] || 'Anonymous'
   const myId = session?.user?.id
 
+  // ─── LOAD SAVED ROOM ON MOUNT ───
+  useEffect(() => {
+    const saved = localStorage.getItem('kosmosic_room_code')
+    if (saved && myId) {
+      setRoomCode(saved)
+      setView('room')
+      loadRoomData(saved)
+    }
+  }, [myId])
+
+  // ─── LOAD ROOM DATA FROM DB ───
+  const loadRoomData = async (code) => {
+    setLoading(true)
+    const cutoff = new Date(Date.now() - 120000).toISOString()
+
+    const [{ data: membersData }, { data: msgs }] = await Promise.all([
+      supabase.from('room_members').select('*').eq('room_code', code).gt('last_seen', cutoff),
+      supabase.from('room_messages').select('*').eq('room_code', code).order('created_at', { ascending: true }).limit(50)
+    ])
+
+    if (membersData) {
+      setMembers(membersData.map(m => ({
+        id: m.user_id,
+        name: m.display_name,
+        streak: m.streak || 0,
+        subject: m.subject || 'General',
+        studying: m.is_studying,
+        timer_secs: m.timer_secs || 0,
+        timer_mode: m.timer_mode || 'focus',
+        joined_at: m.joined_at,
+      })))
+    }
+
+    if (msgs) {
+      setMessages(msgs.map(m => ({
+        name: m.display_name,
+        text: m.text,
+        ts: new Date(m.created_at).getTime(),
+      })))
+    }
+    setLoading(false)
+  }
+
+  // ─── HEARTBEAT + REALTIME ───
+  useEffect(() => {
+    if (view !== 'room' || !roomCode || !myId) return
+
+    const heartbeat = async () => {
+      await supabase.from('room_members').upsert({
+        room_code: roomCode,
+        user_id: myId,
+        display_name: myName,
+        streak: S?.streak || 0,
+        subject: S?.activeSubject || 'General',
+        is_studying: isStudying,
+        timer_secs: timerSecs,
+        timer_mode: timerMode,
+        last_seen: new Date().toISOString(),
+      }, { onConflict: ['room_code', 'user_id'] })
+    }
+
+    heartbeat()
+    heartbeatRef.current = setInterval(heartbeat, 10000)
+
+    // Realtime subscriptions
+    const ch = supabase.channel(`room-${roomCode}`)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'room_members',
+        filter: `room_code=eq.${roomCode}`
+      }, () => loadRoomData(roomCode))
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'room_messages',
+        filter: `room_code=eq.${roomCode}`
+      }, (payload) => {
+        const m = payload.new
+        setMessages(prev => {
+          if (prev.some(x => x.ts === new Date(m.created_at).getTime() && x.name === m.display_name)) return prev
+          return [...prev.slice(-49), { name: m.display_name, text: m.text, ts: new Date(m.created_at).getTime() }]
+        })
+        setTimeout(() => chatRef.current?.scrollTo(0, chatRef.current.scrollHeight), 50)
+      })
+      .subscribe()
+
+    channelRef.current = ch
+
+    return () => {
+      clearInterval(heartbeatRef.current)
+      if (channelRef.current) supabase.removeChannel(channelRef.current)
+    }
+  }, [view, roomCode, myId, isStudying, timerSecs, timerMode, S?.streak, S?.activeSubject, myName])
+
+  // ─── CREATE ROOM ───
+  const createRoom = async () => {
+    const code = generateCode()
+    setRoomCode(code)
+    localStorage.setItem('kosmosic_room_code', code)
+    await joinRoomInternal(code)
+    setView('room')
+  }
+
+  // ─── JOIN ROOM ───
   const joinRoom = async (code) => {
     if (!code || code.length < 4) { setError('Enter a valid room code.'); return }
     const upper = code.trim().toUpperCase()
     setError('')
     setRoomCode(upper)
-    await connectToRoom(upper)
+    localStorage.setItem('kosmosic_room_code', upper)
+    await joinRoomInternal(upper)
     setView('room')
   }
 
-  const createRoom = async () => {
-    const code = generateCode()
-    setRoomCode(code)
-    await connectToRoom(code)
-    setView('room')
-  }
-
-  const connectToRoom = async (code) => {
-    if (channelRef.current) channelRef.current.unsubscribe()
-
-    const channel = supabase.channel(`kosmosic-room-${code}`, {
-      config: { presence: { key: myId } }
-    })
-
-    channel
-      .on('presence', { event: 'sync' }, () => {
-        const state = channel.presenceState()
-        const users = Object.entries(state).map(([uid, presences]) => ({
-          id: uid,
-          ...(presences[0] || {}),
-        }))
-        setMembers(users)
-      })
-      .on('broadcast', { event: 'chat' }, ({ payload }) => {
-        setMessages(prev => [...prev.slice(-49), payload])
-        setTimeout(() => chatRef.current?.scrollTo(0, chatRef.current.scrollHeight), 50)
-      })
-      .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') {
-          await channel.track({
-            user_id: myId,
-            name: myName,
-            streak: S.streak || 0,
-            subject: S.activeSubject || 'General',
-            studying: isStudying,
-            timer_secs: timerSecs,
-            timer_mode: timerMode,
-            joined_at: new Date().toISOString(),
-          })
-        }
-      })
-
-    channelRef.current = channel
-  }
-
-  // Keep presence updated as timer/study state changes
-  useEffect(() => {
-    if (view !== 'room' || !channelRef.current) return
-    channelRef.current.track({
+  const joinRoomInternal = async (code) => {
+    await supabase.from('room_members').upsert({
+      room_code: code,
       user_id: myId,
-      name: myName,
-      streak: S.streak || 0,
-      subject: S.activeSubject || 'General',
-      studying: isStudying,
+      display_name: myName,
+      streak: S?.streak || 0,
+      subject: S?.activeSubject || 'General',
+      is_studying: isStudying,
       timer_secs: timerSecs,
       timer_mode: timerMode,
+      last_seen: new Date().toISOString(),
       joined_at: new Date().toISOString(),
-    })
-  }, [isStudying, timerSecs, timerMode, S.activeSubject, S.streak])
+    }, { onConflict: ['room_code', 'user_id'] })
+    await loadRoomData(code)
+  }
 
-  const leaveRoom = () => {
-    if (channelRef.current) channelRef.current.unsubscribe()
-    channelRef.current = null
+  // ─── LEAVE ROOM ───
+  const leaveRoom = async () => {
+    clearInterval(heartbeatRef.current)
+    if (myId && roomCode) {
+      await supabase.from('room_members').delete().eq('user_id', myId).eq('room_code', roomCode)
+    }
+    localStorage.removeItem('kosmosic_room_code')
     setMembers([])
     setMessages([])
     setRoomCode('')
     setView('lobby')
   }
 
+  // ─── SEND CHAT ───
   const sendChat = async () => {
-    if (!chatInput.trim() || !channelRef.current) return
-    const msg = { name: myName, text: chatInput.trim(), ts: Date.now() }
-    await channelRef.current.send({ type: 'broadcast', event: 'chat', payload: msg })
-    setMessages(prev => [...prev.slice(-49), msg])
+    if (!chatInput.trim() || !roomCode || !myId) return
+    const msg = { room_code: roomCode, user_id: myId, display_name: myName, text: chatInput.trim() }
+    await supabase.from('room_messages').insert(msg)
     setChatInput('')
-    setTimeout(() => chatRef.current?.scrollTo(0, chatRef.current.scrollHeight), 50)
   }
 
+  // ─── LOBBY ───
   if (view === 'lobby') return (
     <div className="page active">
       <div style={{ marginBottom: 28 }}>
@@ -155,7 +219,7 @@ export default function StudyRoom({ S, session, isStudying, timerSecs, timerMode
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {[
             { icon: '📋', t: 'Create or join a room', d: 'One person creates, gets a code. Everyone else enters that code.' },
-            { icon: '⏱', t: 'Run your own timer', d: 'Each person controls their own Focus timer. The room just shows everyone\'s live status.' },
+            { icon: '⏱', t: 'Run your own timer', d: "Each person controls their own Focus timer. The room just shows everyone's live status." },
             { icon: '👁', t: 'See each other live', d: 'Names, streaks, what subject, timer countdown — all visible in real-time.' },
             { icon: '💬', t: 'Quick chat', d: 'Short messages to stay accountable. Not for distraction — for motivation.' },
           ].map(item => (
@@ -172,13 +236,11 @@ export default function StudyRoom({ S, session, isStudying, timerSecs, timerMode
     </div>
   )
 
-  const me = members.find(m => m.id === myId)
-  const others = members.filter(m => m.id !== myId)
+  // ─── ROOM VIEW ───
   const activeCount = members.filter(m => m.studying).length
 
   return (
     <div className="page active">
-      {/* Room Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
         <div>
           <div className="heading" style={{ marginBottom: 4 }}>Room: {roomCode}</div>
@@ -190,12 +252,13 @@ export default function StudyRoom({ S, session, isStudying, timerSecs, timerMode
           <div style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 10, padding: '6px 14px', fontFamily: "'Anthropic Serif',Georgia,serif", fontWeight: 700, letterSpacing: '0.15em', fontSize: '1rem', color: 'var(--accent)' }}>
             {roomCode}
           </div>
-          <button className="btn btn-ghost btn-sm" onClick={() => { navigator.clipboard?.writeText(roomCode); }}>Copy</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => navigator.clipboard?.writeText(roomCode)}>Copy</button>
           <button className="btn btn-danger btn-sm" onClick={leaveRoom}>Leave</button>
         </div>
       </div>
 
-      {/* Members Grid */}
+      {loading && <div style={{ color: 'var(--accent)', marginBottom: 12 }}>Loading room...</div>}
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12, marginBottom: 14 }}>
         {members.map(member => {
           const isMe = member.id === myId
@@ -211,7 +274,6 @@ export default function StudyRoom({ S, session, isStudying, timerSecs, timerMode
                   background: `linear-gradient(135deg, ${member.studying ? modeColor : 'var(--surface3)'}, ${member.studying ? 'var(--accent2)' : 'var(--surface2)'})`,
                   display: 'grid', placeItems: 'center', fontSize: '0.8rem', fontWeight: 700, color: '#fff',
                   boxShadow: member.studying ? `0 0 16px ${modeColor}40` : 'none',
-                  transition: 'box-shadow 0.5s',
                 }}>
                   {member.name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
                 </div>
@@ -221,11 +283,7 @@ export default function StudyRoom({ S, session, isStudying, timerSecs, timerMode
                 </div>
               </div>
 
-              {/* Timer display */}
-              <div style={{
-                background: 'var(--surface2)', borderRadius: 10, padding: '10px 12px',
-                textAlign: 'center', marginBottom: 8, border: '1px solid var(--border)',
-              }}>
+              <div style={{ background: 'var(--surface2)', borderRadius: 10, padding: '10px 12px', textAlign: 'center', marginBottom: 8, border: '1px solid var(--border)' }}>
                 {member.studying ? (
                   <>
                     <div style={{ fontFamily: "'Anthropic Serif',Georgia,serif", fontVariantNumeric: 'tabular-nums', fontSize: '1.6rem', fontWeight: 400, color: modeColor }}>
@@ -256,7 +314,6 @@ export default function StudyRoom({ S, session, isStudying, timerSecs, timerMode
         })}
       </div>
 
-      {/* Chat */}
       <div className="card">
         <div className="sec-label">Room Chat</div>
         <div ref={chatRef} style={{ height: 160, overflowY: 'auto', marginBottom: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
