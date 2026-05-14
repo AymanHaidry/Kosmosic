@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from './supabase.js'
 import CityPage from './CityPage.jsx'
+import StudyRoom from './StudyRoom.jsx'
 
 const QUOTES = [
   { text: 'Stay hungry, stay foolish.', author: 'Steve Jobs' },
@@ -31,14 +32,21 @@ const SUBJECT_COLORS = ['#d4a853','#c9956a','#5c8c6e','#4a7a9b','#8b7a9b','#c057
 
 const defaultState = () => ({
   streak: 0, studiedDays: [], missedDays: [], totalMinutes: 0, todayMinutes: 0,
-  events: [], diary: [], marks: [], sessions: [],
+  events: [], diary: [], marks: [], sessions: [], examGroups: [],
   subjects: ['Mathematics', 'Science', 'English', 'History', 'Physics'],
-  subjectMinutes: {},
-  dailyGoal: 120, targetPct: 98,
+  subjectMinutes: {}, subjectTargets: {},
+  dailyGoal: 120, weeklyGoal: 900, targetPct: 98,
   did: '', plan: '',
   timerMode: 'focus', timerTotal: 1500,
   distractionCount: 0, lastStudiedDate: null,
-  settings: { darkMode: true, sound: true, strictMode: false, autoBreak: false },
+  settings: {
+    darkMode: true, sound: true, strictMode: false, autoBreak: false,
+    autoNextSession: false, sessionSounds: true, animatedBg: true,
+    studyReminders: true, breakReminders: true, goalReminder: true, streakNotif: true,
+    detectInactivity: false, warnQuit: true, pauseStreakExams: false,
+    focusSessionMins: 25, breakMins: 5, longBreakMins: 15,
+    burnoutDetection: false, moodCheckins: true, dopamineDetox: false,
+  },
   aiHistory: [],
 })
 
@@ -164,33 +172,50 @@ export default function StudyOS({ session }) {
     return () => clearInterval(timerRef.current)
   }, [timerRunning])
 
+  const recordFocusSession = (elapsedSecs) => {
+    const mins = Math.round(elapsedSecs / 60)
+    if (mins < 1) return
+    const today = todayKey()
+    updateS(prev => {
+      const sessions = [...(prev.sessions || []), { date: today, mins, mode: 'focus', ts: Date.now() }]
+      const totalMinutes = (prev.totalMinutes || 0) + mins
+      const todayMinutes = (prev.todayMinutes || 0) + mins
+      const studiedDays = prev.studiedDays?.includes(today) ? prev.studiedDays : [...(prev.studiedDays || []), today]
+      const streak = calcStreak(studiedDays)
+      return { ...prev, sessions, totalMinutes, todayMinutes, studiedDays, streak, lastStudiedDate: today }
+    })
+  }
+
   const handleTimerComplete = () => {
-    notify(timerMode === 'focus' ? 'Focus session complete! Take a break.' : 'Break over. Back to work.')
-    if (timerMode === 'focus' && sessionStartRef.current) {
-      const mins = Math.round((Date.now() - sessionStartRef.current) / 60000)
-      if (mins > 0) {
-        const today = todayKey()
-        updateS(prev => {
-          const sessions = [...(prev.sessions || []), { date: today, mins, mode: 'focus', ts: Date.now() }]
-          const totalMinutes = (prev.totalMinutes || 0) + mins
-          const todayMinutes = (prev.todayMinutes || 0) + mins
-          const studiedDays = prev.studiedDays?.includes(today) ? prev.studiedDays : [...(prev.studiedDays || []), today]
-          const streak = calcStreak(studiedDays)
-          return { ...prev, sessions, totalMinutes, todayMinutes, studiedDays, streak, lastStudiedDate: today }
-        })
-      }
+    notify(timerMode === 'focus' ? '✓ Session complete! Take a break.' : 'Break over. Back to work.')
+    if (timerMode === 'focus') {
+      // Use timerTotal as elapsed — the full session ran to completion
+      recordFocusSession(timerTotal)
     }
     sessionStartRef.current = null
   }
 
   const startTimer = () => {
-    if (timerMode === 'focus') sessionStartRef.current = Date.now()
+    if (timerMode === 'focus') sessionStartRef.current = timerSecs
     setTimerRunning(true)
   }
 
-  const pauseTimer = () => setTimerRunning(false)
+  const pauseTimer = () => {
+    setTimerRunning(false)
+    // Record elapsed time so far (difference between secs at start vs now)
+    if (timerMode === 'focus' && sessionStartRef.current !== null) {
+      const elapsedSecs = sessionStartRef.current - timerSecs
+      recordFocusSession(elapsedSecs)
+      sessionStartRef.current = null
+    }
+  }
 
   const resetTimer = () => {
+    // If running, record elapsed first
+    if (timerRunning && timerMode === 'focus' && sessionStartRef.current !== null) {
+      const elapsedSecs = sessionStartRef.current - timerSecs
+      recordFocusSession(elapsedSecs)
+    }
     setTimerRunning(false)
     setTimerSecs(timerTotal)
     sessionStartRef.current = null
@@ -284,9 +309,9 @@ export default function StudyOS({ session }) {
 
       {/* MOBILE NAV OVERLAY */}
       <div className={`mobile-nav-overlay ${mobileOpen ? 'open' : ''}`}>
-        {['city','dash','timer','music','cal','marks','diary','awards','ai','settings'].map(p => (
+        {['city','room','dash','timer','music','cal','marks','diary','awards','ai','settings'].map(p => (
           <a key={p} href="#" className={page === p ? 'active' : ''} onClick={e => { e.preventDefault(); setPage(p); setMobileOpen(false) }}>
-            {{ city:'City', dash:'Home', timer:'Focus', music:'Music', cal:'Calendar', marks:'Marks', diary:'Diary', awards:'Awards', ai:'AI Coach', settings:'Settings' }[p]}
+            {{ city:'City 🏙', room:'Study Rooms', dash:'Home', timer:'Focus', music:'Music', cal:'Calendar', marks:'Marks', diary:'Diary', awards:'Awards', ai:'AI Coach', settings:'Settings' }[p]}
           </a>
         ))}
       </div>
@@ -298,7 +323,7 @@ export default function StudyOS({ session }) {
           Kosmosic
         </div>
         <div className="nav-tabs">
-          {[['city','City 🏙'],['dash','Home'],['timer','Focus'],['music','Music'],['cal','Calendar'],['marks','Marks'],['diary','Diary'],['awards','Awards'],['ai','AI Coach'],['settings','Settings']].map(([p, label]) => (
+          {[['city','City 🏙'],['room','Rooms'],['dash','Home'],['timer','Focus'],['music','Music'],['cal','Calendar'],['marks','Marks'],['diary','Diary'],['awards','Awards'],['ai','AI'],['settings','Settings']].map(([p, label]) => (
             <button key={p} className={`tab ${page === p ? 'active' : ''}`} onClick={() => setPage(p)}>{label}</button>
           ))}
         </div>
@@ -326,6 +351,11 @@ export default function StudyOS({ session }) {
       {/* ══ CITY ══ */}
       {page === 'city' && (
         <CityPage S={S} session={session} isStudying={timerRunning && timerMode === 'focus'} studyMode={timerMode} />
+      )}
+
+      {/* ══ STUDY ROOMS ══ */}
+      {page === 'room' && (
+        <StudyRoom S={S} session={session} isStudying={timerRunning && timerMode === 'focus'} timerSecs={timerSecs} timerMode={timerMode} />
       )}
 
       {/* ══ DASHBOARD ══ */}
@@ -822,93 +852,277 @@ function CalendarPage({ S, updateS, notify }) {
    MARKS PAGE
 ══════════════════════════════ */
 function MarksPage({ S, updateS, notify }) {
+  const [examName, setExamName] = useState('')
+  const [selectedExam, setSelectedExam] = useState('')
   const [sub, setSub] = useState('')
   const [score, setScore] = useState('')
   const [total, setTotal] = useState('100')
-  const [label, setLabel] = useState('')
+  const [chartTab, setChartTab] = useState('bar')
+  const barRef = useRef(null)
+  const radarRef = useRef(null)
+  const barInstance = useRef(null)
+  const radarInstance = useRef(null)
+
+  const examGroups = S.examGroups || []
+  const allSubjects = S.subjects || []
+  const dark = document.documentElement.getAttribute('data-theme') !== 'light'
+  const textColor = dark ? 'rgba(245,240,232,0.7)' : 'rgba(26,23,20,0.7)'
+  const gridColor = dark ? 'rgba(255,251,240,0.06)' : 'rgba(60,50,35,0.08)'
+
+  const createExam = () => {
+    if (!examName.trim()) { notify('Enter exam name.'); return }
+    const ex = { id: Date.now(), name: examName.trim(), date: todayKey(), marks: [] }
+    updateS(prev => ({ ...prev, examGroups: [...(prev.examGroups || []), ex] }))
+    setSelectedExam(String(ex.id))
+    setExamName('')
+    notify(`Exam "${ex.name}" created.`)
+  }
 
   const addMark = () => {
-    if (!sub || !score) { notify('Fill in subject and score.'); return }
-    const mark = { id: Date.now(), subject: sub, score: +score, total: +total || 100, label, date: todayKey() }
-    updateS(prev => ({ ...prev, marks: [...(prev.marks || []), mark] }))
-    setSub(''); setScore(''); setTotal('100'); setLabel('')
+    if (!sub || !score) { notify('Fill subject and score.'); return }
+    if (!selectedExam) { notify('Select or create an exam first.'); return }
+    const mark = { id: Date.now(), subject: sub, score: +score, total: +total || 100, date: todayKey() }
+    updateS(prev => ({
+      ...prev,
+      examGroups: prev.examGroups.map(ex =>
+        String(ex.id) === selectedExam ? { ...ex, marks: [...ex.marks, mark] } : ex
+      ),
+      marks: [...(prev.marks || []), { ...mark, label: examGroups.find(e => String(e.id) === selectedExam)?.name || '' }]
+    }))
+    setSub(''); setScore(''); setTotal('100')
     notify('Mark added.')
   }
 
-  const marks = S.marks || []
-  const subjects = [...new Set(marks.map(m => m.subject))]
+  const deleteExam = (id) => {
+    if (!confirm('Delete this exam and all its marks?')) return
+    updateS(prev => ({ ...prev, examGroups: prev.examGroups.filter(e => String(e.id) !== String(id)) }))
+    if (selectedExam === String(id)) setSelectedExam('')
+  }
+
+  // Bar chart — marks across exams per subject
+  useEffect(() => {
+    if (!barRef.current || chartTab !== 'bar') return
+    if (barInstance.current) barInstance.current.destroy()
+    const Chart = window.Chart
+    if (!Chart || examGroups.length === 0) return
+
+    const examNames = examGroups.map(e => e.name)
+    const colors = ['#d4a853','#5c8c6e','#4a7a9b','#c9956a','#8b7a9b','#c0574a','#7a9b4a']
+
+    const datasets = allSubjects.map((sub, i) => ({
+      label: sub,
+      data: examGroups.map(ex => {
+        const m = ex.marks.find(mk => mk.subject === sub)
+        return m ? Math.round(m.score / m.total * 100) : null
+      }),
+      backgroundColor: colors[i % colors.length] + 'cc',
+      borderColor: colors[i % colors.length],
+      borderWidth: 1,
+      borderRadius: 4,
+    }))
+
+    barInstance.current = new Chart(barRef.current, {
+      type: 'bar',
+      data: { labels: examNames, datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { labels: { color: textColor, font: { family: 'Georgia,serif', size: 11 } } },
+          tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y}%` } }
+        },
+        scales: {
+          x: { ticks: { color: textColor, font: { family: 'Georgia,serif' } }, grid: { color: gridColor } },
+          y: { min: 0, max: 100, ticks: { color: textColor, callback: v => v + '%', font: { family: 'Georgia,serif' } }, grid: { color: gridColor } }
+        }
+      }
+    })
+    return () => barInstance.current?.destroy()
+  }, [examGroups, chartTab, allSubjects])
+
+  // Radar chart — target vs achieved per subject
+  useEffect(() => {
+    if (!radarRef.current || chartTab !== 'radar') return
+    if (radarInstance.current) radarInstance.current.destroy()
+    const Chart = window.Chart
+    if (!Chart) return
+
+    const subjectAvgs = allSubjects.map(sub => {
+      const allMarks = examGroups.flatMap(ex => ex.marks.filter(m => m.subject === sub))
+      if (allMarks.length === 0) return 0
+      return Math.round(allMarks.reduce((a, m) => a + (m.score / m.total * 100), 0) / allMarks.length)
+    })
+    const targets = allSubjects.map(sub => (S.subjectTargets || {})[sub] || S.targetPct || 80)
+
+    radarInstance.current = new Chart(radarRef.current, {
+      type: 'radar',
+      data: {
+        labels: allSubjects,
+        datasets: [
+          {
+            label: 'Target',
+            data: targets,
+            borderColor: '#d4a85388', backgroundColor: 'rgba(212,168,83,0.08)',
+            borderWidth: 2, pointBackgroundColor: '#d4a853',
+            borderDash: [5, 3],
+          },
+          {
+            label: 'Achieved',
+            data: subjectAvgs,
+            borderColor: '#5c8c6e', backgroundColor: 'rgba(92,140,110,0.15)',
+            borderWidth: 2, pointBackgroundColor: '#5c8c6e',
+          }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { labels: { color: textColor, font: { family: 'Georgia,serif', size: 11 } } }
+        },
+        scales: {
+          r: {
+            min: 0, max: 100,
+            ticks: { color: textColor, backdropColor: 'transparent', stepSize: 20, font: { family: 'Georgia,serif', size: 10 } },
+            grid: { color: gridColor },
+            pointLabels: { color: textColor, font: { family: 'Georgia,serif', size: 11 } }
+          }
+        }
+      }
+    })
+    return () => radarInstance.current?.destroy()
+  }, [examGroups, chartTab, allSubjects, S.subjectTargets, S.targetPct])
+
+  const currentExam = examGroups.find(e => String(e.id) === selectedExam)
 
   return (
     <div>
       <div style={{ marginBottom: 20 }}>
         <div className="heading" style={{ marginBottom: 4 }}>Marks Tracker</div>
-        <div style={{ color: 'var(--text3)', fontSize: '0.85rem' }}>Log grades, track trends, celebrate wins.</div>
-      </div>
-      <div className="card" style={{ marginBottom: 14 }}>
-        <div className="sec-label">Add Mark</div>
-        <div className="grid2" style={{ gap: 10, marginBottom: 10 }}>
-          <div className="form-group" style={{ margin: 0 }}>
-            <label className="form-label">Subject</label>
-            <input type="text" placeholder="Mathematics" value={sub} onChange={e => setSub(e.target.value)} list="subjects-list" />
-            <datalist id="subjects-list">{(S.subjects || []).map(s => <option key={s} value={s} />)}</datalist>
-          </div>
-          <div className="form-group" style={{ margin: 0 }}>
-            <label className="form-label">Label (test/exam)</label>
-            <input type="text" placeholder="Midterm" value={label} onChange={e => setLabel(e.target.value)} />
-          </div>
-          <div className="form-group" style={{ margin: 0 }}>
-            <label className="form-label">Score</label>
-            <input type="number" placeholder="85" value={score} onChange={e => setScore(e.target.value)} />
-          </div>
-          <div className="form-group" style={{ margin: 0 }}>
-            <label className="form-label">Out of</label>
-            <input type="number" placeholder="100" value={total} onChange={e => setTotal(e.target.value)} />
-          </div>
-        </div>
-        <button className="btn btn-primary btn-sm" onClick={addMark}>+ Add Mark</button>
+        <div style={{ color: 'var(--text3)', fontSize: '0.85rem' }}>Track grades by exam. Visualize trends. Hit targets.</div>
       </div>
 
-      {subjects.length > 0 && (
+      {/* Exam selector */}
+      <div className="card" style={{ marginBottom: 14 }}>
+        <div className="sec-label">Exam</div>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+          {examGroups.map(ex => (
+            <button key={ex.id} className={`chip ${selectedExam === String(ex.id) ? 'active' : ''}`}
+              onClick={() => setSelectedExam(String(ex.id))}>
+              {ex.name}
+            </button>
+          ))}
+          <button className="chip" onClick={() => setSelectedExam('')}>+ New Exam</button>
+        </div>
+        {!selectedExam && (
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input type="text" placeholder="Exam name (e.g. Term 1, Midterm)" value={examName}
+              onChange={e => setExamName(e.target.value)} onKeyDown={e => e.key === 'Enter' && createExam()} />
+            <button className="btn btn-primary btn-sm" onClick={createExam} style={{ flexShrink: 0 }}>Create</button>
+          </div>
+        )}
+        {currentExam && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border)' }}>
+            <span style={{ fontSize: '0.78rem', color: 'var(--text2)' }}>
+              <strong>{currentExam.name}</strong> · {currentExam.date} · {currentExam.marks.length} entries
+            </span>
+            <button className="btn btn-danger btn-xs" onClick={() => deleteExam(currentExam.id)}>Delete Exam</button>
+          </div>
+        )}
+      </div>
+
+      {/* Add mark */}
+      {selectedExam && (
         <div className="card" style={{ marginBottom: 14 }}>
-          <div className="sec-label">Averages by Subject</div>
-          {subjects.map(s => {
-            const subMarks = marks.filter(m => m.subject === s)
-            const avg = Math.round(subMarks.reduce((a, m) => a + (m.score / m.total * 100), 0) / subMarks.length)
-            return (
-              <div key={s} className="subject-row">
-                <div className="subject-name">{s}</div>
-                <div className="subject-bar-track">
-                  <div className="subject-bar-fill" style={{ width: `${avg}%`, background: avg >= 80 ? 'var(--green)' : avg >= 60 ? 'var(--accent)' : 'var(--red)' }} />
-                </div>
-                <div className="subject-pct">{avg}%</div>
-              </div>
-            )
-          })}
+          <div className="sec-label">Add Mark to {currentExam?.name}</div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <div style={{ flex: 2, minWidth: 120 }}>
+              <label className="form-label">Subject</label>
+              <input type="text" placeholder="Mathematics" value={sub} onChange={e => setSub(e.target.value)} list="sub-list" />
+              <datalist id="sub-list">{allSubjects.map(s => <option key={s} value={s} />)}</datalist>
+            </div>
+            <div style={{ flex: 1, minWidth: 70 }}>
+              <label className="form-label">Score</label>
+              <input type="number" placeholder="87" value={score} onChange={e => setScore(e.target.value)} />
+            </div>
+            <div style={{ flex: 1, minWidth: 70 }}>
+              <label className="form-label">Out of</label>
+              <input type="number" placeholder="100" value={total} onChange={e => setTotal(e.target.value)} />
+            </div>
+            <button className="btn btn-primary btn-sm" onClick={addMark} style={{ flexShrink: 0, alignSelf: 'flex-end', marginBottom: 1 }}>+ Add</button>
+          </div>
+          {currentExam?.marks.length > 0 && (
+            <div style={{ marginTop: 12 }}>
+              <table className="marks-table">
+                <thead><tr><th>Subject</th><th>Score</th><th>%</th><th /></tr></thead>
+                <tbody>
+                  {currentExam.marks.map(m => (
+                    <tr key={m.id}>
+                      <td>{m.subject}</td>
+                      <td>{m.score}/{m.total}</td>
+                      <td style={{ color: m.score/m.total >= 0.8 ? 'var(--green)' : m.score/m.total >= 0.6 ? 'var(--accent)' : 'var(--red)', fontWeight: 600 }}>
+                        {Math.round(m.score / m.total * 100)}%
+                      </td>
+                      <td>
+                        <button className="btn btn-ghost btn-xs" onClick={() => {
+                          updateS(prev => ({ ...prev, examGroups: prev.examGroups.map(ex => String(ex.id) === selectedExam ? { ...ex, marks: ex.marks.filter(x => x.id !== m.id) } : ex) }))
+                        }}>✕</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
-      {marks.length > 0 && (
+      {/* Charts */}
+      {examGroups.length > 0 && (
+        <div className="card" style={{ marginBottom: 14 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <div className="sec-label" style={{ margin: 0 }}>Analytics</div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button className={`btn btn-sm ${chartTab === 'bar' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setChartTab('bar')}>Bar Chart</button>
+              <button className={`btn btn-sm ${chartTab === 'radar' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setChartTab('radar')}>Spider Chart</button>
+            </div>
+          </div>
+          {chartTab === 'bar' && (
+            <>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text3)', marginBottom: 10 }}>
+                Score (%) by subject across all exams
+              </div>
+              <div style={{ height: 280, position: 'relative' }}>
+                <canvas ref={barRef} />
+              </div>
+            </>
+          )}
+          {chartTab === 'radar' && (
+            <>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text3)', marginBottom: 10 }}>
+                Target vs achieved average per subject
+              </div>
+              <div style={{ height: 320, position: 'relative' }}>
+                <canvas ref={radarRef} />
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Subject targets for radar */}
+      {examGroups.length > 0 && (
         <div className="card">
-          <div className="sec-label">All Marks</div>
-          <table className="marks-table">
-            <thead>
-              <tr><th>Subject</th><th>Label</th><th>Score</th><th>%</th><th>Date</th><th></th></tr>
-            </thead>
-            <tbody>
-              {[...marks].reverse().map(m => (
-                <tr key={m.id}>
-                  <td>{m.subject}</td>
-                  <td>{m.label || '—'}</td>
-                  <td>{m.score}/{m.total}</td>
-                  <td style={{ color: m.score/m.total >= 0.8 ? 'var(--green)' : m.score/m.total >= 0.6 ? 'var(--accent)' : 'var(--red)', fontWeight: 600 }}>
-                    {Math.round(m.score / m.total * 100)}%
-                  </td>
-                  <td>{m.date}</td>
-                  <td><button className="btn btn-ghost btn-xs" onClick={() => updateS(prev => ({ ...prev, marks: prev.marks.filter(x => x.id !== m.id) }))}>✕</button></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="sec-label">Subject Targets (%)</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {allSubjects.map(sub => (
+              <div key={sub} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ fontSize: '0.82rem', color: 'var(--text)', flex: 1 }}>{sub}</div>
+                <input type="number" min={0} max={100} style={{ width: 72, textAlign: 'center' }}
+                  value={(S.subjectTargets || {})[sub] || S.targetPct || 80}
+                  onChange={e => updateS(prev => ({ ...prev, subjectTargets: { ...prev.subjectTargets, [sub]: +e.target.value } }))} />
+                <span style={{ fontSize: '0.72rem', color: 'var(--text3)' }}>%</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
@@ -1054,10 +1268,11 @@ function getLocalAIResponse(q, S) {
 ══════════════════════════════ */
 function SettingsPage({ S, updateS, dark, setDark, signOut, session, notify }) {
   const [newSubject, setNewSubject] = useState('')
+  const [displayName, setDisplayName] = useState(session?.user?.user_metadata?.full_name || '')
+  const [activeSection, setActiveSection] = useState('account')
 
-  const toggleSetting = (key) => {
-    updateS(prev => ({ ...prev, settings: { ...prev.settings, [key]: !prev.settings?.[key] } }))
-  }
+  const set = (key, val) => updateS(prev => ({ ...prev, settings: { ...prev.settings, [key]: val } }))
+  const toggle = (key) => set(key, !S.settings?.[key])
 
   const addSubject = () => {
     if (!newSubject.trim()) return
@@ -1067,6 +1282,35 @@ function SettingsPage({ S, updateS, dark, setDark, signOut, session, notify }) {
     notify('Subject added.')
   }
 
+  const exportData = () => {
+    const blob = new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a'); a.href = url; a.download = 'kosmosic-data.json'; a.click()
+    URL.revokeObjectURL(url)
+    notify('Data exported.')
+  }
+
+  const SECTIONS = [
+    { id: 'account', label: 'Account' },
+    { id: 'appearance', label: 'Appearance' },
+    { id: 'notifications', label: 'Notifications' },
+    { id: 'focus', label: 'Focus Session' },
+    { id: 'productivity', label: 'Productivity' },
+    { id: 'subjects', label: 'Subjects' },
+    { id: 'data', label: 'Data & Privacy' },
+    { id: 'danger', label: 'Danger Zone' },
+  ]
+
+  const Toggle = ({ skey, label, sub }) => (
+    <div className="toggle-wrap">
+      <div className="toggle-info">
+        <div className="toggle-name">{label}</div>
+        {sub && <div className="toggle-sub">{sub}</div>}
+      </div>
+      <div className={`toggle ${S.settings?.[skey] ? 'on' : ''}`} onClick={() => toggle(skey)} />
+    </div>
+  )
+
   return (
     <div>
       <div style={{ marginBottom: 20 }}>
@@ -1074,77 +1318,238 @@ function SettingsPage({ S, updateS, dark, setDark, signOut, session, notify }) {
         <div style={{ color: 'var(--text3)', fontSize: '0.85rem' }}>{session?.user?.email}</div>
       </div>
 
-      <div className="card settings-section" style={{ marginBottom: 14 }}>
-        <div className="settings-section-title">Appearance</div>
-        <div className="toggle-wrap">
-          <div className="toggle-info">
-            <div className="toggle-name">Dark Mode</div>
-            <div className="toggle-sub">Switch between dark and light themes</div>
-          </div>
-          <div className={`toggle ${dark ? 'on' : ''}`} onClick={() => { setDark(d => !d); updateS(prev => ({ ...prev, settings: { ...prev.settings, darkMode: !dark } })) }} />
-        </div>
+      {/* Section Nav Pills */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 20 }}>
+        {SECTIONS.map(s => (
+          <button key={s.id} className={`chip ${activeSection === s.id ? 'active' : ''}`} onClick={() => setActiveSection(s.id)}>
+            {s.label}
+          </button>
+        ))}
       </div>
 
-      <div className="card settings-section" style={{ marginBottom: 14 }}>
-        <div className="settings-section-title">Focus</div>
-        <div className="form-group">
-          <label className="form-label">Daily Goal (minutes)</label>
-          <input type="number" value={S.dailyGoal || 120} min={15} max={720}
-            onChange={e => updateS(prev => ({ ...prev, dailyGoal: +e.target.value }))} />
-        </div>
-        <div className="form-group">
-          <label className="form-label">Target Score (%)</label>
-          <input type="number" value={S.targetPct || 98} min={50} max={100}
-            onChange={e => updateS(prev => ({ ...prev, targetPct: +e.target.value }))} />
-        </div>
-        <div className="toggle-wrap">
-          <div className="toggle-info">
-            <div className="toggle-name">Strict Mode</div>
-            <div className="toggle-sub">Warn before quitting a focus session</div>
-          </div>
-          <div className={`toggle ${S.settings?.strictMode ? 'on' : ''}`} onClick={() => toggleSetting('strictMode')} />
-        </div>
-        <div className="toggle-wrap">
-          <div className="toggle-info">
-            <div className="toggle-name">Auto-Start Breaks</div>
-            <div className="toggle-sub">Automatically start break timer after focus</div>
-          </div>
-          <div className={`toggle ${S.settings?.autoBreak ? 'on' : ''}`} onClick={() => toggleSetting('autoBreak')} />
-        </div>
-      </div>
-
-      <div className="card settings-section" style={{ marginBottom: 14 }}>
-        <div className="settings-section-title">Subjects</div>
-        <div style={{ marginBottom: 12 }}>
-          {(S.subjects || []).map((sub, i) => (
-            <div key={sub} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
-              <span style={{ fontSize: '0.85rem', color: 'var(--text)' }}>{sub}</span>
-              <button className="btn btn-ghost btn-xs btn-danger" onClick={() => updateS(prev => ({ ...prev, subjects: prev.subjects.filter(s => s !== sub) }))}>Remove</button>
+      {/* ── ACCOUNT ── */}
+      {activeSection === 'account' && (
+        <div className="card settings-section">
+          <div className="settings-section-title">Account</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20, padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+            <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent), var(--accent2))', display: 'grid', placeItems: 'center', fontSize: '1.4rem', fontWeight: 700, color: '#fff', border: '3px solid var(--border2)', flexShrink: 0 }}>
+              {(displayName || session?.user?.email || 'U')[0].toUpperCase()}
             </div>
-          ))}
+            <div>
+              <div style={{ fontFamily: "'Anthropic Serif',Georgia,serif", fontWeight: 600, fontSize: '1rem', color: 'var(--text)' }}>{displayName || 'Your Name'}</div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text3)' }}>{session?.user?.email}</div>
+            </div>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Display Name</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input type="text" value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="Your name" />
+              <button className="btn btn-ghost btn-sm" onClick={async () => {
+                await supabase.auth.updateUser({ data: { full_name: displayName } })
+                notify('Name updated.')
+              }} style={{ flexShrink: 0 }}>Save</button>
+            </div>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Email</label>
+            <input type="email" value={session?.user?.email || ''} disabled style={{ opacity: 0.5 }} />
+          </div>
+          <div style={{ display: 'flex', gap: 8, paddingTop: 8 }}>
+            <button className="btn btn-ghost btn-sm" onClick={signOut}>Sign Out</button>
+            <button className="btn btn-ghost btn-sm" onClick={async () => {
+              await supabase.auth.resetPasswordForEmail(session?.user?.email)
+              notify('Password reset email sent.')
+            }}>Change Password</button>
+          </div>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <input type="text" placeholder="Add subject..." value={newSubject} onChange={e => setNewSubject(e.target.value)} onKeyDown={e => e.key === 'Enter' && addSubject()} />
-          <button className="btn btn-primary btn-sm" onClick={addSubject} style={{ flexShrink: 0 }}>Add</button>
-        </div>
-      </div>
+      )}
 
-      <div className="card settings-section" style={{ marginBottom: 14 }}>
-        <div className="settings-section-title">Danger Zone</div>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <button className="btn btn-ghost btn-sm" onClick={signOut}>Sign Out</button>
-          <button className="btn btn-danger btn-sm" onClick={() => {
-            if (confirm('Reset ALL data? This cannot be undone.')) {
-              updateS(defaultState())
-              notify('Data reset.')
-            }
-          }}>Reset All Data</button>
+      {/* ── APPEARANCE ── */}
+      {activeSection === 'appearance' && (
+        <div className="card settings-section">
+          <div className="settings-section-title">Appearance</div>
+          <div style={{ marginBottom: 16 }}>
+            <label className="form-label">Theme</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {[['dark', 'Dark'], ['light', 'Light'], ['system', 'System']].map(([val, label]) => (
+                <button key={val} className={`chip ${(S.settings?.theme || 'dark') === val ? 'active' : ''}`}
+                  onClick={() => {
+                    set('theme', val)
+                    if (val !== 'system') { const isDark = val === 'dark'; setDark(isDark); set('darkMode', isDark) }
+                    else { const sys = window.matchMedia('(prefers-color-scheme: dark)').matches; setDark(sys); set('darkMode', sys) }
+                  }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="divider" />
+          <Toggle skey="animatedBg" label="Animated Background" sub="Floating particles and gradient pulses" />
+          <Toggle skey="dopamineDetox" label="Dopamine Detox Mode" sub="Minimal UI — removes color accents and animations" />
         </div>
-      </div>
+      )}
 
-      <div className="card" style={{ textAlign: 'center', padding: '16px' }}>
-        <div style={{ fontFamily: "'Anthropic Serif',Georgia,serif", color: 'var(--accent)', marginBottom: 4 }}>Kosmosic — Study OS</div>
-        <div style={{ fontSize: '0.72rem', color: 'var(--text3)' }}>Built for the relentless. Version 2.0</div>
+      {/* ── NOTIFICATIONS ── */}
+      {activeSection === 'notifications' && (
+        <div className="card settings-section">
+          <div className="settings-section-title">Notifications</div>
+          <Toggle skey="studyReminders" label="Study Reminders" sub="Remind you to start your daily session" />
+          <div className="divider" />
+          <Toggle skey="breakReminders" label="Break Reminders" sub="Notify when it's time to take a break" />
+          <div className="divider" />
+          <Toggle skey="goalReminder" label="Daily Goal Reminder" sub="Alert when you haven't met today's goal" />
+          <div className="divider" />
+          <Toggle skey="streakNotif" label="Streak Notifications" sub="Warn when your streak is at risk" />
+          <div className="divider" />
+          <Toggle skey="sessionSounds" label="Session Sounds" sub="Play sounds at start and end of focus sessions" />
+        </div>
+      )}
+
+      {/* ── FOCUS SESSION ── */}
+      {activeSection === 'focus' && (
+        <div className="card settings-section">
+          <div className="settings-section-title">Focus Session</div>
+          <div className="grid2" style={{ gap: 10, marginBottom: 14 }}>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label className="form-label">Focus Session (min)</label>
+              <input type="number" min={5} max={180} value={S.settings?.focusSessionMins || 25}
+                onChange={e => set('focusSessionMins', +e.target.value)} />
+            </div>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label className="form-label">Short Break (min)</label>
+              <input type="number" min={1} max={30} value={S.settings?.breakMins || 5}
+                onChange={e => set('breakMins', +e.target.value)} />
+            </div>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label className="form-label">Long Break (min)</label>
+              <input type="number" min={5} max={60} value={S.settings?.longBreakMins || 15}
+                onChange={e => set('longBreakMins', +e.target.value)} />
+            </div>
+          </div>
+          <div className="divider" />
+          <Toggle skey="autoBreak" label="Auto-Start Breaks" sub="Automatically start break when focus ends" />
+          <div className="divider" />
+          <Toggle skey="autoNextSession" label="Auto-Start Next Session" sub="Loop automatically after break" />
+          <div className="divider" />
+          <Toggle skey="strictMode" label="Strict Mode" sub="Warn before quitting a session early" />
+          <div className="divider" />
+          <Toggle skey="warnQuit" label="Warn Before Quitting Focus" sub="Confirmation dialog when leaving mid-session" />
+          <div className="divider" />
+          <Toggle skey="detectInactivity" label="Detect Inactivity" sub="Pause timer if no input detected for 5 minutes" />
+          <div className="divider" />
+          <Toggle skey="pauseStreakExams" label="Pause Streaks During Exams" sub="Don't break your streak during exam periods" />
+        </div>
+      )}
+
+      {/* ── PRODUCTIVITY ── */}
+      {activeSection === 'productivity' && (
+        <div className="card settings-section">
+          <div className="settings-section-title">Productivity Goals</div>
+          <div className="form-group">
+            <label className="form-label">Daily Goal (minutes)</label>
+            <input type="number" value={S.dailyGoal || 120} min={15} max={720}
+              onChange={e => updateS(prev => ({ ...prev, dailyGoal: +e.target.value }))} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Weekly Target (minutes)</label>
+            <input type="number" value={S.weeklyGoal || 900} min={60} max={5040}
+              onChange={e => updateS(prev => ({ ...prev, weeklyGoal: +e.target.value }))} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Target Score (%)</label>
+            <input type="number" value={S.targetPct || 98} min={50} max={100}
+              onChange={e => updateS(prev => ({ ...prev, targetPct: +e.target.value }))} />
+          </div>
+          <div className="divider" />
+          <Toggle skey="burnoutDetection" label="Burnout Detection" sub="Alert when study patterns suggest overload" />
+          <div className="divider" />
+          <Toggle skey="moodCheckins" label="Mood Check-ins" sub="Prompt for mood at start of each session" />
+        </div>
+      )}
+
+      {/* ── SUBJECTS ── */}
+      {activeSection === 'subjects' && (
+        <div className="card settings-section">
+          <div className="settings-section-title">Subjects</div>
+          <div style={{ marginBottom: 14 }}>
+            {(S.subjects || []).map(sub => (
+              <div key={sub} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text)' }}>{sub}</span>
+                <button className="btn btn-ghost btn-xs" style={{ color: 'var(--red)', borderColor: 'rgba(192,87,74,0.25)' }}
+                  onClick={() => updateS(prev => ({ ...prev, subjects: prev.subjects.filter(s => s !== sub) }))}>
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input type="text" placeholder="Add subject..." value={newSubject}
+              onChange={e => setNewSubject(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && addSubject()} />
+            <button className="btn btn-primary btn-sm" onClick={addSubject} style={{ flexShrink: 0 }}>Add</button>
+          </div>
+        </div>
+      )}
+
+      {/* ── DATA ── */}
+      {activeSection === 'data' && (
+        <div className="card settings-section">
+          <div className="settings-section-title">Data & Privacy</div>
+          <div style={{ fontSize: '0.82rem', color: 'var(--text2)', lineHeight: 1.7, marginBottom: 16 }}>
+            All your data is stored in Supabase and synced across devices. You own your data — export or delete it at any time.
+          </div>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
+            <button className="btn btn-ghost btn-sm" onClick={exportData}>⬇ Export Data (JSON)</button>
+          </div>
+          <div className="divider" />
+          <div style={{ fontSize: '0.78rem', color: 'var(--text3)', lineHeight: 1.6 }}>
+            <strong style={{ color: 'var(--text2)' }}>Supabase project:</strong> todzlszlihqzytihejiq.supabase.co<br />
+            <strong style={{ color: 'var(--text2)' }}>Data model:</strong> Single JSONB column, one row per user, full RLS protection.
+          </div>
+        </div>
+      )}
+
+      {/* ── DANGER ZONE ── */}
+      {activeSection === 'danger' && (
+        <div className="card" style={{ border: '1px solid rgba(192,87,74,0.25)' }}>
+          <div className="settings-section-title" style={{ color: 'var(--red)' }}>Danger Zone</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+              <div>
+                <div style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--text)' }}>Reset All Data</div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text3)' }}>Wipe streaks, sessions, marks, diary entries</div>
+              </div>
+              <button className="btn btn-danger btn-sm" onClick={() => {
+                if (confirm('Reset ALL data? Streaks, sessions, marks, diary — everything. Cannot be undone.')) {
+                  updateS(defaultState()); notify('Data reset.')
+                }
+              }}>Reset</button>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+              <div>
+                <div style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--text)' }}>Sign Out</div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text3)' }}>Sign out of this device</div>
+              </div>
+              <button className="btn btn-ghost btn-sm" onClick={signOut}>Sign Out</button>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0' }}>
+              <div>
+                <div style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--red)' }}>Delete Account</div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text3)' }}>Permanently delete your account and all data</div>
+              </div>
+              <button className="btn btn-danger btn-sm" onClick={() => {
+                if (confirm('Delete your account? This is permanent and cannot be undone.')) {
+                  notify('Contact support to complete account deletion.')
+                }
+              }}>Delete Account</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div style={{ marginTop: 20, textAlign: 'center' }}>
+        <div style={{ fontFamily: "'Anthropic Serif',Georgia,serif", color: 'var(--accent)', marginBottom: 4, fontSize: '0.9rem' }}>Kosmosic — Study OS</div>
+        <div style={{ fontSize: '0.68rem', color: 'var(--text3)' }}>Version 2.0 · Built for the relentless</div>
       </div>
     </div>
   )
