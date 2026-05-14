@@ -224,7 +224,7 @@ function drawBuilding(ctx, sx, sy, tier, todKey, isStudying, studyMd, hasParty, 
     for (let fl=0; fl < sp.floors; fl++) {
       const fy = sy - floorH * (fl+1)
       // left face windows (2 per floor)
-      for (let w=0; w<2; w++) {
+      for (let w=0; w<<2; w++) {
         const t = (w+0.7)/(2+0.4)
         const wx = sx-hw + t*hw - 2
         const wy = fy - 4
@@ -238,7 +238,7 @@ function drawBuilding(ctx, sx, sy, tier, todKey, isStudying, studyMd, hasParty, 
         }
       }
       // right face windows (2 per floor)
-      for (let w=0; w<2; w++) {
+      for (let w=0; w<<2; w++) {
         const t = (w+0.7)/(2+0.4)
         const wx = sx + t*hw - 2
         const wy = fy - 4
@@ -272,7 +272,7 @@ function drawBuilding(ctx, sx, sy, tier, todKey, isStudying, studyMd, hasParty, 
   if (hasParty) {
     const pcols=['#f44336','#e91e63','#9c27b0','#2196f3','#4caf50','#ffeb3b','#ff9800']
     const t2=time*0.001
-    for (let i=0;i<10;i++) {
+    for (let i=0;i<<10;i++) {
       const ang=(i/10)*Math.PI*2+t2
       const px=sx+Math.cos(ang)*hw*1.1
       const py=sy-bh*0.5+Math.sin(ang)*hd*1.2
@@ -333,7 +333,7 @@ function drawBackground(ctx, W, H, todKey, time) {
 
   // wave shimmer
   ctx.save(); ctx.strokeStyle='rgba(255,255,255,0.07)'; ctx.lineWidth=1
-  for (let i=0;i<7;i++) {
+  for (let i=0;i<<7;i++) {
     const wy=H*0.52+i*22
     ctx.beginPath(); ctx.moveTo(0,wy)
     for (let x=0;x<W;x+=24) ctx.lineTo(x,wy+Math.sin(x*0.025+time*0.0015+i)*4)
@@ -344,7 +344,7 @@ function drawBackground(ctx, W, H, todKey, time) {
 
 // ─── STARS ───────────────────────────────────────────────────────────────────
 function drawStars(ctx, W, H, time) {
-  for (let i=0;i<90;i++) {
+  for (let i=0;i<<90;i++) {
     const sx2=(hash(`sx${i}`)%1000)/1000*W
     const sy2=(hash(`sy${i}`)%600)/600*H*0.48
     const tw2=0.3+0.7*Math.abs(Math.sin(time*0.0008+i*0.9))
@@ -403,7 +403,7 @@ function InfoPanel({users,myZone,myTier,hovered,todKey,seas}) {
             ⏱ {(hovered.total_hours||0).toFixed(1)}h<br/>
             🔥 {hovered.streak||0} day streak<br/>
             📅 {hovered.studied_days||0} days<br/>
-            {hovered.is_studying&&<span style={{color:'#69f0ae'}}>● Studying now</span>}
+            {hovered.is_studying&&<<span style={{color:'#69f0ae'}}>● Studying now</span>}
             {(hovered.goals_hit||0)>=5&&<> · <span style={{color:'#ff8a65'}}>🎉 Goal crusher</span></>}
           </div>
         </div>
@@ -502,51 +502,78 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
   const seas  = season(month)
 
   const myHours   = (S.totalMinutes || 0) / 60
-  const myZoneId  = getZoneId({ total_hours:myHours, streak:S.streak||0, goals_hit:(S.sessions||[]).length, avg_score:S.targetPct||0, missed_streak:(S.missedDays||[]).length, is_exam_mode:studyMode==='exam' })
+  const myZoneId  = getZoneId({
+    total_hours: myHours,
+    streak: S.streak || 0,
+    goals_hit: (S.sessions || []).length,
+    avg_score: S.targetPct || 0,
+    missed_streak: (S.missedDays || []).length,
+    is_exam_mode: studyMode === 'exam'
+  })
   const myTier    = getTier(myHours)
-  const myParty   = (S.sessions||[]).length >= 5
+  const myParty   = (S.sessions || []).length >= 5
 
   // ── upsert own profile ────────────────────────────────────────────────────
   const upsert = useCallback(async () => {
     if (!session) return
-    await supabase.from('city_profiles').upsert({
+    const payload = {
       user_id: session.user.id,
       display_name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Anonymous',
       total_hours: myHours,
       streak: S.streak || 0,
-      studied_days: (S.studiedDays||[]).length,
-      goals_hit: (S.sessions||[]).length,
+      studied_days: (S.studiedDays || []).length,
+      goals_hit: (S.sessions || []).length,
       avg_score: S.targetPct || 80,
       is_studying: isStudying,
       study_mode: studyMode || 'focus',
-      missed_streak: (S.missedDays||[]).length,
-      is_exam_mode: studyMode==='exam',
+      missed_streak: (S.missedDays || []).length,
+      is_exam_mode: studyMode === 'exam',
       zone: myZoneId,
       building_tier: myTier,
       last_active: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-    }, { onConflict:'user_id' })
-  }, [session, myHours, S.streak, S.studiedDays, S.sessions, isStudying, studyMode])
+    }
+    await supabase.from('city_profiles').upsert(payload, { onConflict: 'user_id' })
+  }, [session, myHours, S.streak, S.studiedDays, S.sessions, S.targetPct, S.missedDays, isStudying, studyMode, myZoneId, myTier])
+
+  // run upsert whenever the memoized function changes (i.e. whenever any input changes)
+  useEffect(() => { upsert() }, [upsert])
+
+  // heartbeat while studying so last_active stays fresh and the 10-min timeout doesn't expire
+  useEffect(() => {
+    if (!isStudying) return
+    const id = setInterval(() => upsert(), 30000)
+    return () => clearInterval(id)
+  }, [isStudying, upsert])
 
   // ── fetch all ─────────────────────────────────────────────────────────────
-  const fetch = useCallback(async () => {
-    const { data } = await supabase.from('city_profiles').select('*')
+  const fetchUsers = useCallback(async () => {
+    const { data, error } = await supabase.from('city_profiles').select('*')
+    if (error) {
+      console.error('city fetch error', error)
+      return
+    }
     if (data) {
       const mapped = data.map(u => ({ ...u, zone: getZoneId(u) }))
       setUsers(mapped)
-      usersRef.current = mapped
+      usersRef.current = mapped   // keep canvas loop in sync immediately
     }
     setLoading(false)
   }, [])
 
-  useEffect(() => { upsert() }, [myHours, S.streak, isStudying])
   useEffect(() => {
-    fetch()
+    fetchUsers()
     const ch = supabase.channel('city-rt')
-      .on('postgres_changes', { event:'*', schema:'public', table:'city_profiles' }, fetch)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'city_profiles' }, fetchUsers)
       .subscribe()
-    return () => supabase.removeChannel(ch)
-  }, [])
+    return () => { supabase.removeChannel(ch) }
+  }, [fetchUsers])
+
+  // fallback polling every 10s in case realtime drops
+  useEffect(() => {
+    const id = setInterval(fetchUsers, 10000)
+    return () => clearInterval(id)
+  }, [fetchUsers])
 
   // keep ref in sync without restarting render loop
   useEffect(() => { usersRef.current = users }, [users])
@@ -567,67 +594,69 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
     window.addEventListener('resize', resize)
 
     const render = (time) => {
-      const W=canvas.width, H=canvas.height
-      ctx.clearRect(0,0,W,H)
+      const W = canvas.width, H = canvas.height
+      ctx.clearRect(0, 0, W, H)
 
       // sky + ocean
       drawBackground(ctx, W, H, todKey, time)
-      if (todKey==='night'||todKey==='sunset') drawStars(ctx, W, H, time)
+      if (todKey === 'night' || todKey === 'sunset') drawStars(ctx, W, H, time)
       drawCelestial(ctx, W, H, todKey, hour, time)
 
       ctx.save()
-      ctx.translate(W/2, 0)
+      ctx.translate(W / 2, 0)
 
       // collect user -> cell map
       const ucells = {}
       usersRef.current.forEach(u => {
-        const [r,c] = getCellForUser(u.user_id, u.zone)
+        const [r, c] = getCellForUser(u.user_id, u.zone)
         ucells[`${r}_${c}`] = u
       })
 
       // painter order
       const order = []
-      for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++) order.push([r,c])
-      order.sort((a,b)=>(a[0]+a[1])-(b[0]+b[1]))
+      for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) order.push([r, c])
+      order.sort((a, b) => (a[0] + a[1]) - (b[0] + b[1]))
 
       // ground tiles
-      for (const [r,c] of order) {
-        const zid = ZMAP[r]?.[c]||0
-        if (zid>0) drawTile(ctx, c, r, zid, todKey)
+      for (const [r, c] of order) {
+        const zid = ZMAP[r]?.[c] || 0
+        if (zid > 0) drawTile(ctx, c, r, zid, todKey)
       }
 
       // decorative mountains
-      const mtCells = order.filter(([r,c])=>ZMAP[r]?.[c]===4&&hash(`m${r}${c}`)%4===0&&!ucells[`${r}_${c}`])
-      for (const [r,c] of mtCells.slice(0,5)) {
-        const {x,y}=iso(c,r); drawMountain(ctx,x,y-TH/2,seas)
+      const mtCells = order.filter(([r, c]) => ZMAP[r]?.[c] === 4 && hash(`m${r}${c}`) % 4 === 0 && !ucells[`${r}_${c}`])
+      for (const [r, c] of mtCells.slice(0, 5)) {
+        const { x, y } = iso(c, r); drawMountain(ctx, x, y - TH / 2, seas)
       }
 
       // decorative trees (forest + mountain zones)
-      const treeCells = order.filter(([r,c])=>{
-        const z=ZMAP[r]?.[c]||0
-        return (z===3||z===4)&&!ucells[`${r}_${c}`]&&hash(`t${r}${c}`)%3!==0
+      const treeCells = order.filter(([r, c]) => {
+        const z = ZMAP[r]?.[c] || 0
+        return (z === 3 || z === 4) && !ucells[`${r}_${c}`] && hash(`t${r}${c}`) % 3 !== 0
       })
-      for (const [r,c] of treeCells) {
-        const {x,y}=iso(c,r)
-        drawTree(ctx,x,y-TH/2,seas,0.55+((hash(`ts${r}${c}`)%5)*0.1))
+      for (const [r, c] of treeCells) {
+        const { x, y } = iso(c, r)
+        drawTree(ctx, x, y - TH / 2, seas, 0.55 + ((hash(`ts${r}${c}`) % 5) * 0.1))
       }
 
       // buildings
-      const isNight=todKey==='night'
-      for (const [r,c] of order) {
-        const u=ucells[`${r}_${c}`]
+      for (const [r, c] of order) {
+        const u = ucells[`${r}_${c}`]
         if (!u) continue
-        const {x,y}=iso(c,r)
-        const uStudying=u.is_studying && (Date.now()-new Date(u.updated_at).getTime()<600000)
-        const hasParty=(u.goals_hit||0)>=5
-        drawBuilding(ctx,x,y-TH/2,u.building_tier||1,todKey,uStudying,u.study_mode,hasParty,seas,u.user_id,time)
+        const { x, y } = iso(c, r)
+        // 10-min stale guard: if updated_at is old, treat as not studying
+        const lastUpdate = new Date(u.updated_at || 0).getTime()
+        const fresh = Date.now() - lastUpdate < 600000
+        const uStudying = u.is_studying && fresh
+        const hasParty = (u.goals_hit || 0) >= 5
+        drawBuilding(ctx, x, y - TH / 2, u.building_tier || 1, todKey, uStudying, u.study_mode, hasParty, seas, u.user_id, time)
       }
 
       // ambient colour overlay
-      const [ar,ag,ab,aa]=AMBIENT_COLOR[todKey]
-      if (aa>0) {
-        ctx.fillStyle=`rgba(${ar},${ag},${ab},${aa})`
-        ctx.fillRect(-W,-60,W*3,H*3)
+      const [ar, ag, ab, aa] = AMBIENT_COLOR[todKey]
+      if (aa > 0) {
+        ctx.fillStyle = `rgba(${ar},${ag},${ab},${aa})`
+        ctx.fillRect(-W, -60, W * 3, H * 3)
       }
 
       ctx.restore()
@@ -639,56 +668,56 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
       cancelAnimationFrame(rafRef.current)
       window.removeEventListener('resize', resize)
     }
-  }, [todKey, seas, hour, isStudying, studyMode])
+  }, [todKey, seas, hour])
 
   // ── hover detection (inverse iso) ─────────────────────────────────────────
   const onMouseMove = useCallback(e => {
-    const canvas=canvasRef.current; if (!canvas) return
-    const rect=canvas.getBoundingClientRect()
-    const mx=e.clientX-rect.left-canvas.width/2
-    const my=e.clientY-rect.top
-    const col=Math.round((mx/(TW/2)+my/(TH/2))/2)
-    const row=Math.round((my/(TH/2)-mx/(TW/2))/2)
-    const ucells={}
-    usersRef.current.forEach(u=>{
-      const [r,c]=getCellForUser(u.user_id,u.zone)
-      ucells[`${r}_${c}`]=u
+    const canvas = canvasRef.current; if (!canvas) return
+    const rect = canvas.getBoundingClientRect()
+    const mx = e.clientX - rect.left - canvas.width / 2
+    const my = e.clientY - rect.top
+    const col = Math.round((mx / (TW / 2) + my / (TH / 2)) / 2)
+    const row = Math.round((my / (TH / 2) - mx / (TW / 2)) / 2)
+    const ucells = {}
+    usersRef.current.forEach(u => {
+      const [r, c] = getCellForUser(u.user_id, u.zone)
+      ucells[`${r}_${c}`] = u
     })
-    setHovered(ucells[`${row}_${col}`]||null)
-  },[])
+    setHovered(ucells[`${row}_${col}`] || null)
+  }, [])
 
   return (
-    <div className="page active" style={{padding:0,maxWidth:'100%',margin:0}}>
-      <div style={{position:'relative',width:'100%',height:'calc(100vh - 60px)',overflow:'hidden',background:'#060614'}}>
+    <div className="page active" style={{ padding: 0, maxWidth: '100%', margin: 0 }}>
+      <div style={{ position: 'relative', width: '100%', height: 'calc(100vh - 60px)', overflow: 'hidden', background: '#060614' }}>
 
         {loading && (
-          <div style={{position:'absolute',inset:0,display:'grid',placeItems:'center',zIndex:20,background:'rgba(6,6,20,0.8)',color:'#d4a853',fontFamily:"'Anthropic Serif',Georgia,serif"}}>
+          <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', zIndex: 20, background: 'rgba(6,6,20,0.8)', color: '#d4a853', fontFamily: "'Anthropic Serif',Georgia,serif" }}>
             Loading city…
           </div>
         )}
 
-        <canvas ref={canvasRef} style={{display:'block',width:'100%',height:'100%',cursor:'crosshair'}}
-          onMouseMove={onMouseMove} onMouseLeave={()=>setHovered(null)} />
+        <canvas ref={canvasRef} style={{ display: 'block', width: '100%', height: '100%', cursor: 'crosshair' }}
+          onMouseMove={onMouseMove} onMouseLeave={() => setHovered(null)} />
 
         <InfoPanel users={users} myZone={myZoneId} myTier={myTier} hovered={hovered} todKey={todKey} seas={seas} />
 
         {/* badges */}
-        <div style={{position:'absolute',top:12,left:12,display:'flex',flexDirection:'column',gap:6,zIndex:10}}>
-          <div style={{background:'rgba(8,8,20,0.88)',backdropFilter:'blur(10px)',border:'1px solid rgba(255,255,255,0.09)',borderRadius:20,padding:'4px 12px',color:'rgba(255,255,255,0.65)',fontSize:'0.7rem',fontFamily:"'Anthropic Serif',Georgia,serif"}}>
-            {({winter:'❄️ Winter',spring:'🌸 Spring',summer:'☀️ Summer',autumn:'🍂 Autumn'})[seas]} · {({day:'Day ☀️',night:'Night 🌙',sunrise:'Sunrise 🌅',sunset:'Sunset 🌇'})[todKey]}
+        <div style={{ position: 'absolute', top: 12, left: 12, display: 'flex', flexDirection: 'column', gap: 6, zIndex: 10 }}>
+          <div style={{ background: 'rgba(8,8,20,0.88)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 20, padding: '4px 12px', color: 'rgba(255,255,255,0.65)', fontSize: '0.7rem', fontFamily: "'Anthropic Serif',Georgia,serif" }}>
+            {({ winter: '❄️ Winter', spring: '🌸 Spring', summer: '☀️ Summer', autumn: '🍂 Autumn' })[seas]} · {({ day: 'Day ☀️', night: 'Night 🌙', sunrise: 'Sunrise 🌅', sunset: 'Sunset 🌇' })[todKey]}
           </div>
-          <div style={{background:'rgba(8,8,20,0.88)',backdropFilter:'blur(10px)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:20,padding:'3px 12px',color:'rgba(255,255,255,0.4)',fontSize:'0.65rem',fontFamily:"'Anthropic Serif',Georgia,serif"}}>
-            {users.length} resident{users.length!==1?'s':''} · {users.filter(u=>u.is_studying).length} studying
+          <div style={{ background: 'rgba(8,8,20,0.88)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 20, padding: '3px 12px', color: 'rgba(255,255,255,0.4)', fontSize: '0.65rem', fontFamily: "'Anthropic Serif',Georgia,serif" }}>
+            {users.length} resident{users.length !== 1 ? 's' : ''} · {users.filter(u => u.is_studying).length} studying
           </div>
         </div>
 
         {/* SQL button */}
-        <div style={{position:'absolute',bottom:16,left:16,zIndex:10}}>
-          <button onClick={()=>setShowSQL(s=>!s)} style={{background:'rgba(8,8,20,0.88)',border:'1px solid rgba(255,255,255,0.09)',color:'rgba(255,255,255,0.45)',borderRadius:8,padding:'5px 12px',fontSize:'0.65rem',cursor:'pointer',fontFamily:"'Anthropic Serif',Georgia,serif"}}>
-            {showSQL?'Hide':'📋 Supabase Schema'}
+        <div style={{ position: 'absolute', bottom: 16, left: 16, zIndex: 10 }}>
+          <button onClick={() => setShowSQL(s => !s)} style={{ background: 'rgba(8,8,20,0.88)', border: '1px solid rgba(255,255,255,0.09)', color: 'rgba(255,255,255,0.45)', borderRadius: 8, padding: '5px 12px', fontSize: '0.65rem', cursor: 'pointer', fontFamily: "'Anthropic Serif',Georgia,serif" }}>
+            {showSQL ? 'Hide' : '📋 Supabase Schema'}
           </button>
-          {showSQL&&(
-            <pre style={{marginTop:8,background:'rgba(6,6,20,0.97)',border:'1px solid rgba(255,255,255,0.09)',borderRadius:10,padding:14,fontSize:'0.62rem',color:'#a5d6a7',maxWidth:480,maxHeight:280,overflowY:'auto',whiteSpace:'pre-wrap',fontFamily:'monospace'}}>
+          {showSQL && (
+            <pre style={{ marginTop: 8, background: 'rgba(6,6,20,0.97)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14, fontSize: '0.62rem', color: '#a5d6a7', maxWidth: 480, maxHeight: 280, overflowY: 'auto', whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>
               {SQL}
             </pre>
           )}
