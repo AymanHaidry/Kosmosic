@@ -1,4 +1,4 @@
-study_room = r'''import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from './supabase.js'
 
 function generateCode() {
