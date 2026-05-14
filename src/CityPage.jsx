@@ -3,10 +3,16 @@ import { supabase } from './supabase.js'
 
 /* ─── helpers ─── */
 const getBuildingSpec = (hours, streak) => {
-  const level = Math.floor(Math.log2(Math.max(hours + 1, 1)))
+  const level = Math.min(6, Math.floor(Math.log2(Math.max(hours + 1, 1))))
   const height = Math.min(20, Math.max(3, Math.floor(hours / 15) + 3))
   const width = Math.min(70, Math.max(30, 28 + level * 4))
-  return { height, width, floors: height, windowsPerFloor: Math.floor(width / 14), level }
+
+  let style = 'default'
+  if (hours >= 200) style = 'cyberpunk'
+  else if (hours >= 100) style = 'glass'
+  else if (hours >= 50) style = 'modern'
+
+  return { height, width, floors: height, windowsPerFloor: Math.floor(width / 14), level, style }
 }
 
 const getRankLabel = (hours) => {
@@ -17,6 +23,53 @@ const getRankLabel = (hours) => {
   if (hours >= 5)   return { label: 'Apartment', color: '#7a7468' }
   return { label: 'Studio', color: '#5a5248' }
 }
+
+const getTier = (hours) => {
+  if (hours >= 200) return 6
+  if (hours >= 100) return 5
+  if (hours >= 50)  return 4
+  if (hours >= 20)  return 3
+  if (hours >= 5)   return 2
+  return 1
+}
+
+/* ─── SQL SCHEMA (run once in Supabase SQL Editor) ─── */
+const SQL_SCHEMA = `-- Run in Supabase SQL Editor (once)
+
+create table if not exists city_profiles (
+  user_id       uuid primary key references auth.users(id) on delete cascade,
+  display_name  text,
+  total_hours   float   default 0,
+  streak        int     default 0,
+  studied_days  int     default 0,
+  goals_hit     int     default 0,
+  avg_score     float   default 0,
+  is_studying   boolean default false,
+  study_mode    text    default 'focus',
+  missed_streak int     default 0,
+  is_exam_mode  boolean default false,
+  building_tier int     default 1,
+  last_active   timestamptz,
+  updated_at    timestamptz default now()
+);
+
+alter table city_profiles enable row level security;
+
+create policy "Readable by authenticated"
+  on city_profiles for select
+  using (auth.role() = 'authenticated');
+
+create policy "Users manage own profile"
+  on city_profiles for all
+  using (auth.uid() = user_id);
+
+create or replace function update_city_ts()
+returns trigger language plpgsql as $$
+begin new.updated_at = now(); return new; end; $$;
+
+create trigger city_profiles_ts
+  before update on city_profiles
+  for each row execute procedure update_city_ts();`
 
 /* ─── single building component ─── */
 function Building({ user, spec, x, isMe, onClick, studying, mode, animOffset }) {
@@ -141,6 +194,7 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
   const [selectedUser, setSelectedUser] = useState(null)
   const [animOffset, setAnimOffset] = useState(0)
   const [time, setTime] = useState(new Date())
+  const [showSQL, setShowSQL] = useState(false)
 
   const myHours = Math.floor((S?.totalMinutes || 0) / 60)
   const mySpec = getBuildingSpec(myHours, S?.streak || 0)
@@ -148,8 +202,9 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
   const myRank = getRankLabel(myHours)
 
   const isNight = time.getHours() >= 20 || time.getHours() < 7
+  const STALE_MS = 600000 // 10 minutes
 
-  /* 1. window flicker */
+  /* 1. window flicker + clock */
   useEffect(() => {
     const id = setInterval(() => {
       setAnimOffset(o => o + 0.3)
@@ -173,13 +228,13 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
       study_mode: studyMode || 'focus',
       missed_streak: (S?.missedDays || []).length,
       is_exam_mode: studyMode === 'exam',
-      building_tier: Math.min(6, Math.max(1, mySpec.level)),
+      building_tier: getTier(myHours),
       last_active: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }
     const { error } = await supabase.from('city_profiles').upsert(payload, { onConflict: 'user_id' })
     if (error) console.error('city upsert error:', error)
-  }, [session, myName, myHours, S, isStudying, studyMode, mySpec.level])
+  }, [session, myName, myHours, S, isStudying, studyMode])
 
   useEffect(() => { upsert() }, [upsert])
 
@@ -190,7 +245,7 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
     return () => clearInterval(id)
   }, [isStudying, upsert])
 
-  /* 3. fetch all users */
+  /* 3. fetch all users — realtime + 10s stale check */
   const fetchUsers = useCallback(async () => {
     const { data, error } = await supabase.from('city_profiles').select('*')
     if (error) {
@@ -207,6 +262,7 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
     const ch = supabase.channel('city-profiles')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'city_profiles' }, fetchUsers)
       .subscribe()
+    // Poll every 10s to re-fetch updated_at timestamps and catch stale sessions
     const poll = setInterval(fetchUsers, 10000)
     return () => {
       supabase.removeChannel(ch)
@@ -220,7 +276,8 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
     name: u.display_name || 'Anonymous',
     hours: Math.floor(u.total_hours || 0),
     streak: u.streak || 0,
-    studying: u.is_studying && (Date.now() - new Date(u.updated_at || 0).getTime() < 600000),
+    // Stale guard: if updated_at is older than 10 min, treat as not studying
+    studying: u.is_studying && (Date.now() - new Date(u.updated_at || 0).getTime() < STALE_MS),
     mode: u.study_mode,
     subject: u.study_mode === 'exam' ? 'Exam' : u.study_mode === 'deep' ? 'Deep Work' : 'Focus',
     isMe: u.user_id === session?.user?.id,
@@ -267,6 +324,8 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
     ? 'linear-gradient(180deg, #02010a 0%, #080615 40%, #0c0b18 100%)'
     : 'linear-gradient(180deg, #0c1a2e 0%, #0f2340 40%, #0c0b18 100%)'
 
+  const liveCount = allResidents.filter(u => u.studying).length
+
   return (
     <div style={{ position: 'relative', zIndex: 2, fontFamily: "'Anthropic Serif',Georgia,serif" }}>
       {/* HEADER */}
@@ -275,7 +334,7 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
           <div>
             <div style={{ fontSize: '1.6rem', fontWeight: 700, color: '#fff', marginBottom: 4 }}>Study City</div>
             <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.82rem' }}>
-              {users.filter(u => u.is_studying).length} studying live right now
+              {liveCount} studying live right now
               <span style={{ marginLeft: 8, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                 <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#5c8c6e', display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
                 <span style={{ color: '#5c8c6e' }}>Live</span>
@@ -492,7 +551,7 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Live Activity</div>
-            <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)' }}>Real-time · updates every second</div>
+            <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)' }}>Real-time · updates every 10s</div>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {allResidents.filter(u => u.studying).map(u => (
@@ -548,6 +607,26 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
               </div>
             ))}
           </div>
+        </div>
+
+        {/* SQL Toggle */}
+        <div style={{ marginTop: 14 }}>
+          <button onClick={() => setShowSQL(s => !s)} style={{
+            background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
+            color: 'rgba(255,255,255,0.4)', borderRadius: 8, padding: '6px 12px',
+            fontSize: '0.65rem', cursor: 'pointer', fontFamily: "'Anthropic Serif',Georgia,serif",
+          }}>
+            {showSQL ? 'Hide Supabase Schema' : 'Show Supabase Schema'}
+          </button>
+          {showSQL && (
+            <pre style={{
+              marginTop: 8, background: 'rgba(6,6,20,0.97)', border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: 10, padding: 14, fontSize: '0.62rem', color: '#a5d6a7',
+              maxWidth: '100%', maxHeight: 300, overflowY: 'auto', whiteSpace: 'pre-wrap', fontFamily: 'monospace',
+            }}>
+              {SQL_SCHEMA}
+            </pre>
+          )}
         </div>
       </div>
 
