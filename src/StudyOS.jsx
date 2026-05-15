@@ -117,6 +117,13 @@ export default function StudyOS({ session }) {
   const [timerReady, setTimerReady] = useState(false)
   const timerRef = useRef(null)
   const segmentStartRef = useRef(null)
+    const segmentStartRef = useRef(null)
+  const timerStartRef = useRef(null)
+  const activeSubjectRef = useRef(S.activeSubject || 'General')
+
+  useEffect(() => {
+    activeSubjectRef.current = S.activeSubject || 'General'
+  }, [S.activeSubject])
 
   const [dark, setDark] = useState(true)
   const [quote] = useState(QUOTES[Math.floor(Math.random() * QUOTES.length)])
@@ -205,13 +212,13 @@ export default function StudyOS({ session }) {
           // Timer completed while away
           const completedSecs = data.segment_start_secs || data.timer_total || 1500
           if (isFocusTimerMode(newMode) && completedSecs > 0) {
-            recordFocusSessionDirect(completedSecs, newStudyMode)
-          }
+            recordFocusSessionDirect(completedSecs, newStudyMode, S.activeSubject || 'General')          }
           setTimerRunning(false)
           segmentStartRef.current = null
-        } else {
+                        } else {
           setTimerRunning(true)
           segmentStartRef.current = data.segment_start_secs || data.timer_secs
+          timerStartRef.current = Date.now() - elapsed * 1000
           startLocalTimer()
         }
       } else {
@@ -263,87 +270,104 @@ export default function StudyOS({ session }) {
   }, [session, timerSecs, timerTotal, timerMode, timerRunning, S.studyMode])
 
   // ─── LOCAL TIMER INTERVAL ───
-  const startLocalTimer = () => {
+    const startLocalTimer = () => {
     clearInterval(timerRef.current)
+    timerStartRef.current = Date.now()
+    const startSecs = timerSecs
     timerRef.current = setInterval(() => {
-      setTimerSecs(prev => {
-        if (prev <= 1) {
-          clearInterval(timerRef.current)
-          setTimerRunning(false)
-          handleTimerComplete(segmentStartRef.current || timerTotal)
-          return 0
-        }
-        return prev - 1
-      })
+      const elapsed = Math.floor((Date.now() - timerStartRef.current) / 1000)
+      const remaining = Math.max(0, startSecs - elapsed)
+      setTimerSecs(remaining)
+      if (remaining <= 0) {
+        clearInterval(timerRef.current)
+        setTimerRunning(false)
+        handleTimerComplete(segmentStartRef.current || timerTotal)
+      }
     }, 1000)
   }
 
   // ─── TIMER COMPLETION ───
-  const handleTimerComplete = useCallback((elapsedSecs) => {
+   const handleTimerComplete = useCallback((elapsedSecs) => {
     notify(isFocusTimerMode(timerMode) ? '✓ Session complete! Take a break.' : 'Break over. Back to work.')
     if (isFocusTimerMode(timerMode)) {
-      recordFocusSessionDirect(elapsedSecs, S.studyMode)
+      recordFocusSessionDirect(elapsedSecs, S.studyMode, activeSubjectRef.current)
     }
     segmentStartRef.current = null
+    timerStartRef.current = null
     saveCloudTimer({ is_running: false, started_at: null, timer_secs: 0, segment_start_secs: null })
   }, [timerMode, S.studyMode])
 
   // ─── RECORD SESSION (direct, no closure dependencies on timer state) ───
-  const recordFocusSessionDirect = (elapsedSecs, studyMode) => {
+   const recordFocusSessionDirect = (elapsedSecs, studyMode, subject) => {
     const mins = Math.round(elapsedSecs / 60)
     if (mins < 1) return
     const today = todayKey()
-    const subject = S.activeSubject || 'General'
+    const activeSub = subject || 'General'
     updateS(prev => {
-      const sessions = [...(prev.sessions || []), { date: today, mins, mode: studyMode || 'focus', ts: Date.now(), subject }]
+      const sessions = [...(prev.sessions || []), { date: today, mins, mode: studyMode || 'focus', ts: Date.now(), subject: activeSub }]
       const totalMinutes = (prev.totalMinutes || 0) + mins
       const todayMinutes = (prev.todayMinutes || 0) + mins
       const studiedDays = prev.studiedDays?.includes(today) ? prev.studiedDays : [...(prev.studiedDays || []), today]
       const missedDays = (prev.missedDays || []).filter(d => d !== today)
       const streak = calcStreak(studiedDays)
-      const subjectMinutes = { ...prev.subjectMinutes, [subject]: (prev.subjectMinutes?.[subject] || 0) + mins }
+      const subjectMinutes = { ...prev.subjectMinutes, [activeSub]: (prev.subjectMinutes?.[activeSub] || 0) + mins }
       return { ...prev, sessions, totalMinutes, todayMinutes, studiedDays, missedDays, streak, lastStudiedDate: today, subjectMinutes }
     })
   }
 
   // ─── TIMER CONTROLS ───
-  const startTimer = async () => {
+    const startTimer = async () => {
     if (timerSecs <= 0) return
     const now = new Date().toISOString()
     segmentStartRef.current = timerSecs
+    timerStartRef.current = Date.now()
     setTimerRunning(true)
     await saveCloudTimer({ is_running: true, started_at: now, segment_start_secs: timerSecs, timer_secs: timerSecs })
     startLocalTimer()
   }
 
-  const pauseTimer = async () => {
+    const pauseTimer = async () => {
     clearInterval(timerRef.current)
     setTimerRunning(false)
-    if (isFocusTimerMode(timerMode) && segmentStartRef.current !== null) {
-      const elapsedSecs = segmentStartRef.current - timerSecs
-      recordFocusSessionDirect(elapsedSecs, S.studyMode)
+    let remaining = timerSecs
+    if (isFocusTimerMode(timerMode) && segmentStartRef.current !== null && timerStartRef.current) {
+      const realElapsed = Math.floor((Date.now() - timerStartRef.current) / 1000)
+      const elapsedSecs = Math.min(segmentStartRef.current, realElapsed)
+      remaining = Math.max(0, segmentStartRef.current - elapsedSecs)
+      setTimerSecs(remaining)
+      if (elapsedSecs > 0) {
+        recordFocusSessionDirect(elapsedSecs, S.studyMode, activeSubjectRef.current)
+      }
       segmentStartRef.current = null
+      timerStartRef.current = null
     }
-    await saveCloudTimer({ is_running: false, paused_at: new Date().toISOString(), timer_secs: timerSecs, segment_start_secs: null })
+    await saveCloudTimer({ is_running: false, paused_at: new Date().toISOString(), timer_secs: remaining, segment_start_secs: null })
   }
 
-  const resetTimer = async () => {
+    const resetTimer = async () => {
     clearInterval(timerRef.current)
-    if (isFocusTimerMode(timerMode) && segmentStartRef.current !== null && timerRunning) {
-      const elapsedSecs = segmentStartRef.current - timerSecs
-      recordFocusSessionDirect(elapsedSecs, S.studyMode)
+    if (isFocusTimerMode(timerMode) && segmentStartRef.current !== null && timerRunning && timerStartRef.current) {
+      const realElapsed = Math.floor((Date.now() - timerStartRef.current) / 1000)
+      const elapsedSecs = Math.min(segmentStartRef.current, realElapsed)
+      if (elapsedSecs > 0) {
+        recordFocusSessionDirect(elapsedSecs, S.studyMode, activeSubjectRef.current)
+      }
     }
     setTimerRunning(false)
     setTimerSecs(timerTotal)
     segmentStartRef.current = null
+    timerStartRef.current = null
     await saveCloudTimer({ is_running: false, timer_secs: timerTotal, started_at: null, segment_start_secs: null })
   }
 
-  const setMode = async (mode, mins) => {
+    const setMode = async (mode, mins) => {
     clearInterval(timerRef.current)
-    if (isFocusTimerMode(timerMode) && segmentStartRef.current !== null && timerRunning) {
-      const elapsedSecs = segmentStartRef.current - timerSecs
-      recordFocusSessionDirect(elapsedSecs, S.studyMode)
+    if (isFocusTimerMode(timerMode) && segmentStartRef.current !== null && timerRunning && timerStartRef.current) {
+      const realElapsed = Math.floor((Date.now() - timerStartRef.current) / 1000)
+      const elapsedSecs = Math.min(segmentStartRef.current, realElapsed)
+      if (elapsedSecs > 0) {
+        recordFocusSessionDirect(elapsedSecs, S.studyMode, activeSubjectRef.current)
+      }
     }
     setTimerRunning(false)
     setTimerMode(mode)
@@ -351,6 +375,7 @@ export default function StudyOS({ session }) {
     setTimerTotal(secs)
     setTimerSecs(secs)
     segmentStartRef.current = null
+    timerStartRef.current = null
     await saveCloudTimer({ timer_mode: mode, timer_total: secs, timer_secs: secs, is_running: false, started_at: null, segment_start_secs: null })
   }
 
