@@ -9,6 +9,41 @@
   --shadow: 0 8px 32px rgba(0,0,0,0.4); --shadow-sm: 0 2px 12px rgba(0,0,0,0.3);
   --r: 16px; --r-sm: 10px;
 }
+
+body::before {
+  content: ''; position: fixed; inset: 0;
+  background:
+    radial-gradient(ellipse 800px 600px at 20% 20%, rgba(212,168,83,0.06), transparent),
+    radial-gradient(ellipse 600px 500px at 80% 80%, rgba(201,149,106,0.05), transparent),
+    radial-gradient(ellipse 400px 300px at 50% 50%, rgba(212,168,83,0.03), transparent);
+  pointer-events: none; z-index: 0;
+  animation: bgPulse 12s ease-in-out infinite;
+}
+@keyframes bgPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.05); }
+}
+
+/* Floating particles — Steve Jobs "think different" ethereal feel */
+.particles { position: fixed; inset: 0; pointer-events: none; z-index: 1; overflow: hidden; }
+.particle {
+  position: absolute; width: 3px; height: 3px;
+  background: var(--accent); border-radius: 50%; opacity: 0;
+  animation: floatParticle 15s linear infinite;
+}
+@keyframes floatParticle {
+  0% { transform: translateY(100vh) scale(0); opacity: 0; }
+  10% { opacity: 0.4; } 90% { opacity: 0.4; }
+  100% { transform: translateY(-10vh) scale(1.5); opacity: 0; }
+}
+
+/* NOISE GRAIN */
+body::after {
+  content: ''; position: fixed; inset: 0; opacity: 0.015;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 999;
+}
+
 [data-theme="light"] {
   --bg: #F0EEE6; --bg2: #E8E6DC; --bg3: #DDD9CE;
   --surface: rgba(60,50,35,0.05); --surface2: rgba(60,50,35,0.08); --surface3: rgba(60,50,35,0.12);
