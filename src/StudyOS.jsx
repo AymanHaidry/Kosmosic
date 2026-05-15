@@ -16,16 +16,16 @@ const QUOTES = [
 ]
 
 const AWARDS = [
-  { id: 'first_session', icon: '🌱', title: 'First Steps', desc: 'Complete your first session', req: s => s.sessions?.length >= 1 },
-  { id: 'streak_3', icon: '🔥', title: 'On Fire', desc: '3-day streak', req: s => s.streak >= 3 },
-  { id: 'streak_7', icon: '⚡', title: 'Weekly Warrior', desc: '7-day streak', req: s => s.streak >= 7 },
-  { id: 'streak_30', icon: '🏆', title: 'Iron Discipline', desc: '30-day streak', req: s => s.streak >= 30 },
-  { id: 'hours_10', icon: '⏰', title: 'Time Investor', desc: '10 hours studied', req: s => (s.totalMinutes || 0) >= 600 },
-  { id: 'hours_50', icon: '📚', title: 'Knowledge Seeker', desc: '50 hours studied', req: s => (s.totalMinutes || 0) >= 3000 },
-  { id: 'hours_100', icon: '💎', title: 'Century Scholar', desc: '100 hours studied', req: s => (s.totalMinutes || 0) >= 6000 },
-  { id: 'days_10', icon: '📅', title: 'Consistent', desc: '10 days studied', req: s => (s.studiedDays || []).length >= 10 },
-  { id: 'days_50', icon: '🌟', title: 'Dedicated', desc: '50 days studied', req: s => (s.studiedDays || []).length >= 50 },
-  { id: 'goal_met', icon: '🎯', title: 'Goal Crusher', desc: 'Hit daily goal once', req: s => (s.todayMinutes || 0) >= (s.dailyGoal || 120) },
+  { id: 'first_session', icon: '🌱', title: 'First Steps', desc: 'Complete your first session', req: s => (s.sessions || []).length >= 1, criteria: '1 session' },
+  { id: 'streak_3', icon: '🔥', title: 'On Fire', desc: '3-day streak', req: s => s.streak >= 3, criteria: '3 day streak' },
+  { id: 'streak_7', icon: '⚡', title: 'Weekly Warrior', desc: '7-day streak', req: s => s.streak >= 7, criteria: '7 day streak' },
+  { id: 'streak_30', icon: '🏆', title: 'Iron Discipline', desc: '30-day streak', req: s => s.streak >= 30, criteria: '30 day streak' },
+  { id: 'hours_10', icon: '⏰', title: 'Time Investor', desc: '10 hours studied', req: s => (s.totalMinutes || 0) >= 600, criteria: '10 hours' },
+  { id: 'hours_50', icon: '📚', title: 'Knowledge Seeker', desc: '50 hours studied', req: s => (s.totalMinutes || 0) >= 3000, criteria: '50 hours' },
+  { id: 'hours_100', icon: '💎', title: 'Century Scholar', desc: '100 hours studied', req: s => (s.totalMinutes || 0) >= 6000, criteria: '100 hours' },
+  { id: 'days_10', icon: '📅', title: 'Consistent', desc: '10 days studied', req: s => (s.studiedDays || []).length >= 10, criteria: '10 study days' },
+  { id: 'days_50', icon: '🌟', title: 'Dedicated', desc: '50 days studied', req: s => (s.studiedDays || []).length >= 50, criteria: '50 study days' },
+  { id: 'goal_met', icon: '🎯', title: 'Goal Crusher', desc: 'Hit daily goal once', req: s => (s.todayMinutes || 0) >= (s.dailyGoal || 120), criteria: 'Hit daily goal' },
 ]
 
 const SUBJECT_COLORS = ['#d4a853','#c9956a','#5c8c6e','#4a7a9b','#8b7a9b','#c0574a','#7a9b4a','#9b4a7a']
@@ -39,6 +39,7 @@ const defaultState = () => ({
   did: '', plan: '',
   timerMode: 'focus', timerTotal: 1500,
   distractionCount: 0, lastStudiedDate: null,
+  studyMode: 'focus',
   settings: {
     darkMode: true, sound: true, strictMode: false, autoBreak: false,
     autoNextSession: false, sessionSounds: true, animatedBg: true,
@@ -68,6 +69,24 @@ function todayKey() {
   return new Date().toISOString().split('T')[0]
 }
 
+function calcStreak(days) {
+  if (!days || days.length === 0) return 0
+  const sorted = [...days].sort().reverse()
+  const today = todayKey()
+  let streak = 0
+  let check = new Date(today)
+  for (const d of sorted) {
+    const dt = new Date(d)
+    const diff = Math.round((check - dt) / 86400000)
+    if (diff === 0 || diff === 1) { streak++; check = dt } else break
+  }
+  return streak
+}
+
+function isFocusTimerMode(mode) {
+  return mode === 'focus' || mode === 'custom'
+}
+
 export default function StudyOS({ session }) {
   const nav = useNavigate()
   const [page, setPage] = useState('dash')
@@ -81,32 +100,27 @@ export default function StudyOS({ session }) {
   const [dataLoaded, setDataLoaded] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
-  // Timer state
+  // ─── CLOUD TIMER STATE ───
   const [timerSecs, setTimerSecs] = useState(1500)
   const [timerRunning, setTimerRunning] = useState(false)
   const [timerMode, setTimerMode] = useState('focus')
   const [timerTotal, setTimerTotal] = useState(1500)
   const [customMins, setCustomMins] = useState(45)
+  const [timerReady, setTimerReady] = useState(false)
   const timerRef = useRef(null)
-  const sessionStartRef = useRef(null)
+  const segmentStartRef = useRef(null)
 
-  // Theme
   const [dark, setDark] = useState(true)
-
-  // Quote
   const [quote] = useState(QUOTES[Math.floor(Math.random() * QUOTES.length)])
-
-  // Particles
   const particlesRef = useRef(null)
 
   useEffect(() => {
     if (!particlesRef.current) return
-    const c = particlesRef.current
     for (let i = 0; i < 25; i++) {
       const p = document.createElement('div')
       p.className = 'particle'
       p.style.cssText = `left:${Math.random()*100}%;animation-delay:${Math.random()*15}s;animation-duration:${10+Math.random()*10}s`
-      c.appendChild(p)
+      particlesRef.current.appendChild(p)
     }
   }, [])
 
@@ -114,10 +128,11 @@ export default function StudyOS({ session }) {
     document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light')
   }, [dark])
 
-  // Load user data
+  // ─── LOAD USER DATA + CLOUD TIMER ───
   useEffect(() => {
     if (!session) return
     loadData()
+    loadCloudTimer()
   }, [session])
 
   const loadData = async () => {
@@ -129,12 +144,71 @@ export default function StudyOS({ session }) {
     if (error && error.code !== 'PGRST116') { console.error(error); setDataLoaded(true); return }
     if (data?.data) {
       const merged = { ...defaultState(), ...data.data }
+      const today = todayKey()
+      if (merged.lastStudiedDate && merged.lastStudiedDate !== today) {
+        merged.todayMinutes = 0
+      }
       setS(merged)
       setDark(merged.settings?.darkMode !== false)
     }
     setDataLoaded(true)
   }
 
+  // ─── CLOUD TIMER: LOAD FROM DB ───
+  const loadCloudTimer = async () => {
+    if (!session?.user?.id) return
+    const { data } = await supabase
+      .from('timer_state')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .single()
+
+    if (data) {
+      const now = Date.now()
+      const startedAt = data.started_at ? new Date(data.started_at).getTime() : 0
+      const wasRunning = data.is_running && startedAt
+
+      let newSecs = data.timer_secs
+      let newTotal = data.timer_total || 1500
+      let newMode = data.timer_mode || 'focus'
+      let newStudyMode = data.study_mode || 'focus'
+
+      if (wasRunning) {
+        const elapsed = Math.floor((now - startedAt) / 1000)
+        if (data.segment_start_secs != null) {
+          newSecs = Math.max(0, data.segment_start_secs - elapsed)
+        } else {
+          // legacy fallback
+          newSecs = Math.max(0, data.timer_secs - elapsed)
+        }
+
+        if (newSecs <= 0) {
+          // Timer completed while away
+          const completedSecs = data.segment_start_secs || data.timer_total || 1500
+          if (isFocusTimerMode(newMode) && completedSecs > 0) {
+            recordFocusSessionDirect(completedSecs, newStudyMode)
+          }
+          setTimerRunning(false)
+          segmentStartRef.current = null
+        } else {
+          setTimerRunning(true)
+          segmentStartRef.current = data.segment_start_secs || data.timer_secs
+          startLocalTimer()
+        }
+      } else {
+        setTimerRunning(false)
+        segmentStartRef.current = null
+      }
+
+      setTimerSecs(newSecs)
+      setTimerTotal(newTotal)
+      setTimerMode(newMode)
+      updateS(prev => ({ ...prev, studyMode: newStudyMode }))
+    }
+    setTimerReady(true)
+  }
+
+  // ─── SAVE DATA ───
   const saveData = useCallback(async (newS) => {
     if (!session) return
     await supabase.from('user_data').upsert(
@@ -152,95 +226,118 @@ export default function StudyOS({ session }) {
     })
   }, [saveData])
 
-  // Timer logic
-  useEffect(() => {
-    if (timerRunning) {
-      timerRef.current = setInterval(() => {
-        setTimerSecs(prev => {
-          if (prev <= 1) {
-            clearInterval(timerRef.current)
-            setTimerRunning(false)
-            handleTimerComplete()
-            return 0
-          }
-          return prev - 1
-        })
-      }, 1000)
-    } else {
-      clearInterval(timerRef.current)
-    }
-    return () => clearInterval(timerRef.current)
-  }, [timerRunning])
+  // ─── CLOUD TIMER: SAVE TO DB ───
+  const saveCloudTimer = useCallback(async (updates) => {
+    if (!session?.user?.id) return
+    await supabase.from('timer_state').upsert({
+      user_id: session.user.id,
+      timer_secs: updates.timer_secs ?? timerSecs,
+      timer_total: updates.timer_total ?? timerTotal,
+      timer_mode: updates.timer_mode ?? timerMode,
+      is_running: updates.is_running ?? timerRunning,
+      started_at: updates.started_at ?? null,
+      paused_at: updates.paused_at ?? null,
+      segment_start_secs: updates.segment_start_secs ?? segmentStartRef.current,
+      study_mode: updates.study_mode ?? S.studyMode,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id' })
+  }, [session, timerSecs, timerTotal, timerMode, timerRunning, S.studyMode])
 
-  const recordFocusSession = (elapsedSecs) => {
+  // ─── LOCAL TIMER INTERVAL ───
+  const startLocalTimer = () => {
+    clearInterval(timerRef.current)
+    timerRef.current = setInterval(() => {
+      setTimerSecs(prev => {
+        if (prev <= 1) {
+          clearInterval(timerRef.current)
+          setTimerRunning(false)
+          handleTimerComplete(segmentStartRef.current || timerTotal)
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+  }
+
+  // ─── TIMER COMPLETION ───
+  const handleTimerComplete = useCallback((elapsedSecs) => {
+    notify(isFocusTimerMode(timerMode) ? '✓ Session complete! Take a break.' : 'Break over. Back to work.')
+    if (isFocusTimerMode(timerMode)) {
+      recordFocusSessionDirect(elapsedSecs, S.studyMode)
+    }
+    segmentStartRef.current = null
+    saveCloudTimer({ is_running: false, started_at: null, timer_secs: 0, segment_start_secs: null })
+  }, [timerMode, S.studyMode])
+
+  // ─── RECORD SESSION (direct, no closure dependencies on timer state) ───
+  const recordFocusSessionDirect = (elapsedSecs, studyMode) => {
     const mins = Math.round(elapsedSecs / 60)
     if (mins < 1) return
     const today = todayKey()
+    const subject = S.activeSubject || 'General'
     updateS(prev => {
-      const sessions = [...(prev.sessions || []), { date: today, mins, mode: 'focus', ts: Date.now() }]
+      const sessions = [...(prev.sessions || []), { date: today, mins, mode: studyMode || 'focus', ts: Date.now(), subject }]
       const totalMinutes = (prev.totalMinutes || 0) + mins
       const todayMinutes = (prev.todayMinutes || 0) + mins
       const studiedDays = prev.studiedDays?.includes(today) ? prev.studiedDays : [...(prev.studiedDays || []), today]
+      const missedDays = (prev.missedDays || []).filter(d => d !== today)
       const streak = calcStreak(studiedDays)
-      return { ...prev, sessions, totalMinutes, todayMinutes, studiedDays, streak, lastStudiedDate: today }
+      const subjectMinutes = { ...prev.subjectMinutes, [subject]: (prev.subjectMinutes?.[subject] || 0) + mins }
+      return { ...prev, sessions, totalMinutes, todayMinutes, studiedDays, missedDays, streak, lastStudiedDate: today, subjectMinutes }
     })
   }
 
-  const handleTimerComplete = () => {
-    notify(timerMode === 'focus' ? '✓ Session complete! Take a break.' : 'Break over. Back to work.')
-    if (timerMode === 'focus') {
-      // Use timerTotal as elapsed — the full session ran to completion
-      recordFocusSession(timerTotal)
-    }
-    sessionStartRef.current = null
-  }
-
-  const startTimer = () => {
-    if (timerMode === 'focus') sessionStartRef.current = timerSecs
+  // ─── TIMER CONTROLS ───
+  const startTimer = async () => {
+    if (timerSecs <= 0) return
+    const now = new Date().toISOString()
+    segmentStartRef.current = timerSecs
     setTimerRunning(true)
+    await saveCloudTimer({ is_running: true, started_at: now, segment_start_secs: timerSecs, timer_secs: timerSecs })
+    startLocalTimer()
   }
 
-  const pauseTimer = () => {
+  const pauseTimer = async () => {
+    clearInterval(timerRef.current)
     setTimerRunning(false)
-    // Record elapsed time so far (difference between secs at start vs now)
-    if (timerMode === 'focus' && sessionStartRef.current !== null) {
-      const elapsedSecs = sessionStartRef.current - timerSecs
-      recordFocusSession(elapsedSecs)
-      sessionStartRef.current = null
+    if (isFocusTimerMode(timerMode) && segmentStartRef.current !== null) {
+      const elapsedSecs = segmentStartRef.current - timerSecs
+      recordFocusSessionDirect(elapsedSecs, S.studyMode)
+      segmentStartRef.current = null
     }
+    await saveCloudTimer({ is_running: false, paused_at: new Date().toISOString(), timer_secs: timerSecs, segment_start_secs: null })
   }
 
-  const resetTimer = () => {
-    // If running, record elapsed first
-    if (timerRunning && timerMode === 'focus' && sessionStartRef.current !== null) {
-      const elapsedSecs = sessionStartRef.current - timerSecs
-      recordFocusSession(elapsedSecs)
+  const resetTimer = async () => {
+    clearInterval(timerRef.current)
+    if (isFocusTimerMode(timerMode) && segmentStartRef.current !== null && timerRunning) {
+      const elapsedSecs = segmentStartRef.current - timerSecs
+      recordFocusSessionDirect(elapsedSecs, S.studyMode)
     }
     setTimerRunning(false)
     setTimerSecs(timerTotal)
-    sessionStartRef.current = null
+    segmentStartRef.current = null
+    await saveCloudTimer({ is_running: false, timer_secs: timerTotal, started_at: null, segment_start_secs: null })
   }
 
-  const setMode = (mode, mins) => {
+  const setMode = async (mode, mins) => {
+    clearInterval(timerRef.current)
+    if (isFocusTimerMode(timerMode) && segmentStartRef.current !== null && timerRunning) {
+      const elapsedSecs = segmentStartRef.current - timerSecs
+      recordFocusSessionDirect(elapsedSecs, S.studyMode)
+    }
     setTimerRunning(false)
     setTimerMode(mode)
     const secs = mins * 60
     setTimerTotal(secs)
     setTimerSecs(secs)
+    segmentStartRef.current = null
+    await saveCloudTimer({ timer_mode: mode, timer_total: secs, timer_secs: secs, is_running: false, started_at: null, segment_start_secs: null })
   }
 
-  const calcStreak = (days) => {
-    if (!days || days.length === 0) return 0
-    const sorted = [...days].sort().reverse()
-    const today = todayKey()
-    let streak = 0
-    let check = new Date(today)
-    for (const d of sorted) {
-      const dt = new Date(d)
-      const diff = Math.round((check - dt) / 86400000)
-      if (diff === 0 || diff === 1) { streak++; check = dt } else break
-    }
-    return streak
+  const toggleTimer = () => {
+    if (timerRunning) pauseTimer()
+    else startTimer()
   }
 
   const timerProgress = timerTotal > 0 ? (timerTotal - timerSecs) / timerTotal : 0
@@ -275,21 +372,13 @@ export default function StudyOS({ session }) {
     await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin + '/app' } })
   }
 
-  // Reset today's minutes at midnight
-  useEffect(() => {
-    const today = todayKey()
-    if (S.lastStudiedDate && S.lastStudiedDate !== today) {
-      updateS(prev => ({ ...prev, todayMinutes: 0 }))
-    }
-  }, [])
-
   const initials = session
     ? (session.user.user_metadata?.full_name || session.user.email || 'U').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
     : 'KS'
 
   if (!session) return <AuthView authMode={authMode} setAuthMode={setAuthMode} authEmail={authEmail} setAuthEmail={setAuthEmail} authPass={authPass} setAuthPass={setAuthPass} authName={authName} setAuthName={setAuthName} authErr={authErr} authLoading={authLoading} handleAuth={handleAuth} signInGoogle={signInGoogle} nav={nav} />
 
-  if (!dataLoaded) return (
+  if (!dataLoaded || !timerReady) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 2 }}>
       <div style={{ fontFamily: "'Anthropic Serif',Georgia,serif", color: 'var(--accent)' }}>Loading your data...</div>
     </div>
@@ -301,13 +390,11 @@ export default function StudyOS({ session }) {
     <div>
       <div className="particles" ref={particlesRef} />
 
-      {/* NOTIFICATION */}
       <div className="notif" id="kosm-notif">
         <div className="notif-dot" />
         <span className="notif-msg" />
       </div>
 
-      {/* MOBILE NAV OVERLAY */}
       <div className={`mobile-nav-overlay ${mobileOpen ? 'open' : ''}`}>
         {['city','room','dash','timer','music','cal','marks','diary','awards','ai','settings'].map(p => (
           <a key={p} href="#" className={page === p ? 'active' : ''} onClick={e => { e.preventDefault(); setPage(p); setMobileOpen(false) }}>
@@ -316,7 +403,6 @@ export default function StudyOS({ session }) {
         ))}
       </div>
 
-      {/* NAV */}
       <nav className="nav">
         <div className="nav-logo" style={{ cursor: 'pointer' }} onClick={() => nav('/')}>
           <div className="nav-logo-mark">K</div>
@@ -336,7 +422,6 @@ export default function StudyOS({ session }) {
         </div>
       </nav>
 
-      {/* TICKER — only show outside city page */}
       {page !== 'city' && (
         <div className="ticker">
           <div className="ticker-track">
@@ -348,17 +433,15 @@ export default function StudyOS({ session }) {
         </div>
       )}
 
-      {/* ══ CITY ══ */}
       {page === 'city' && (
-        <CityPage S={S} session={session} isStudying={timerRunning && timerMode === 'focus'} studyMode={timerMode} />
+        <CityPage S={S} session={session} isStudying={timerRunning && isFocusTimerMode(timerMode)} studyMode={S.studyMode || 'focus'} />
       )}
 
-      {/* ══ STUDY ROOMS ══ */}
       {page === 'room' && (
-        <StudyRoom S={S} session={session} isStudying={timerRunning && timerMode === 'focus'} timerSecs={timerSecs} timerMode={timerMode} />
+        <StudyRoom S={S} session={session} isStudying={timerRunning && isFocusTimerMode(timerMode)} timerSecs={timerSecs} timerMode={timerMode} />
       )}
 
-      {/* ══ DASHBOARD ══ */}
+      {/* DASHBOARD */}
       <div className={`page ${page === 'dash' ? 'active' : ''}`}>
         <div className="grid2" style={{ marginBottom: 14 }}>
           <div className="card card-premium" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
@@ -463,7 +546,7 @@ export default function StudyOS({ session }) {
         </div>
       </div>
 
-      {/* ══ TIMER ══ */}
+      {/* TIMER */}
       <div className={`page ${page === 'timer' ? 'active' : ''}`}>
         <div className="card" style={{ marginBottom: 14 }}>
           <div className="sec-label" style={{ textAlign: 'center' }}>Focus Timer</div>
@@ -492,18 +575,44 @@ export default function StudyOS({ session }) {
                   onChange={e => { setCustomMins(+e.target.value); setMode('custom', +e.target.value) }} />
               </div>
             )}
-            <div className="btn-row" style={{ justifyContent: 'center' }}>
-              <button className="btn btn-primary" onClick={startTimer} disabled={timerRunning}>▶ Start</button>
-              <button className="btn btn-ghost" onClick={pauseTimer} disabled={!timerRunning}>⏸ Pause</button>
-              <button className="btn btn-ghost" onClick={resetTimer}>↺ Reset</button>
+
+            {/* Session Type Toggles */}
+            <div style={{ marginTop: 14, marginBottom: 10 }}>
+              <div className="sec-label" style={{ textAlign: 'center', fontSize: '0.72rem', marginBottom: 8 }}>Session Type</div>
+              <div className="chip-group" style={{ justifyContent: 'center' }}>
+                {[
+                  ['focus', '⚡ Focus'],
+                  ['deep', '🧠 Deep Work'],
+                  ['exam', '📝 Exam Mode']
+                ].map(([m, label]) => (
+                  <button key={m} className={`chip ${S.studyMode === m ? 'active' : ''}`}
+                    onClick={() => updateS(prev => ({ ...prev, studyMode: m }))}>
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
+
+            <div className="btn-row" style={{ justifyContent: 'center' }}>
+              <button className="btn btn-primary" onClick={toggleTimer}>
+                {timerRunning ? '⏸ Pause' : '▶ Start'}
+              </button>
+              {(!timerRunning && timerSecs !== timerTotal) && (
+                <button className="btn btn-ghost" onClick={resetTimer}>↺ Reset</button>
+              )}
+            </div>
+            {timerRunning && (
+              <div style={{ textAlign: 'center', marginTop: 8, fontSize: '0.72rem', color: 'var(--green)' }}>
+                ☁ Synced across devices · {S.studyMode === 'deep' ? 'Deep Work' : S.studyMode === 'exam' ? 'Exam Mode' : 'Focus'}
+              </div>
+            )}
           </div>
         </div>
 
         <div className="card" style={{ marginBottom: 14 }}>
           <div className="sec-label">Subject for This Session</div>
           <div className="chip-group" style={{ justifyContent: 'flex-start' }}>
-            {(S.subjects || []).map((sub, i) => (
+            {(S.subjects || []).map((sub) => (
               <button key={sub} className={`chip ${S.activeSubject === sub ? 'active' : ''}`}
                 onClick={() => updateS(prev => ({ ...prev, activeSubject: sub }))}>
                 {sub}
@@ -521,8 +630,8 @@ export default function StudyOS({ session }) {
               <div key={i} className="event-row">
                 <div className="event-dot" style={{ background: 'var(--accent)' }} />
                 <div className="event-info">
-                  <div className="event-title">{sess.mode === 'focus' ? 'Focus Session' : 'Break'} — {sess.mins} min</div>
-                  <div className="event-note">{sess.date}</div>
+                  <div className="event-title">{sess.mode === 'focus' ? 'Focus Session' : sess.mode === 'deep' ? 'Deep Work' : sess.mode === 'exam' ? 'Exam Mode' : 'Break'} — {sess.mins} min</div>
+                  <div className="event-note">{sess.date} {sess.subject && `· ${sess.subject}`}</div>
                 </div>
               </div>
             ))
@@ -530,27 +639,27 @@ export default function StudyOS({ session }) {
         </div>
       </div>
 
-      {/* ══ MUSIC ══ */}
+      {/* MUSIC */}
       <div className={`page ${page === 'music' ? 'active' : ''}`}>
         <MusicPage />
       </div>
 
-      {/* ══ CALENDAR ══ */}
+      {/* CALENDAR */}
       <div className={`page ${page === 'cal' ? 'active' : ''}`}>
         <CalendarPage S={S} updateS={updateS} notify={notify} />
       </div>
 
-      {/* ══ MARKS ══ */}
+      {/* MARKS */}
       <div className={`page ${page === 'marks' ? 'active' : ''}`}>
         <MarksPage S={S} updateS={updateS} notify={notify} />
       </div>
 
-      {/* ══ DIARY ══ */}
+      {/* DIARY */}
       <div className={`page ${page === 'diary' ? 'active' : ''}`}>
         <DiaryPage S={S} updateS={updateS} notify={notify} />
       </div>
 
-      {/* ══ AWARDS ══ */}
+      {/* AWARDS */}
       <div className={`page ${page === 'awards' ? 'active' : ''}`}>
         <div style={{ marginBottom: 20 }}>
           <div className="heading" style={{ marginBottom: 4 }}>Awards</div>
@@ -562,8 +671,13 @@ export default function StudyOS({ session }) {
             return (
               <div key={a.id} className={`gift-card ${unlocked ? 'unlocked' : ''}`} title={a.desc}>
                 <div className="gift-icon" style={{ filter: unlocked ? 'none' : 'grayscale(1) opacity(0.4)' }}>{a.icon}</div>
-                <div style={{ fontSize: '0.6rem', textAlign: 'center', lineHeight: 1.3 }}>{a.title}</div>
-                {!unlocked && <div style={{ fontSize: '0.55rem', color: 'var(--text3)' }}>Locked</div>}
+                <div style={{ fontSize: '0.7rem', textAlign: 'center', lineHeight: 1.3, fontWeight: 600 }}>{a.title}</div>
+                <div style={{ fontSize: '0.6rem', color: 'var(--text3)', textAlign: 'center', marginTop: 4 }}>
+                  {a.criteria}
+                </div>
+                <div style={{ fontSize: '0.55rem', color: unlocked ? 'var(--green)' : 'var(--text3)', textAlign: 'center', marginTop: 2 }}>
+                  {unlocked ? '✓ Unlocked' : 'Locked'}
+                </div>
               </div>
             )
           })}
@@ -583,12 +697,12 @@ export default function StudyOS({ session }) {
         </div>
       </div>
 
-      {/* ══ AI COACH ══ */}
+      {/* AI */}
       <div className={`page ${page === 'ai' ? 'active' : ''}`}>
         <AIPage S={S} updateS={updateS} notify={notify} />
       </div>
 
-      {/* ══ SETTINGS ══ */}
+      {/* SETTINGS */}
       <div className={`page ${page === 'settings' ? 'active' : ''}`}>
         <SettingsPage S={S} updateS={updateS} dark={dark} setDark={setDark} signOut={signOut} session={session} notify={notify} />
       </div>
@@ -651,7 +765,7 @@ function AuthView({ authMode, setAuthMode, authEmail, setAuthEmail, authPass, se
 }
 
 /* ══════════════════════════════
-   MUSIC PAGE (YouTube embed)
+   MUSIC PAGE
 ══════════════════════════════ */
 function MusicPage() {
   const [search, setSearch] = useState('')
@@ -745,22 +859,9 @@ function CalendarPage({ S, updateS, notify }) {
         return { ...prev, missedDays: missed.filter(d => d !== dateKey) }
       } else {
         const newStudied = [...studied, dateKey]
-        return { ...prev, studiedDays: newStudied, streak: calcStreak(newStudied) }
+        return { ...prev, studiedDays: newStudied, streak: calcStreak(newStudied), missedDays: missed.filter(d => d !== dateKey) }
       }
     })
-  }
-
-  const calcStreak = (days) => {
-    if (!days || days.length === 0) return 0
-    const sorted = [...days].sort().reverse()
-    const td = todayKey()
-    let streak = 0; let check = new Date(td)
-    for (const d of sorted) {
-      const dt = new Date(d)
-      const diff = Math.round((check - dt) / 86400000)
-      if (diff === 0 || diff === 1) { streak++; check = dt } else break
-    }
-    return streak
   }
 
   return (
@@ -791,7 +892,7 @@ function CalendarPage({ S, updateS, notify }) {
             const hasEvent = (S.events || []).some(e => e.date === dateKey)
             return (
               <div key={day} className={`cal-cell ${isToday ? 'today' : ''} ${studied ? 'studied' : ''} ${missed ? 'missed' : ''}`}
-                onClick={() => markStudied(dateKey)} title="Click to toggle studied/missed">
+                onClick={() => markStudied(dateKey)} title="Click to toggle studied → missed → clear">
                 {day}
                 {hasEvent && <div style={{ position: 'absolute', bottom: 4, width: 4, height: 4, borderRadius: '50%', background: 'var(--accent)' }} />}
               </div>
@@ -899,7 +1000,6 @@ function MarksPage({ S, updateS, notify }) {
     if (selectedExam === String(id)) setSelectedExam('')
   }
 
-  // Bar chart — marks across exams per subject
   useEffect(() => {
     if (!barRef.current || chartTab !== 'bar') return
     if (barInstance.current) barInstance.current.destroy()
@@ -939,7 +1039,6 @@ function MarksPage({ S, updateS, notify }) {
     return () => barInstance.current?.destroy()
   }, [examGroups, chartTab, allSubjects])
 
-  // Radar chart — target vs achieved per subject
   useEffect(() => {
     if (!radarRef.current || chartTab !== 'radar') return
     if (radarInstance.current) radarInstance.current.destroy()
@@ -1000,7 +1099,6 @@ function MarksPage({ S, updateS, notify }) {
         <div style={{ color: 'var(--text3)', fontSize: '0.85rem' }}>Track grades by exam. Visualize trends. Hit targets.</div>
       </div>
 
-      {/* Exam selector */}
       <div className="card" style={{ marginBottom: 14 }}>
         <div className="sec-label">Exam</div>
         <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
@@ -1029,7 +1127,6 @@ function MarksPage({ S, updateS, notify }) {
         )}
       </div>
 
-      {/* Add mark */}
       {selectedExam && (
         <div className="card" style={{ marginBottom: 14 }}>
           <div className="sec-label">Add Mark to {currentExam?.name}</div>
@@ -1075,7 +1172,6 @@ function MarksPage({ S, updateS, notify }) {
         </div>
       )}
 
-      {/* Charts */}
       {examGroups.length > 0 && (
         <div className="card" style={{ marginBottom: 14 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
@@ -1087,28 +1183,19 @@ function MarksPage({ S, updateS, notify }) {
           </div>
           {chartTab === 'bar' && (
             <>
-              <div style={{ fontSize: '0.72rem', color: 'var(--text3)', marginBottom: 10 }}>
-                Score (%) by subject across all exams
-              </div>
-              <div style={{ height: 280, position: 'relative' }}>
-                <canvas ref={barRef} />
-              </div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text3)', marginBottom: 10 }}>Score (%) by subject across all exams</div>
+              <div style={{ height: 280, position: 'relative' }}><canvas ref={barRef} /></div>
             </>
           )}
           {chartTab === 'radar' && (
             <>
-              <div style={{ fontSize: '0.72rem', color: 'var(--text3)', marginBottom: 10 }}>
-                Target vs achieved average per subject
-              </div>
-              <div style={{ height: 320, position: 'relative' }}>
-                <canvas ref={radarRef} />
-              </div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text3)', marginBottom: 10 }}>Target vs achieved average per subject</div>
+              <div style={{ height: 320, position: 'relative' }}><canvas ref={radarRef} /></div>
             </>
           )}
         </div>
       )}
 
-      {/* Subject targets for radar */}
       {examGroups.length > 0 && (
         <div className="card">
           <div className="sec-label">Subject Targets (%)</div>
@@ -1267,289 +1354,154 @@ function getLocalAIResponse(q, S) {
    SETTINGS PAGE
 ══════════════════════════════ */
 function SettingsPage({ S, updateS, dark, setDark, signOut, session, notify }) {
-  const [newSubject, setNewSubject] = useState('')
-  const [displayName, setDisplayName] = useState(session?.user?.user_metadata?.full_name || '')
-  const [activeSection, setActiveSection] = useState('account')
+  const s = S.settings || {}
 
-  const set = (key, val) => updateS(prev => ({ ...prev, settings: { ...prev.settings, [key]: val } }))
-  const toggle = (key) => set(key, !S.settings?.[key])
+  const toggle = (key) => updateS(prev => ({
+    ...prev,
+    settings: { ...prev.settings, [key]: !prev.settings[key] }
+  }))
 
-  const addSubject = () => {
-    if (!newSubject.trim()) return
-    if ((S.subjects || []).includes(newSubject.trim())) { notify('Subject already exists.'); return }
-    updateS(prev => ({ ...prev, subjects: [...(prev.subjects || []), newSubject.trim()] }))
-    setNewSubject('')
-    notify('Subject added.')
-  }
+  const setNum = (key, val) => updateS(prev => ({
+    ...prev,
+    settings: { ...prev.settings, [key]: +val }
+  }))
 
-  const exportData = () => {
-    const blob = new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' })
+  const exportICS = () => {
+    const sessions = S.sessions || []
+    const events = S.events || []
+    let ics = 'BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Kosmosic//StudyOS//EN\n'
+    sessions.forEach(sess => {
+      const date = sess.date.replace(/-/g, '')
+      ics += `BEGIN:VEVENT\nDTSTART;VALUE=DATE:${date}\nDTEND;VALUE=DATE:${date}\nSUMMARY:Study Session (${sess.mins}m)\nDESCRIPTION:${sess.mode} session · ${sess.subject || 'General'}\\nTotal: ${sess.mins} minutes\nEND:VEVENT\n`
+    })
+    events.forEach(evt => {
+      const date = evt.date.replace(/-/g, '')
+      ics += `BEGIN:VEVENT\nDTSTART;VALUE=DATE:${date}\nDTEND;VALUE=DATE:${date}\nSUMMARY:${evt.title}\nDESCRIPTION:${evt.note || ''}\nEND:VEVENT\n`
+    })
+    ics += 'END:VCALENDAR'
+    const blob = new Blob([ics], { type: 'text/calendar' })
     const url = URL.createObjectURL(blob)
-    const a = document.createElement('a'); a.href = url; a.download = 'kosmosic-data.json'; a.click()
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `kosmosic-calendar-${todayKey()}.ics`
+    a.click()
     URL.revokeObjectURL(url)
-    notify('Data exported.')
+    notify('Calendar exported.')
   }
-
-  const SECTIONS = [
-    { id: 'account', label: 'Account' },
-    { id: 'appearance', label: 'Appearance' },
-    { id: 'notifications', label: 'Notifications' },
-    { id: 'focus', label: 'Focus Session' },
-    { id: 'productivity', label: 'Productivity' },
-    { id: 'subjects', label: 'Subjects' },
-    { id: 'data', label: 'Data & Privacy' },
-    { id: 'danger', label: 'Danger Zone' },
-  ]
-
-  const Toggle = ({ skey, label, sub }) => (
-    <div className="toggle-wrap">
-      <div className="toggle-info">
-        <div className="toggle-name">{label}</div>
-        {sub && <div className="toggle-sub">{sub}</div>}
-      </div>
-      <div className={`toggle ${S.settings?.[skey] ? 'on' : ''}`} onClick={() => toggle(skey)} />
-    </div>
-  )
 
   return (
     <div>
       <div style={{ marginBottom: 20 }}>
         <div className="heading" style={{ marginBottom: 4 }}>Settings</div>
-        <div style={{ color: 'var(--text3)', fontSize: '0.85rem' }}>{session?.user?.email}</div>
+        <div style={{ color: 'var(--text3)', fontSize: '0.85rem' }}>Customize your study environment.</div>
       </div>
 
-      {/* Section Nav Pills */}
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 20 }}>
-        {SECTIONS.map(s => (
-          <button key={s.id} className={`chip ${activeSection === s.id ? 'active' : ''}`} onClick={() => setActiveSection(s.id)}>
-            {s.label}
-          </button>
+      <div className="card" style={{ marginBottom: 14 }}>
+        <div className="sec-label">Appearance</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
+          <span style={{ fontSize: '0.85rem', color: 'var(--text2)' }}>Dark Mode</span>
+          <button className={`chip ${dark ? 'active' : ''}`} onClick={() => setDark(d => !d)}>{dark ? 'On' : 'Off'}</button>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0' }}>
+          <span style={{ fontSize: '0.85rem', color: 'var(--text2)' }}>Animated Background</span>
+          <button className={`chip ${s.animatedBg ? 'active' : ''}`} onClick={() => toggle('animatedBg')}>{s.animatedBg ? 'On' : 'Off'}</button>
+        </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: 14 }}>
+        <div className="sec-label">Timer</div>
+        {[
+          ['sound', 'Sound Effects'],
+          ['sessionSounds', 'Session Sounds'],
+          ['autoBreak', 'Auto-start Breaks'],
+          ['autoNextSession', 'Auto-next Session'],
+          ['strictMode', 'Strict Mode (no pause)'],
+        ].map(([key, label], i) => (
+          <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: i < 4 ? '1px solid var(--border)' : 'none' }}>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text2)' }}>{label}</span>
+            <button className={`chip ${s[key] ? 'active' : ''}`} onClick={() => toggle(key)}>{s[key] ? 'On' : 'Off'}</button>
+          </div>
+        ))}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginTop: 10 }}>
+          <div>
+            <label className="form-label">Focus (min)</label>
+            <input type="number" value={s.focusSessionMins || 25} onChange={e => setNum('focusSessionMins', e.target.value)} />
+          </div>
+          <div>
+            <label className="form-label">Break (min)</label>
+            <input type="number" value={s.breakMins || 5} onChange={e => setNum('breakMins', e.target.value)} />
+          </div>
+          <div>
+            <label className="form-label">Long Break (min)</label>
+            <input type="number" value={s.longBreakMins || 15} onChange={e => setNum('longBreakMins', e.target.value)} />
+          </div>
+        </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: 14 }}>
+        <div className="sec-label">Notifications</div>
+        {[
+          ['studyReminders', 'Study Reminders'],
+          ['breakReminders', 'Break Reminders'],
+          ['goalReminder', 'Goal Reminder'],
+          ['streakNotif', 'Streak Notifications'],
+        ].map(([key, label], i) => (
+          <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: i < 3 ? '1px solid var(--border)' : 'none' }}>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text2)' }}>{label}</span>
+            <button className={`chip ${s[key] ? 'active' : ''}`} onClick={() => toggle(key)}>{s[key] ? 'On' : 'Off'}</button>
+          </div>
         ))}
       </div>
 
-      {/* ── ACCOUNT ── */}
-      {activeSection === 'account' && (
-        <div className="card settings-section">
-          <div className="settings-section-title">Account</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20, padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
-            <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent), var(--accent2))', display: 'grid', placeItems: 'center', fontSize: '1.4rem', fontWeight: 700, color: '#fff', border: '3px solid var(--border2)', flexShrink: 0 }}>
-              {(displayName || session?.user?.email || 'U')[0].toUpperCase()}
-            </div>
-            <div>
-              <div style={{ fontFamily: "'Anthropic Serif',Georgia,serif", fontWeight: 600, fontSize: '1rem', color: 'var(--text)' }}>{displayName || 'Your Name'}</div>
-              <div style={{ fontSize: '0.78rem', color: 'var(--text3)' }}>{session?.user?.email}</div>
-            </div>
+      <div className="card" style={{ marginBottom: 14 }}>
+        <div className="sec-label">Wellness</div>
+        {[
+          ['burnoutDetection', 'Burnout Detection'],
+          ['moodCheckins', 'Mood Check-ins'],
+          ['dopamineDetox', 'Dopamine Detox'],
+        ].map(([key, label], i) => (
+          <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: i < 2 ? '1px solid var(--border)' : 'none' }}>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text2)' }}>{label}</span>
+            <button className={`chip ${s[key] ? 'active' : ''}`} onClick={() => toggle(key)}>{s[key] ? 'On' : 'Off'}</button>
           </div>
-          <div className="form-group">
-            <label className="form-label">Display Name</label>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <input type="text" value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="Your name" />
-              <button className="btn btn-ghost btn-sm" onClick={async () => {
-                await supabase.auth.updateUser({ data: { full_name: displayName } })
-                notify('Name updated.')
-              }} style={{ flexShrink: 0 }}>Save</button>
-            </div>
-          </div>
-          <div className="form-group">
-            <label className="form-label">Email</label>
-            <input type="email" value={session?.user?.email || ''} disabled style={{ opacity: 0.5 }} />
-          </div>
-          <div style={{ display: 'flex', gap: 8, paddingTop: 8 }}>
-            <button className="btn btn-ghost btn-sm" onClick={signOut}>Sign Out</button>
-            <button className="btn btn-ghost btn-sm" onClick={async () => {
-              await supabase.auth.resetPasswordForEmail(session?.user?.email)
-              notify('Password reset email sent.')
-            }}>Change Password</button>
-          </div>
-        </div>
-      )}
+        ))}
+      </div>
 
-      {/* ── APPEARANCE ── */}
-      {activeSection === 'appearance' && (
-        <div className="card settings-section">
-          <div className="settings-section-title">Appearance</div>
-          <div style={{ marginBottom: 16 }}>
-            <label className="form-label">Theme</label>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {[['dark', 'Dark'], ['light', 'Light'], ['system', 'System']].map(([val, label]) => (
-                <button key={val} className={`chip ${(S.settings?.theme || 'dark') === val ? 'active' : ''}`}
-                  onClick={() => {
-                    set('theme', val)
-                    if (val !== 'system') { const isDark = val === 'dark'; setDark(isDark); set('darkMode', isDark) }
-                    else { const sys = window.matchMedia('(prefers-color-scheme: dark)').matches; setDark(sys); set('darkMode', sys) }
-                  }}>
-                  {label}
-                </button>
-              ))}
-            </div>
+      <div className="card" style={{ marginBottom: 14 }}>
+        <div className="sec-label">Privacy & Safety</div>
+        {[
+          ['detectInactivity', 'Detect Inactivity'],
+          ['warnQuit', 'Warn on Quit'],
+          ['pauseStreakExams', 'Pause Streak During Exams'],
+        ].map(([key, label], i) => (
+          <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: i < 2 ? '1px solid var(--border)' : 'none' }}>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text2)' }}>{label}</span>
+            <button className={`chip ${s[key] ? 'active' : ''}`} onClick={() => toggle(key)}>{s[key] ? 'On' : 'Off'}</button>
           </div>
-          <div className="divider" />
-          <Toggle skey="animatedBg" label="Animated Background" sub="Floating particles and gradient pulses" />
-          <Toggle skey="dopamineDetox" label="Dopamine Detox Mode" sub="Minimal UI — removes color accents and animations" />
-        </div>
-      )}
+        ))}
+      </div>
 
-      {/* ── NOTIFICATIONS ── */}
-      {activeSection === 'notifications' && (
-        <div className="card settings-section">
-          <div className="settings-section-title">Notifications</div>
-          <Toggle skey="studyReminders" label="Study Reminders" sub="Remind you to start your daily session" />
-          <div className="divider" />
-          <Toggle skey="breakReminders" label="Break Reminders" sub="Notify when it's time to take a break" />
-          <div className="divider" />
-          <Toggle skey="goalReminder" label="Daily Goal Reminder" sub="Alert when you haven't met today's goal" />
-          <div className="divider" />
-          <Toggle skey="streakNotif" label="Streak Notifications" sub="Warn when your streak is at risk" />
-          <div className="divider" />
-          <Toggle skey="sessionSounds" label="Session Sounds" sub="Play sounds at start and end of focus sessions" />
+      <div className="card" style={{ marginBottom: 14 }}>
+        <div className="sec-label">Data & Sync</div>
+        <div style={{ fontSize: '0.78rem', color: 'var(--text3)', marginBottom: 12, lineHeight: 1.5 }}>
+          Your streak, study time, days studied, and calendar events are automatically synced to the cloud every few seconds. 
+          You can also export your data or calendar for external use.
         </div>
-      )}
-
-      {/* ── FOCUS SESSION ── */}
-      {activeSection === 'focus' && (
-        <div className="card settings-section">
-          <div className="settings-section-title">Focus Session</div>
-          <div className="grid2" style={{ gap: 10, marginBottom: 14 }}>
-            <div className="form-group" style={{ margin: 0 }}>
-              <label className="form-label">Focus Session (min)</label>
-              <input type="number" min={5} max={180} value={S.settings?.focusSessionMins || 25}
-                onChange={e => set('focusSessionMins', +e.target.value)} />
-            </div>
-            <div className="form-group" style={{ margin: 0 }}>
-              <label className="form-label">Short Break (min)</label>
-              <input type="number" min={1} max={30} value={S.settings?.breakMins || 5}
-                onChange={e => set('breakMins', +e.target.value)} />
-            </div>
-            <div className="form-group" style={{ margin: 0 }}>
-              <label className="form-label">Long Break (min)</label>
-              <input type="number" min={5} max={60} value={S.settings?.longBreakMins || 15}
-                onChange={e => set('longBreakMins', +e.target.value)} />
-            </div>
-          </div>
-          <div className="divider" />
-          <Toggle skey="autoBreak" label="Auto-Start Breaks" sub="Automatically start break when focus ends" />
-          <div className="divider" />
-          <Toggle skey="autoNextSession" label="Auto-Start Next Session" sub="Loop automatically after break" />
-          <div className="divider" />
-          <Toggle skey="strictMode" label="Strict Mode" sub="Warn before quitting a session early" />
-          <div className="divider" />
-          <Toggle skey="warnQuit" label="Warn Before Quitting Focus" sub="Confirmation dialog when leaving mid-session" />
-          <div className="divider" />
-          <Toggle skey="detectInactivity" label="Detect Inactivity" sub="Pause timer if no input detected for 5 minutes" />
-          <div className="divider" />
-          <Toggle skey="pauseStreakExams" label="Pause Streaks During Exams" sub="Don't break your streak during exam periods" />
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button className="btn btn-ghost btn-sm" onClick={() => {
+            const dataStr = JSON.stringify(S, null, 2)
+            const blob = new Blob([dataStr], { type: 'application/json' })
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = `kosmosic-backup-${todayKey()}.json`
+            a.click()
+            URL.revokeObjectURL(url)
+            notify('Data exported.')
+          }}>Export JSON</button>
+          <button className="btn btn-ghost btn-sm" onClick={exportICS}>Export Calendar (.ics)</button>
+          <button className="btn btn-danger btn-sm" onClick={signOut}>Sign Out</button>
         </div>
-      )}
-
-      {/* ── PRODUCTIVITY ── */}
-      {activeSection === 'productivity' && (
-        <div className="card settings-section">
-          <div className="settings-section-title">Productivity Goals</div>
-          <div className="form-group">
-            <label className="form-label">Daily Goal (minutes)</label>
-            <input type="number" value={S.dailyGoal || 120} min={15} max={720}
-              onChange={e => updateS(prev => ({ ...prev, dailyGoal: +e.target.value }))} />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Weekly Target (minutes)</label>
-            <input type="number" value={S.weeklyGoal || 900} min={60} max={5040}
-              onChange={e => updateS(prev => ({ ...prev, weeklyGoal: +e.target.value }))} />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Target Score (%)</label>
-            <input type="number" value={S.targetPct || 98} min={50} max={100}
-              onChange={e => updateS(prev => ({ ...prev, targetPct: +e.target.value }))} />
-          </div>
-          <div className="divider" />
-          <Toggle skey="burnoutDetection" label="Burnout Detection" sub="Alert when study patterns suggest overload" />
-          <div className="divider" />
-          <Toggle skey="moodCheckins" label="Mood Check-ins" sub="Prompt for mood at start of each session" />
-        </div>
-      )}
-
-      {/* ── SUBJECTS ── */}
-      {activeSection === 'subjects' && (
-        <div className="card settings-section">
-          <div className="settings-section-title">Subjects</div>
-          <div style={{ marginBottom: 14 }}>
-            {(S.subjects || []).map(sub => (
-              <div key={sub} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text)' }}>{sub}</span>
-                <button className="btn btn-ghost btn-xs" style={{ color: 'var(--red)', borderColor: 'rgba(192,87,74,0.25)' }}
-                  onClick={() => updateS(prev => ({ ...prev, subjects: prev.subjects.filter(s => s !== sub) }))}>
-                  Remove
-                </button>
-              </div>
-            ))}
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input type="text" placeholder="Add subject..." value={newSubject}
-              onChange={e => setNewSubject(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && addSubject()} />
-            <button className="btn btn-primary btn-sm" onClick={addSubject} style={{ flexShrink: 0 }}>Add</button>
-          </div>
-        </div>
-      )}
-
-      {/* ── DATA ── */}
-      {activeSection === 'data' && (
-        <div className="card settings-section">
-          <div className="settings-section-title">Data & Privacy</div>
-          <div style={{ fontSize: '0.82rem', color: 'var(--text2)', lineHeight: 1.7, marginBottom: 16 }}>
-            All your data is stored in Supabase and synced across devices. You own your data — export or delete it at any time.
-          </div>
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
-            <button className="btn btn-ghost btn-sm" onClick={exportData}>⬇ Export Data (JSON)</button>
-          </div>
-          <div className="divider" />
-          <div style={{ fontSize: '0.78rem', color: 'var(--text3)', lineHeight: 1.6 }}>
-            <strong style={{ color: 'var(--text2)' }}>Supabase project:</strong> todzlszlihqzytihejiq.supabase.co<br />
-            <strong style={{ color: 'var(--text2)' }}>Data model:</strong> Single JSONB column, one row per user, full RLS protection.
-          </div>
-        </div>
-      )}
-
-      {/* ── DANGER ZONE ── */}
-      {activeSection === 'danger' && (
-        <div className="card" style={{ border: '1px solid rgba(192,87,74,0.25)' }}>
-          <div className="settings-section-title" style={{ color: 'var(--red)' }}>Danger Zone</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
-              <div>
-                <div style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--text)' }}>Reset All Data</div>
-                <div style={{ fontSize: '0.72rem', color: 'var(--text3)' }}>Wipe streaks, sessions, marks, diary entries</div>
-              </div>
-              <button className="btn btn-danger btn-sm" onClick={() => {
-                if (confirm('Reset ALL data? Streaks, sessions, marks, diary — everything. Cannot be undone.')) {
-                  updateS(defaultState()); notify('Data reset.')
-                }
-              }}>Reset</button>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
-              <div>
-                <div style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--text)' }}>Sign Out</div>
-                <div style={{ fontSize: '0.72rem', color: 'var(--text3)' }}>Sign out of this device</div>
-              </div>
-              <button className="btn btn-ghost btn-sm" onClick={signOut}>Sign Out</button>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0' }}>
-              <div>
-                <div style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--red)' }}>Delete Account</div>
-                <div style={{ fontSize: '0.72rem', color: 'var(--text3)' }}>Permanently delete your account and all data</div>
-              </div>
-              <button className="btn btn-danger btn-sm" onClick={() => {
-                if (confirm('Delete your account? This is permanent and cannot be undone.')) {
-                  notify('Contact support to complete account deletion.')
-                }
-              }}>Delete Account</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div style={{ marginTop: 20, textAlign: 'center' }}>
-        <div style={{ fontFamily: "'Anthropic Serif',Georgia,serif", color: 'var(--accent)', marginBottom: 4, fontSize: '0.9rem' }}>Kosmosic — Study OS</div>
-        <div style={{ fontSize: '0.68rem', color: 'var(--text3)' }}>Version 2.0 · Built for the relentless</div>
       </div>
     </div>
   )
