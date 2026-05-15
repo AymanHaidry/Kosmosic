@@ -51,12 +51,20 @@ const defaultState = () => ({
   aiHistory: [],
 })
 
-function notify(msg) {
+function sendBrowserNotif(title, body) {
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification(title, { body, icon: '/favicon.ico' })
+  }
+}
+
+function notify(msg, { browser = false, title = 'Kosmosic' } = {}) {
   const el = document.getElementById('kosm-notif')
-  if (!el) return
-  el.querySelector('.notif-msg').textContent = msg
-  el.classList.add('show')
-  setTimeout(() => el.classList.remove('show'), 3500)
+  if (el) {
+    el.querySelector('.notif-msg').textContent = msg
+    el.classList.add('show')
+    setTimeout(() => el.classList.remove('show'), 3500)
+  }
+  if (browser) sendBrowserNotif(title, msg)
 }
 
 function fmtTime(secs) {
@@ -135,6 +143,17 @@ export default function StudyOS({ session }) {
     loadCloudTimer()
   }, [session])
 
+  useEffect(() => {
+  if (!timerRunning && timerMode === 'focus') {
+    const mins = S.settings?.focusSessionMins || 25
+    const secs = mins * 60
+    setTimerTotal(secs)
+    setTimerSecs(secs)
+    saveCloudTimer({ timer_total: secs, timer_secs: secs, timer_mode: 'focus' })
+  }
+}, [S.settings?.focusSessionMins, timerMode, timerRunning])
+
+  
   const loadData = async () => {
     const { data, error } = await supabase
       .from('user_data')
@@ -563,7 +582,7 @@ export default function StudyOS({ session }) {
               </div>
             </div>
             <div className="chip-group">
-              {[['focus', '25m Focus', 25], ['short', '5m Break', 5], ['long', '15m Break', 15]].map(([m, label, mins]) => (
+              {[['focus', `${S.settings?.focusSessionMins || 25}m Focus`, S.settings?.focusSessionMins || 25], ['short', '5m Break', 5], ['long', '15m Break', 15]].map(([m, label, mins]) => (
                 <button key={m} className={`chip ${timerMode === m ? 'active' : ''}`} onClick={() => setMode(m, mins)}>{label}</button>
               ))}
               <button className={`chip ${timerMode === 'custom' ? 'active' : ''}`} onClick={() => setMode('custom', customMins)}>Custom</button>
@@ -850,19 +869,23 @@ function CalendarPage({ S, updateS, notify }) {
   }
 
   const markStudied = (dateKey) => {
-    updateS(prev => {
-      const studied = prev.studiedDays || []
-      const missed = prev.missedDays || []
-      if (studied.includes(dateKey)) {
-        return { ...prev, studiedDays: studied.filter(d => d !== dateKey), missedDays: [...missed, dateKey] }
-      } else if (missed.includes(dateKey)) {
-        return { ...prev, missedDays: missed.filter(d => d !== dateKey) }
-      } else {
-        const newStudied = [...studied, dateKey]
-        return { ...prev, studiedDays: newStudied, streak: calcStreak(newStudied), missedDays: missed.filter(d => d !== dateKey) }
-      }
-    })
-  }
+  updateS(prev => {
+    let studied = [...(prev.studiedDays || [])]
+    let missed = [...(prev.missedDays || [])]
+
+    if (studied.includes(dateKey)) {
+      studied = studied.filter(d => d !== dateKey)
+      if (!missed.includes(dateKey)) missed.push(dateKey)
+    } else if (missed.includes(dateKey)) {
+      missed = missed.filter(d => d !== dateKey)
+    } else {
+      if (!studied.includes(dateKey)) studied.push(dateKey)
+      missed = missed.filter(d => d !== dateKey)
+    }
+
+    return { ...prev, studiedDays: studied, missedDays: missed, streak: calcStreak(studied) }
+  })
+}
 
   return (
     <div>
