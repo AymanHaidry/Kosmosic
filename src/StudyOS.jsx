@@ -1354,154 +1354,289 @@ function getLocalAIResponse(q, S) {
    SETTINGS PAGE
 ══════════════════════════════ */
 function SettingsPage({ S, updateS, dark, setDark, signOut, session, notify }) {
-  const s = S.settings || {}
+  const [newSubject, setNewSubject] = useState('')
+  const [displayName, setDisplayName] = useState(session?.user?.user_metadata?.full_name || '')
+  const [activeSection, setActiveSection] = useState('account')
 
-  const toggle = (key) => updateS(prev => ({
-    ...prev,
-    settings: { ...prev.settings, [key]: !prev.settings[key] }
-  }))
+  const set = (key, val) => updateS(prev => ({ ...prev, settings: { ...prev.settings, [key]: val } }))
+  const toggle = (key) => set(key, !S.settings?.[key])
 
-  const setNum = (key, val) => updateS(prev => ({
-    ...prev,
-    settings: { ...prev.settings, [key]: +val }
-  }))
-
-  const exportICS = () => {
-    const sessions = S.sessions || []
-    const events = S.events || []
-    let ics = 'BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Kosmosic//StudyOS//EN\n'
-    sessions.forEach(sess => {
-      const date = sess.date.replace(/-/g, '')
-      ics += `BEGIN:VEVENT\nDTSTART;VALUE=DATE:${date}\nDTEND;VALUE=DATE:${date}\nSUMMARY:Study Session (${sess.mins}m)\nDESCRIPTION:${sess.mode} session · ${sess.subject || 'General'}\\nTotal: ${sess.mins} minutes\nEND:VEVENT\n`
-    })
-    events.forEach(evt => {
-      const date = evt.date.replace(/-/g, '')
-      ics += `BEGIN:VEVENT\nDTSTART;VALUE=DATE:${date}\nDTEND;VALUE=DATE:${date}\nSUMMARY:${evt.title}\nDESCRIPTION:${evt.note || ''}\nEND:VEVENT\n`
-    })
-    ics += 'END:VCALENDAR'
-    const blob = new Blob([ics], { type: 'text/calendar' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `kosmosic-calendar-${todayKey()}.ics`
-    a.click()
-    URL.revokeObjectURL(url)
-    notify('Calendar exported.')
+  const addSubject = () => {
+    if (!newSubject.trim()) return
+    if ((S.subjects || []).includes(newSubject.trim())) { notify('Subject already exists.'); return }
+    updateS(prev => ({ ...prev, subjects: [...(prev.subjects || []), newSubject.trim()] }))
+    setNewSubject('')
+    notify('Subject added.')
   }
+
+  const exportData = () => {
+    const blob = new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a'); a.href = url; a.download = 'kosmosic-data.json'; a.click()
+    URL.revokeObjectURL(url)
+    notify('Data exported.')
+  }
+
+  const SECTIONS = [
+    { id: 'account', label: 'Account' },
+    { id: 'appearance', label: 'Appearance' },
+    { id: 'notifications', label: 'Notifications' },
+    { id: 'focus', label: 'Focus Session' },
+    { id: 'productivity', label: 'Productivity' },
+    { id: 'subjects', label: 'Subjects' },
+    { id: 'data', label: 'Data & Privacy' },
+    { id: 'danger', label: 'Danger Zone' },
+  ]
+
+  const Toggle = ({ skey, label, sub }) => (
+    <div className="toggle-wrap">
+      <div className="toggle-info">
+        <div className="toggle-name">{label}</div>
+        {sub && <div className="toggle-sub">{sub}</div>}
+      </div>
+      <div className={`toggle ${S.settings?.[skey] ? 'on' : ''}`} onClick={() => toggle(skey)} />
+    </div>
+  )
 
   return (
     <div>
       <div style={{ marginBottom: 20 }}>
         <div className="heading" style={{ marginBottom: 4 }}>Settings</div>
-        <div style={{ color: 'var(--text3)', fontSize: '0.85rem' }}>Customize your study environment.</div>
+        <div style={{ color: 'var(--text3)', fontSize: '0.85rem' }}>{session?.user?.email}</div>
       </div>
 
-      <div className="card" style={{ marginBottom: 14 }}>
-        <div className="sec-label">Appearance</div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
-          <span style={{ fontSize: '0.85rem', color: 'var(--text2)' }}>Dark Mode</span>
-          <button className={`chip ${dark ? 'active' : ''}`} onClick={() => setDark(d => !d)}>{dark ? 'On' : 'Off'}</button>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0' }}>
-          <span style={{ fontSize: '0.85rem', color: 'var(--text2)' }}>Animated Background</span>
-          <button className={`chip ${s.animatedBg ? 'active' : ''}`} onClick={() => toggle('animatedBg')}>{s.animatedBg ? 'On' : 'Off'}</button>
-        </div>
-      </div>
-
-      <div className="card" style={{ marginBottom: 14 }}>
-        <div className="sec-label">Timer</div>
-        {[
-          ['sound', 'Sound Effects'],
-          ['sessionSounds', 'Session Sounds'],
-          ['autoBreak', 'Auto-start Breaks'],
-          ['autoNextSession', 'Auto-next Session'],
-          ['strictMode', 'Strict Mode (no pause)'],
-        ].map(([key, label], i) => (
-          <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: i < 4 ? '1px solid var(--border)' : 'none' }}>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text2)' }}>{label}</span>
-            <button className={`chip ${s[key] ? 'active' : ''}`} onClick={() => toggle(key)}>{s[key] ? 'On' : 'Off'}</button>
-          </div>
-        ))}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginTop: 10 }}>
-          <div>
-            <label className="form-label">Focus (min)</label>
-            <input type="number" value={s.focusSessionMins || 25} onChange={e => setNum('focusSessionMins', e.target.value)} />
-          </div>
-          <div>
-            <label className="form-label">Break (min)</label>
-            <input type="number" value={s.breakMins || 5} onChange={e => setNum('breakMins', e.target.value)} />
-          </div>
-          <div>
-            <label className="form-label">Long Break (min)</label>
-            <input type="number" value={s.longBreakMins || 15} onChange={e => setNum('longBreakMins', e.target.value)} />
-          </div>
-        </div>
-      </div>
-
-      <div className="card" style={{ marginBottom: 14 }}>
-        <div className="sec-label">Notifications</div>
-        {[
-          ['studyReminders', 'Study Reminders'],
-          ['breakReminders', 'Break Reminders'],
-          ['goalReminder', 'Goal Reminder'],
-          ['streakNotif', 'Streak Notifications'],
-        ].map(([key, label], i) => (
-          <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: i < 3 ? '1px solid var(--border)' : 'none' }}>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text2)' }}>{label}</span>
-            <button className={`chip ${s[key] ? 'active' : ''}`} onClick={() => toggle(key)}>{s[key] ? 'On' : 'Off'}</button>
-          </div>
+      {/* Section Nav Pills */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 20 }}>
+        {SECTIONS.map(s => (
+          <button key={s.id} className={`chip ${activeSection === s.id ? 'active' : ''}`} onClick={() => setActiveSection(s.id)}>
+            {s.label}
+          </button>
         ))}
       </div>
 
-      <div className="card" style={{ marginBottom: 14 }}>
-        <div className="sec-label">Wellness</div>
-        {[
-          ['burnoutDetection', 'Burnout Detection'],
-          ['moodCheckins', 'Mood Check-ins'],
-          ['dopamineDetox', 'Dopamine Detox'],
-        ].map(([key, label], i) => (
-          <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: i < 2 ? '1px solid var(--border)' : 'none' }}>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text2)' }}>{label}</span>
-            <button className={`chip ${s[key] ? 'active' : ''}`} onClick={() => toggle(key)}>{s[key] ? 'On' : 'Off'}</button>
+      {/* ── ACCOUNT ── */}
+      {activeSection === 'account' && (
+        <div className="card settings-section">
+          <div className="settings-section-title">Account</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20, padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+            <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent), var(--accent2))', display: 'grid', placeItems: 'center', fontSize: '1.4rem', fontWeight: 700, color: '#fff', border: '3px solid var(--border2)', flexShrink: 0 }}>
+              {(displayName || session?.user?.email || 'U')[0].toUpperCase()}
+            </div>
+            <div>
+              <div style={{ fontFamily: "'Anthropic Serif',Georgia,serif", fontWeight: 600, fontSize: '1rem', color: 'var(--text)' }}>{displayName || 'Your Name'}</div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text3)' }}>{session?.user?.email}</div>
+            </div>
           </div>
-        ))}
-      </div>
-
-      <div className="card" style={{ marginBottom: 14 }}>
-        <div className="sec-label">Privacy & Safety</div>
-        {[
-          ['detectInactivity', 'Detect Inactivity'],
-          ['warnQuit', 'Warn on Quit'],
-          ['pauseStreakExams', 'Pause Streak During Exams'],
-        ].map(([key, label], i) => (
-          <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: i < 2 ? '1px solid var(--border)' : 'none' }}>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text2)' }}>{label}</span>
-            <button className={`chip ${s[key] ? 'active' : ''}`} onClick={() => toggle(key)}>{s[key] ? 'On' : 'Off'}</button>
+          <div className="form-group">
+            <label className="form-label">Display Name</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input type="text" value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="Your name" />
+              <button className="btn btn-ghost btn-sm" onClick={async () => {
+                await supabase.auth.updateUser({ data: { full_name: displayName } })
+                notify('Name updated.')
+              }} style={{ flexShrink: 0 }}>Save</button>
+            </div>
           </div>
-        ))}
-      </div>
+          <div className="form-group">
+            <label className="form-label">Email</label>
+            <input type="email" value={session?.user?.email || ''} disabled style={{ opacity: 0.5 }} />
+          </div>
+          <div style={{ display: 'flex', gap: 8, paddingTop: 8 }}>
+            <button className="btn btn-ghost btn-sm" onClick={signOut}>Sign Out</button>
+            <button className="btn btn-ghost btn-sm" onClick={async () => {
+              await supabase.auth.resetPasswordForEmail(session?.user?.email)
+              notify('Password reset email sent.')
+            }}>Change Password</button>
+          </div>
+        </div>
+      )}
 
-      <div className="card" style={{ marginBottom: 14 }}>
-        <div className="sec-label">Data & Sync</div>
-        <div style={{ fontSize: '0.78rem', color: 'var(--text3)', marginBottom: 12, lineHeight: 1.5 }}>
-          Your streak, study time, days studied, and calendar events are automatically synced to the cloud every few seconds. 
-          You can also export your data or calendar for external use.
+      {/* ── APPEARANCE ── */}
+      {activeSection === 'appearance' && (
+        <div className="card settings-section">
+          <div className="settings-section-title">Appearance</div>
+          <div style={{ marginBottom: 16 }}>
+            <label className="form-label">Theme</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {[['dark', 'Dark'], ['light', 'Light'], ['system', 'System']].map(([val, label]) => (
+                <button key={val} className={`chip ${(S.settings?.theme || 'dark') === val ? 'active' : ''}`}
+                  onClick={() => {
+                    set('theme', val)
+                    if (val !== 'system') { const isDark = val === 'dark'; setDark(isDark); set('darkMode', isDark) }
+                    else { const sys = window.matchMedia('(prefers-color-scheme: dark)').matches; setDark(sys); set('darkMode', sys) }
+                  }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="divider" />
+          <Toggle skey="animatedBg" label="Animated Background" sub="Floating particles and gradient pulses" />
+          <Toggle skey="dopamineDetox" label="Dopamine Detox Mode" sub="Minimal UI — removes color accents and animations" />
         </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button className="btn btn-ghost btn-sm" onClick={() => {
-            const dataStr = JSON.stringify(S, null, 2)
-            const blob = new Blob([dataStr], { type: 'application/json' })
-            const url = URL.createObjectURL(blob)
-            const a = document.createElement('a')
-            a.href = url
-            a.download = `kosmosic-backup-${todayKey()}.json`
-            a.click()
-            URL.revokeObjectURL(url)
-            notify('Data exported.')
-          }}>Export JSON</button>
-          <button className="btn btn-ghost btn-sm" onClick={exportICS}>Export Calendar (.ics)</button>
-          <button className="btn btn-danger btn-sm" onClick={signOut}>Sign Out</button>
+      )}
+
+      {/* ── NOTIFICATIONS ── */}
+      {activeSection === 'notifications' && (
+        <div className="card settings-section">
+          <div className="settings-section-title">Notifications</div>
+          <Toggle skey="studyReminders" label="Study Reminders" sub="Remind you to start your daily session" />
+          <div className="divider" />
+          <Toggle skey="breakReminders" label="Break Reminders" sub="Notify when it's time to take a break" />
+          <div className="divider" />
+          <Toggle skey="goalReminder" label="Daily Goal Reminder" sub="Alert when you haven't met today's goal" />
+          <div className="divider" />
+          <Toggle skey="streakNotif" label="Streak Notifications" sub="Warn when your streak is at risk" />
+          <div className="divider" />
+          <Toggle skey="sessionSounds" label="Session Sounds" sub="Play sounds at start and end of focus sessions" />
         </div>
+      )}
+
+      {/* ── FOCUS SESSION ── */}
+      {activeSection === 'focus' && (
+        <div className="card settings-section">
+          <div className="settings-section-title">Focus Session</div>
+          <div className="grid2" style={{ gap: 10, marginBottom: 14 }}>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label className="form-label">Focus Session (min)</label>
+              <input type="number" min={5} max={180} value={S.settings?.focusSessionMins || 25}
+                onChange={e => set('focusSessionMins', +e.target.value)} />
+            </div>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label className="form-label">Short Break (min)</label>
+              <input type="number" min={1} max={30} value={S.settings?.breakMins || 5}
+                onChange={e => set('breakMins', +e.target.value)} />
+            </div>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label className="form-label">Long Break (min)</label>
+              <input type="number" min={5} max={60} value={S.settings?.longBreakMins || 15}
+                onChange={e => set('longBreakMins', +e.target.value)} />
+            </div>
+          </div>
+          <div className="divider" />
+          <Toggle skey="autoBreak" label="Auto-Start Breaks" sub="Automatically start break when focus ends" />
+          <div className="divider" />
+          <Toggle skey="autoNextSession" label="Auto-Start Next Session" sub="Loop automatically after break" />
+          <div className="divider" />
+          <Toggle skey="strictMode" label="Strict Mode" sub="Warn before quitting a session early" />
+          <div className="divider" />
+          <Toggle skey="warnQuit" label="Warn Before Quitting Focus" sub="Confirmation dialog when leaving mid-session" />
+          <div className="divider" />
+          <Toggle skey="detectInactivity" label="Detect Inactivity" sub="Pause timer if no input detected for 5 minutes" />
+          <div className="divider" />
+          <Toggle skey="pauseStreakExams" label="Pause Streaks During Exams" sub="Don't break your streak during exam periods" />
+        </div>
+      )}
+
+      {/* ── PRODUCTIVITY ── */}
+      {activeSection === 'productivity' && (
+        <div className="card settings-section">
+          <div className="settings-section-title">Productivity Goals</div>
+          <div className="form-group">
+            <label className="form-label">Daily Goal (minutes)</label>
+            <input type="number" value={S.dailyGoal || 120} min={15} max={720}
+              onChange={e => updateS(prev => ({ ...prev, dailyGoal: +e.target.value }))} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Weekly Target (minutes)</label>
+            <input type="number" value={S.weeklyGoal || 900} min={60} max={5040}
+              onChange={e => updateS(prev => ({ ...prev, weeklyGoal: +e.target.value }))} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Target Score (%)</label>
+            <input type="number" value={S.targetPct || 98} min={50} max={100}
+              onChange={e => updateS(prev => ({ ...prev, targetPct: +e.target.value }))} />
+          </div>
+          <div className="divider" />
+          <Toggle skey="burnoutDetection" label="Burnout Detection" sub="Alert when study patterns suggest overload" />
+          <div className="divider" />
+          <Toggle skey="moodCheckins" label="Mood Check-ins" sub="Prompt for mood at start of each session" />
+        </div>
+      )}
+
+      {/* ── SUBJECTS ── */}
+      {activeSection === 'subjects' && (
+        <div className="card settings-section">
+          <div className="settings-section-title">Subjects</div>
+          <div style={{ marginBottom: 14 }}>
+            {(S.subjects || []).map(sub => (
+              <div key={sub} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text)' }}>{sub}</span>
+                <button className="btn btn-ghost btn-xs" style={{ color: 'var(--red)', borderColor: 'rgba(192,87,74,0.25)' }}
+                  onClick={() => updateS(prev => ({ ...prev, subjects: prev.subjects.filter(s => s !== sub) }))}>
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input type="text" placeholder="Add subject..." value={newSubject}
+              onChange={e => setNewSubject(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && addSubject()} />
+            <button className="btn btn-primary btn-sm" onClick={addSubject} style={{ flexShrink: 0 }}>Add</button>
+          </div>
+        </div>
+      )}
+
+      {/* ── DATA ── */}
+      {activeSection === 'data' && (
+        <div className="card settings-section">
+          <div className="settings-section-title">Data & Privacy</div>
+          <div style={{ fontSize: '0.82rem', color: 'var(--text2)', lineHeight: 1.7, marginBottom: 16 }}>
+            All your data is stored in Supabase and synced across devices. You own your data — export or delete it at any time.
+          </div>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
+            <button className="btn btn-ghost btn-sm" onClick={exportData}>⬇ Export Data (JSON)</button>
+          </div>
+          <div className="divider" />
+          <div style={{ fontSize: '0.78rem', color: 'var(--text3)', lineHeight: 1.6 }}>
+            <strong style={{ color: 'var(--text2)' }}>Supabase project:</strong> todzlszlihqzytihejiq.supabase.co<br />
+            <strong style={{ color: 'var(--text2)' }}>Data model:</strong> Single JSONB column, one row per user, full RLS protection.
+          </div>
+        </div>
+      )}
+
+      {/* ── DANGER ZONE ── */}
+      {activeSection === 'danger' && (
+        <div className="card" style={{ border: '1px solid rgba(192,87,74,0.25)' }}>
+          <div className="settings-section-title" style={{ color: 'var(--red)' }}>Danger Zone</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+              <div>
+                <div style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--text)' }}>Reset All Data</div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text3)' }}>Wipe streaks, sessions, marks, diary entries</div>
+              </div>
+              <button className="btn btn-danger btn-sm" onClick={() => {
+                if (confirm('Reset ALL data? Streaks, sessions, marks, diary — everything. Cannot be undone.')) {
+                  updateS(defaultState()); notify('Data reset.')
+                }
+              }}>Reset</button>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+              <div>
+                <div style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--text)' }}>Sign Out</div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text3)' }}>Sign out of this device</div>
+              </div>
+              <button className="btn btn-ghost btn-sm" onClick={signOut}>Sign Out</button>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0' }}>
+              <div>
+                <div style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--red)' }}>Delete Account</div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text3)' }}>Permanently delete your account and all data</div>
+              </div>
+              <button className="btn btn-danger btn-sm" onClick={() => {
+                if (confirm('Delete your account? This is permanent and cannot be undone.')) {
+                  notify('Contact support to complete account deletion.')
+                }
+              }}>Delete Account</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div style={{ marginTop: 20, textAlign: 'center' }}>
+        <div style={{ fontFamily: "'Anthropic Serif',Georgia,serif", color: 'var(--accent)', marginBottom: 4, fontSize: '0.9rem' }}>Kosmosic — Study OS</div>
+        <div style={{ fontSize: '0.68rem', color: 'var(--text3)' }}>Version 2.0 · Built for the relentless</div>
       </div>
     </div>
   )
