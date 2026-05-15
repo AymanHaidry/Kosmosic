@@ -117,8 +117,7 @@ export default function StudyOS({ session }) {
   const [timerReady, setTimerReady] = useState(false)
   const timerRef = useRef(null)
   const segmentStartRef = useRef(null)
-    const segmentStartRef = useRef(null)
-  const timerStartRef = useRef(null)
+   const timerStartRef = useRef(null)
   const activeSubjectRef = useRef(S.activeSubject || 'General')
 
   useEffect(() => {
