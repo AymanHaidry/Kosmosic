@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { supabase } from './supabase.js'
 
 /* ─── helpers ─── */
@@ -8,54 +8,34 @@ const hashString = (str) => {
   return Math.abs(h >>> 0)
 }
 
-/* ─── shape catalog per tier ─── */
+/* ─── reduced shape catalog: best 2 per tier ─── */
 const SHAPE_CATALOG = {
   1: [
-    { h: 3, w: 22, floors: 1, wp: 2, roof: 'peak',  name: 'Cottage' },
-    { h: 3, w: 30, floors: 1, wp: 3, roof: 'flat',  name: 'Bungalow' },
-    { h: 4, w: 18, floors: 2, wp: 2, roof: 'none',  name: 'Micro-tower' },
-    { h: 2, w: 34, floors: 1, wp: 4, roof: 'flat',  name: 'Garage' },
-    { h: 3, w: 26, floors: 1, wp: 2, roof: 'dome',  name: 'Pod' },
-    { h: 4, w: 20, floors: 2, wp: 2, roof: 'slant', name: 'Shed' },
+    { h: 3, w: 24, floors: 1, wp: 2, roof: 'peak',  name: 'Cottage' },
     { h: 3, w: 28, floors: 1, wp: 3, roof: 'flat',  name: 'Loft' },
-    { h: 5, w: 16, floors: 2, wp: 1, roof: 'spire', name: 'Pencil-studio' },
   ],
   2: [
-    { h: 5, w: 32, floors: 2, wp: 3, roof: 'flat',  name: 'Walk-up' },
     { h: 6, w: 38, floors: 2, wp: 4, roof: 'peak',  name: 'Townhouse' },
-    { h: 5, w: 28, floors: 2, wp: 2, roof: 'none',  name: 'Brownstone' },
     { h: 7, w: 30, floors: 3, wp: 3, roof: 'flat',  name: 'Triplex' },
-    { h: 6, w: 36, floors: 2, wp: 4, roof: 'dome',  name: 'Mansionette' },
-    { h: 8, w: 26, floors: 3, wp: 2, roof: 'none',  name: 'Stacked' },
   ],
   3: [
-    { h: 8,  w: 40, floors: 3, wp: 4, roof: 'none',   name: 'Block' },
-    { h: 9,  w: 36, floors: 4, wp: 3, roof: 'setback',name: 'Stepped' },
-    { h: 8,  w: 44, floors: 3, wp: 5, roof: 'none',   name: 'Wide' },
-    { h: 10, w: 32, floors: 4, wp: 3, roof: 'none',   name: 'Slim' },
-    { h: 9,  w: 38, floors: 3, wp: 4, roof: 'peak',   name: 'Clock-tower' },
+    { h: 9, w: 38, floors: 3, wp: 4, roof: 'peak',   name: 'Clock-tower' },
+    { h: 9, w: 36, floors: 4, wp: 3, roof: 'setback', name: 'Stepped' },
   ],
   4: [
-    { h: 12, w: 50, floors: 5, wp: 5, roof: 'none',    name: 'Glass Box' },
     { h: 14, w: 46, floors: 6, wp: 4, roof: 'setback', name: 'Ziggurat' },
-    { h: 13, w: 52, floors: 5, wp: 5, roof: 'none',    name: 'Corporate' },
     { h: 12, w: 42, floors: 5, wp: 4, roof: 'spire',   name: 'Needle' },
-    { h: 15, w: 48, floors: 6, wp: 5, roof: 'none',    name: 'Tower' },
   ],
   5: [
-    { h: 16, w: 60, floors: 7, wp: 6, roof: 'none',    name: 'Terrace' },
-    { h: 17, w: 56, floors: 7, wp: 5, roof: 'setback', name: 'Cascade' },
-    { h: 16, w: 62, floors: 6, wp: 6, roof: 'none',    name: 'Estate' },
-    { h: 18, w: 54, floors: 8, wp: 5, roof: 'spire',   name: 'Spire-top' },
     { h: 17, w: 58, floors: 7, wp: 6, roof: 'dome',    name: 'Observatory' },
+    { h: 17, w: 56, floors: 7, wp: 5, roof: 'setback', name: 'Cascade' },
   ],
   6: [
-    { h: 20, w: 70, floors: 9, wp: 7, roof: 'none',  name: 'Monolith' },
-    { h: 22, w: 64, floors: 10, wp: 6, roof: 'spire',name: 'Shard' },
-    { h: 21, w: 68, floors: 9, wp: 7, roof: 'none',  name: 'Mega-block' },
-    { h: 23, w: 60, floors: 11, wp: 5, roof: 'spire',name: 'Pinnacle' },
+    { h: 22, w: 64, floors: 10, wp: 6, roof: 'spire', name: 'Shard' },
+    { h: 20, w: 70, floors: 9,  wp: 7, roof: 'none',  name: 'Monolith' },
   ],
 }
+
 const getBuildingSpec = (hours, streak, userId = '') => {
   const tier = Math.min(6, Math.floor(Math.log2(Math.max(hours + 1, 1))))
   const catalog = SHAPE_CATALOG[tier] || SHAPE_CATALOG[1]
@@ -98,19 +78,11 @@ const getTier = (hours) => {
 }
 
 /* ─── weather helpers ─── */
-const PHASES = {
-  NIGHT: 'night',
-  DAWN: 'dawn',
-  DAY: 'day',
-  EVENING: 'evening',
-}
+const PHASES = { NIGHT: 'night', DAWN: 'dawn', DAY: 'day', EVENING: 'evening' }
 
 function getPhase(now, sunrise, sunset) {
-  const t = now.getTime()
-  const sr = sunrise.getTime()
-  const ss = sunset.getTime()
-  const dawnLen = 30 * 60 * 1000
-  const eveLen = 40 * 60 * 1000
+  const t = now.getTime(), sr = sunrise.getTime(), ss = sunset.getTime()
+  const dawnLen = 30 * 60 * 1000, eveLen = 40 * 60 * 1000
   if (t < sr - dawnLen) return PHASES.NIGHT
   if (t < sr + dawnLen) return PHASES.DAWN
   if (t < ss - eveLen) return PHASES.DAY
@@ -121,53 +93,27 @@ function getPhase(now, sunrise, sunset) {
 function getSkyGradient(phase, weather) {
   const w = weather
   if (w.snow) {
-    if (phase === PHASES.NIGHT)  return 'linear-gradient(180deg, #060a10 0%, #0c1218 60%, #111820 100%)'
-    if (phase === PHASES.DAWN)   return 'linear-gradient(180deg, #1a2028 0%, #2a3540 50%, #3a4858 100%)'
-    if (phase === PHASES.EVENING)return 'linear-gradient(180deg, #1e2830 0%, #2a3845 50%, #3a4a5a 100%)'
+    if (phase === PHASES.NIGHT)   return 'linear-gradient(180deg, #060a10 0%, #0c1218 60%, #111820 100%)'
+    if (phase === PHASES.DAWN)    return 'linear-gradient(180deg, #1a2028 0%, #2a3540 50%, #3a4858 100%)'
+    if (phase === PHASES.EVENING) return 'linear-gradient(180deg, #1e2830 0%, #2a3845 50%, #3a4a5a 100%)'
     return 'linear-gradient(180deg, #8aa0b0 0%, #a0b8c8 40%, #c0d8e8 100%)'
   }
   if (w.rain || w.heavyRain) {
-    if (phase === PHASES.NIGHT)  return 'linear-gradient(180deg, #050810 0%, #0a1018 60%, #0e1620 100%)'
-    if (phase === PHASES.DAWN)   return 'linear-gradient(180deg, #1a1e28 0%, #252a38 60%, #303848 100%)'
-    if (phase === PHASES.EVENING)return 'linear-gradient(180deg, #1a1a28 0%, #252038 50%, #302848 100%)'
+    if (phase === PHASES.NIGHT)   return 'linear-gradient(180deg, #050810 0%, #0a1018 60%, #0e1620 100%)'
+    if (phase === PHASES.DAWN)    return 'linear-gradient(180deg, #1a1e28 0%, #252a38 60%, #303848 100%)'
+    if (phase === PHASES.EVENING) return 'linear-gradient(180deg, #1a1a28 0%, #252038 50%, #302848 100%)'
     return 'linear-gradient(180deg, #4a5568 0%, #5a6a80 40%, #6a8098 100%)'
   }
   if (w.cloudy) {
-    if (phase === PHASES.NIGHT)  return 'linear-gradient(180deg, #080c14 0%, #0e1420 60%, #121a28 100%)'
-    if (phase === PHASES.DAWN)   return 'linear-gradient(180deg, #2a2030 0%, #3a3048 50%, #4a4060 100%)'
-    if (phase === PHASES.EVENING)return 'linear-gradient(180deg, #2a1e28 0%, #3a2838 50%, #4a3848 100%)'
+    if (phase === PHASES.NIGHT)   return 'linear-gradient(180deg, #080c14 0%, #0e1420 60%, #121a28 100%)'
+    if (phase === PHASES.DAWN)    return 'linear-gradient(180deg, #2a2030 0%, #3a3048 50%, #4a4060 100%)'
+    if (phase === PHASES.EVENING) return 'linear-gradient(180deg, #2a1e28 0%, #3a2838 50%, #4a3848 100%)'
     return 'linear-gradient(180deg, #5a6880 0%, #6a8098 40%, #8aa0b8 100%)'
   }
-  // clear
-  if (phase === PHASES.NIGHT)  return 'linear-gradient(180deg, #02010a 0%, #080618 40%, #0c0b18 100%)'
-  if (phase === PHASES.DAWN)   return 'linear-gradient(180deg, #1a0c2e 0%, #3a1e48 40%, #6a3a58 100%)'
-  if (phase === PHASES.EVENING)return 'linear-gradient(180deg, #1e0a28 0%, #4a1e38 30%, #8a3a28 70%, #c45a18 100%)'
+  if (phase === PHASES.NIGHT)   return 'linear-gradient(180deg, #02010a 0%, #080618 40%, #0c0b18 100%)'
+  if (phase === PHASES.DAWN)    return 'linear-gradient(180deg, #1a0c2e 0%, #3a1e48 40%, #6a3a58 100%)'
+  if (phase === PHASES.EVENING) return 'linear-gradient(180deg, #1e0a28 0%, #4a1e38 30%, #8a3a28 70%, #c45a18 100%)'
   return 'linear-gradient(180deg, #0c4a8e 0%, #1e6ab0 30%, #4a9ad8 70%, #8ac8f0 100%)'
-}
-
-function getSunMoonStyle(phase, weather) {
-  if (phase === PHASES.NIGHT || phase === PHASES.DAWN) {
-    return {
-      type: 'moon',
-      size: 28,
-      bg: 'radial-gradient(circle at 35% 35%, #e8dfc8, #c4b896)',
-      glow: weather.rain ? '0 0 16px rgba(232,223,200,0.1)' : '0 0 24px rgba(232,223,200,0.2)',
-    }
-  }
-  if (phase === PHASES.EVENING) {
-    return {
-      type: 'sun',
-      size: 36,
-      bg: 'radial-gradient(circle, #ff9f43, #ff6b35)',
-      glow: '0 0 40px rgba(255,120,50,0.4)',
-    }
-  }
-  return {
-    type: 'sun',
-    size: 40,
-    bg: 'radial-gradient(circle, #fff3b0, #ffd700)',
-    glow: weather.cloudy ? '0 0 30px rgba(255,200,50,0.2)' : '0 0 50px rgba(255,200,50,0.5)',
-  }
 }
 
 function getWeatherCondition(data) {
@@ -180,6 +126,29 @@ function getWeatherCondition(data) {
   if (p > 0.1 || r > 0.1) return { snow: false, rain: true, heavyRain: false, cloudy: true, label: 'Rain' }
   if (c > 70) return { snow: false, rain: false, heavyRain: false, cloudy: true, label: 'Cloudy' }
   return { snow: false, rain: false, heavyRain: false, cloudy: false, label: 'Clear' }
+}
+
+/* ─── celestial positioning ─── */
+function getSunPosition(now, sunrise, sunset) {
+  const t = now.getTime(), sr = sunrise.getTime(), ss = sunset.getTime()
+  if (t < sr || t > ss) return null
+  const progress = (t - sr) / (ss - sr)
+  const x = 6 + progress * 88
+  const y = 68 - 58 * Math.sin(progress * Math.PI)
+  return { x, y }
+}
+
+function getMoonPosition(now, sunrise, sunset) {
+  const t = now.getTime(), sr = sunrise.getTime(), ss = sunset.getTime()
+  const dayLen = ss - sr
+  const nightLen = 24 * 60 * 60 * 1000 - dayLen
+  let prog
+  if (t > ss) prog = (t - ss) / nightLen
+  else if (t < sr) prog = 0.5 + (t - (ss - 24 * 60 * 60 * 1000)) / nightLen
+  else return null
+  const x = 6 + (prog % 1) * 88
+  const y = 14 + 22 * Math.sin((prog % 1) * Math.PI)
+  return { x, y }
 }
 
 /* ─── SQL SCHEMA ─── */
@@ -203,10 +172,16 @@ alter table city_profiles enable row level security;
 create policy "Readable by authenticated" on city_profiles for select using (auth.role() = 'authenticated');
 create policy "Users manage own profile" on city_profiles for all using (auth.uid() = user_id);`
 
+/* ─── constants ─── */
+const ROAD_H = 52
+const SIDEWALK_H = 12
+const GROUND_Y = ROAD_H + SIDEWALK_H // 64
+
 /* ─── single building component ─── */
 function Building({ user, spec, x, isMe, onClick, studying, mode, animOffset, weather }) {
   const { height, width, floors, windowsPerFloor, level, style, roof, seed } = spec
   const pxH = height * 18
+  const isDark = weather.phase === PHASES.NIGHT || weather.phase === PHASES.EVENING
 
   const getBuildingBg = () => {
     if (style === 'cyberpunk') return 'linear-gradient(180deg, #0a0818 0%, #12102a 100%)'
@@ -239,8 +214,8 @@ function Building({ user, spec, x, isMe, onClick, studying, mode, animOffset, we
         <div style={{
           position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)',
           width: 0, height: 0,
-          borderLeft: `${width * 0.18}px solid transparent`,
-          borderRight: `${width * 0.18}px solid transparent`,
+          borderLeft: `${width * 0.2}px solid transparent`,
+          borderRight: `${width * 0.2}px solid transparent`,
           borderBottom: `10px solid ${bColor}`,
           opacity: 0.6,
         }} />
@@ -249,8 +224,8 @@ function Building({ user, spec, x, isMe, onClick, studying, mode, animOffset, we
     if (roof === 'dome') {
       return (
         <div style={{
-          position: 'absolute', top: -8, left: '50%', transform: 'translateX(-50%)',
-          width: width * 0.5, height: 8,
+          position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)',
+          width: width * 0.55, height: 10,
           background: bColor, opacity: 0.5,
           borderRadius: '50% 50% 0 0',
         }} />
@@ -268,8 +243,8 @@ function Building({ user, spec, x, isMe, onClick, studying, mode, animOffset, we
     if (roof === 'spire') {
       return (
         <div style={{
-          position: 'absolute', top: -20, left: '50%', transform: 'translateX(-50%)',
-          width: 2, height: 20,
+          position: 'absolute', top: -22, left: '50%', transform: 'translateX(-50%)',
+          width: 2, height: 22,
           background: isMe ? '#d4a853' : style === 'cyberpunk' ? 'rgba(100,80,255,0.8)' : 'rgba(255,251,240,0.3)',
           boxShadow: isMe ? '0 0 8px rgba(212,168,83,0.6)' : 'none',
         }} />
@@ -278,8 +253,8 @@ function Building({ user, spec, x, isMe, onClick, studying, mode, animOffset, we
     if (roof === 'setback') {
       return (
         <div style={{
-          position: 'absolute', top: -4, left: '10%',
-          width: '80%', height: 4,
+          position: 'absolute', top: -6, left: '10%',
+          width: '80%', height: 6,
           background: bColor, opacity: 0.35,
           borderRadius: '2px 2px 0 0',
         }} />
@@ -292,7 +267,7 @@ function Building({ user, spec, x, isMe, onClick, studying, mode, animOffset, we
     <div
       onClick={onClick}
       style={{
-        position: 'absolute', bottom: 40, left: x,
+        position: 'absolute', bottom: GROUND_Y, left: x,
         width, height: pxH,
         background: getBuildingBg(),
         border: `1px solid ${bColor}`,
@@ -301,10 +276,22 @@ function Building({ user, spec, x, isMe, onClick, studying, mode, animOffset, we
         boxShadow: getGlow(),
         cursor: 'pointer',
         transition: 'box-shadow 0.5s ease',
-        overflow: 'hidden',
+        overflow: 'visible',
         zIndex: isMe ? 10 : 5,
       }}
     >
+      {/* Roof snow cap */}
+      {weather.snow && roof !== 'none' && (
+        <div style={{
+          position: 'absolute',
+          top: roof === 'peak' ? -12 : roof === 'dome' ? -12 : -6,
+          left: -2, right: -2, height: 5,
+          background: 'rgba(240,248,255,0.95)',
+          borderRadius: roof === 'dome' ? '50% 50% 0 0' : '3px 3px 0 0',
+          zIndex: 2,
+        }} />
+      )}
+
       {style === 'cyberpunk' && (
         <>
           <div style={{ position: 'absolute', top: 0, left: '30%', width: 1, height: '100%', background: 'rgba(100,80,255,0.15)' }} />
@@ -322,22 +309,28 @@ function Building({ user, spec, x, isMe, onClick, studying, mode, animOffset, we
         {Array.from({ length: floors }, (_, f) => (
           <div key={f} style={{ display: 'flex', gap: 3, justifyContent: 'center', flex: 1, alignItems: 'center' }}>
             {Array.from({ length: windowsPerFloor }, (_, w) => {
-              const isLit = studying && Math.sin(f * 7 + w * 13 + animOffset + seed) > 0.1
-              const color = isLit
+              const noise = Math.sin(f * 7 + w * 13 + animOffset + seed)
+              const isStudyLit = studying && noise > 0.1
+              const isAmbientLit = !studying && isDark && noise > 0.35 // city ambient glow at night
+              const color = isStudyLit
                 ? mode === 'deep'  ? 'rgba(80,120,255,0.9)'
                 : mode === 'exam'  ? 'rgba(220,80,80,0.9)'
                 : 'rgba(255,215,80,0.9)'
+                : isAmbientLit
+                ? 'rgba(255,160,60,0.45)'
                 : 'rgba(255,255,255,0.04)'
-              const glow = isLit
+              const glow = isStudyLit
                 ? mode === 'deep'  ? '0 0 6px rgba(80,120,255,0.8)'
                 : mode === 'exam'  ? '0 0 6px rgba(220,80,80,0.8)'
                 : '0 0 6px rgba(255,215,80,0.7)'
+                : isAmbientLit
+                ? '0 0 4px rgba(255,140,40,0.4)'
                 : 'none'
               return (
                 <div key={w} style={{
                   width: 6, height: 7, background: color,
                   borderRadius: 1, boxShadow: glow,
-                  transition: 'background 1s ease, box-shadow 1s ease',
+                  transition: 'background 1.2s ease, box-shadow 1.2s ease',
                 }} />
               )
             })}
@@ -345,6 +338,7 @@ function Building({ user, spec, x, isMe, onClick, studying, mode, animOffset, we
         ))}
       </div>
 
+      {/* Antenna / mast for tall buildings */}
       {height >= 12 && roof !== 'spire' && (
         <div style={{
           position: 'absolute', top: -16, left: '50%', transform: 'translateX(-50%)',
@@ -356,10 +350,11 @@ function Building({ user, spec, x, isMe, onClick, studying, mode, animOffset, we
 
       {isMe && (
         <div style={{
-          position: 'absolute', top: -28, left: '50%', transform: 'translateX(-50%)',
+          position: 'absolute', top: -30, left: '50%', transform: 'translateX(-50%)',
           background: '#d4a853', borderRadius: 4, padding: '2px 6px',
           fontSize: '0.55rem', fontWeight: 700, color: '#000', whiteSpace: 'nowrap',
           fontFamily: "'Anthropic Serif',Georgia,serif",
+          zIndex: 20,
         }}>YOU</div>
       )}
 
@@ -373,12 +368,12 @@ function Building({ user, spec, x, isMe, onClick, studying, mode, animOffset, we
         }} />
       )}
 
-      {/* Wet reflection on ground during rain */}
+      {/* Wet foundation during rain */}
       {weather.rain && (
         <div style={{
-          position: 'absolute', bottom: -8, left: -2, right: -2, height: 8,
-          background: 'linear-gradient(180deg, rgba(80,120,160,0.15) 0%, transparent 100%)',
-          filter: 'blur(3px)',
+          position: 'absolute', bottom: -10, left: -4, right: -4, height: 10,
+          background: 'linear-gradient(180deg, rgba(80,120,160,0.2) 0%, transparent 100%)',
+          filter: 'blur(4px)',
           pointerEvents: 'none',
         }} />
       )}
@@ -406,6 +401,13 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
     loc: { lat: 51.5074, lon: -0.1278, name: 'London' },
   })
 
+  /* animated entities (refs to avoid re-renders) */
+  const carRefs = useRef([])
+  const carData = useRef([])
+  const pedRefs = useRef([])
+  const pedData = useRef([])
+  const rafRef = useRef()
+
   const myHours = Math.floor((S?.totalMinutes || 0) / 60)
   const mySpec = getBuildingSpec(myHours, S?.streak || 0, session?.user?.id)
   const myName = session?.user?.user_metadata?.full_name || session?.user?.email?.split('@')[0] || 'You'
@@ -423,13 +425,11 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
           loc: { lat: pos.coords.latitude, lon: pos.coords.longitude, name: 'Local' },
         }))
       },
-      () => {
-        // fallback: keep London
-      }
+      () => { /* fallback London */ }
     )
   }, [])
 
-  /* 2. fetch weather from Open-Meteo */
+  /* 2. fetch weather */
   const fetchWeather = useCallback(async () => {
     const { lat, lon } = weather.loc
     const url = new URL('https://api.open-meteo.com/v1/forecast')
@@ -447,10 +447,7 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
       const sunrise = json.daily?.sunrise?.[0] ? new Date(json.daily.sunrise[0]) : new Date(now.getFullYear(), now.getMonth(), now.getDate(), 6, 0)
       const sunset = json.daily?.sunset?.[0] ? new Date(json.daily.sunset[0]) : new Date(now.getFullYear(), now.getMonth(), now.getDate(), 18, 0)
       const phase = getPhase(now, sunrise, sunset)
-      const condition = getWeatherCondition({
-        current: json.current,
-        hourly: { cloud_cover: json.hourly?.cloud_cover },
-      })
+      const condition = getWeatherCondition({ current: json.current, hourly: { cloud_cover: json.hourly?.cloud_cover } })
       setWeather(prev => ({
         ...prev,
         data: json,
@@ -467,7 +464,7 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
 
   useEffect(() => {
     fetchWeather()
-    const id = setInterval(fetchWeather, 600000) // every 10 min
+    const id = setInterval(fetchWeather, 600000)
     return () => clearInterval(id)
   }, [fetchWeather])
 
@@ -504,7 +501,6 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
   }, [session, myName, myHours, S, isStudying, studyMode])
 
   useEffect(() => { upsert() }, [upsert])
-
   useEffect(() => {
     if (!isStudying) return
     const id = setInterval(upsert, 30000)
@@ -528,7 +524,7 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
     return () => { supabase.removeChannel(ch); clearInterval(poll) }
   }, [fetchUsers])
 
-  /* 6. layout */
+  /* 6. layout with lamps */
   const allResidents = users.map(u => ({
     id: u.user_id,
     name: u.display_name || 'Anonymous',
@@ -565,19 +561,67 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
     displayOrder = [...withoutMe.slice(0, mid), meItem, ...withoutMe.slice(mid)]
   }
 
-  const buildingData = []
-  let xCursor = 20
-  displayOrder.forEach(user => {
+  const layoutItems = []
+  let xCursor = 30
+  displayOrder.forEach((user, idx) => {
     const spec = getBuildingSpec(user.hours, user.streak, user.id)
-    buildingData.push({ user, spec, x: xCursor })
-    xCursor += spec.width + 8
+    layoutItems.push({ type: 'building', user, spec, x: xCursor })
+    xCursor += spec.width
+    if (idx < displayOrder.length - 1) {
+      const gap = 16
+      const lampH = Math.min(100, Math.max(60, spec.height * 8))
+      layoutItems.push({ type: 'lamp', x: xCursor + gap / 2 - 2, h: lampH })
+      xCursor += gap
+    }
   })
-  const totalWidth = xCursor + 20
+  const totalWidth = xCursor + 30
 
+  /* 7. animated cars & pedestrians (rAF, no state churn) */
+  useEffect(() => {
+    const W = Math.max(totalWidth, 1200)
+    carData.current = Array.from({ length: 7 }, (_, i) => ({
+      x: Math.random() * W,
+      speed: (0.6 + Math.random() * 1.2) * (i % 2 === 0 ? 1 : -1),
+      y: 6 + Math.random() * 32,
+      width: 22 + Math.random() * 14,
+      color: ['#c0392b','#2980b9','#27ae60','#f39c12','#8e44ad','#2c3e50','#d35400'][i],
+    }))
+    pedData.current = Array.from({ length: 5 }, (_, i) => ({
+      x: Math.random() * W,
+      speed: (0.15 + Math.random() * 0.25) * (i % 2 === 0 ? 1 : -1),
+      y: 4 + Math.random() * 4,
+    }))
+
+    const loop = () => {
+      carData.current.forEach((car, i) => {
+        const el = carRefs.current[i]
+        if (!el) return
+        car.x += car.speed
+        if (car.x > W + 60) car.x = -60
+        if (car.x < -60) car.x = W + 60
+        el.style.transform = `translateX(${car.x}px)`
+      })
+      pedData.current.forEach((ped, i) => {
+        const el = pedRefs.current[i]
+        if (!el) return
+        ped.x += ped.speed
+        if (ped.x > W + 20) ped.x = -10
+        if (ped.x < -10) ped.x = W + 20
+        el.style.transform = `translateX(${ped.x}px)`
+      })
+      rafRef.current = requestAnimationFrame(loop)
+    }
+    rafRef.current = requestAnimationFrame(loop)
+    return () => cancelAnimationFrame(rafRef.current)
+  }, [totalWidth])
+
+  /* derived visuals */
   const skyColor = getSkyGradient(weather.phase, weather.condition)
-  const sunMoon = getSunMoonStyle(weather.phase, weather.condition)
+  const sunPos = useMemo(() => getSunPosition(time, weather.sunrise || new Date(), weather.sunset || new Date()), [time, weather.sunrise, weather.sunset])
+  const moonPos = useMemo(() => getMoonPosition(time, weather.sunrise || new Date(), weather.sunset || new Date()), [time, weather.sunrise, weather.sunset])
   const liveCount = allResidents.filter(u => u.studying).length
   const showStars = (weather.phase === PHASES.NIGHT || weather.phase === PHASES.DAWN) && !weather.condition.rain && !weather.condition.heavyRain
+  const isNightish = weather.phase === PHASES.NIGHT || weather.phase === PHASES.EVENING || weather.phase === PHASES.DAWN
 
   return (
     <div style={{ position: 'relative', zIndex: 2, fontFamily: "'Anthropic Serif',Georgia,serif" }}>
@@ -595,7 +639,6 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
             </div>
           </div>
           <div style={{ textAlign: 'right' }}>
-            {/* Weather badge */}
             <div style={{
               display: 'inline-flex', alignItems: 'center', gap: 8,
               background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
@@ -609,22 +652,17 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
               </span>
             </div>
             <div style={{ display: 'flex', gap: 16, fontSize: '0.72rem', justifyContent: 'flex-end' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <div style={{ width: 8, height: 8, borderRadius: 1, background: 'rgba(255,215,80,0.9)', boxShadow: '0 0 6px rgba(255,215,80,0.7)' }} />
-                <span style={{ color: 'rgba(255,255,255,0.5)' }}>Focus</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <div style={{ width: 8, height: 8, borderRadius: 1, background: 'rgba(80,120,255,0.9)', boxShadow: '0 0 6px rgba(80,120,255,0.8)' }} />
-                <span style={{ color: 'rgba(255,255,255,0.5)' }}>Deep Work</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <div style={{ width: 8, height: 8, borderRadius: 1, background: 'rgba(220,80,80,0.9)', boxShadow: '0 0 6px rgba(220,80,80,0.8)' }} />
-                <span style={{ color: 'rgba(255,255,255,0.5)' }}>Exam</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <div style={{ width: 8, height: 8, borderRadius: 1, background: 'rgba(255,255,255,0.06)' }} />
-                <span style={{ color: 'rgba(255,255,255,0.5)' }}>Offline</span>
-              </div>
+              {[
+                { c: 'rgba(255,215,80,0.9)', g: '0 0 6px rgba(255,215,80,0.7)', l: 'Focus' },
+                { c: 'rgba(80,120,255,0.9)', g: '0 0 6px rgba(80,120,255,0.8)', l: 'Deep Work' },
+                { c: 'rgba(220,80,80,0.9)',  g: '0 0 6px rgba(220,80,80,0.8)', l: 'Exam' },
+                { c: 'rgba(255,255,255,0.06)', g: 'none', l: 'Offline' },
+              ].map(item => (
+                <div key={item.l} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: 1, background: item.c, boxShadow: item.g }} />
+                  <span style={{ color: 'rgba(255,255,255,0.5)' }}>{item.l}</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -632,7 +670,7 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
 
       {/* CITY VIEWPORT */}
       <div style={{
-        width: '100%', height: 440,
+        width: '100%', height: 460,
         background: skyColor,
         position: 'relative', overflow: 'hidden',
         borderTop: '1px solid rgba(255,255,255,0.05)',
@@ -640,7 +678,7 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
         transition: 'background 2s ease',
       }}>
         {/* Stars */}
-        {showStars && Array.from({ length: 60 }, (_, i) => (
+        {showStars && Array.from({ length: 70 }, (_, i) => (
           <div key={i} style={{
             position: 'absolute',
             left: `${(i * 37) % 100}%`,
@@ -649,9 +687,9 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
             height: i % 5 === 0 ? 2 : 1,
             background: '#fff',
             borderRadius: '50%',
-            opacity: 0.3 + (i % 7) * 0.1,
-            animation: `pulse ${2 + (i % 4)}s ease-in-out infinite`,
-            animationDelay: `${(i % 5) * 0.4}s`,
+            opacity: 0.25 + (i % 7) * 0.1,
+            animation: `twinkle ${2 + (i % 5)}s ease-in-out infinite`,
+            animationDelay: `${(i % 7) * 0.5}s`,
           }} />
         ))}
 
@@ -668,15 +706,15 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
         {/* Rain */}
         {weather.condition.rain && (
           <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 25 }}>
-            {Array.from({ length: weather.condition.heavyRain ? 80 : 40 }, (_, i) => (
+            {Array.from({ length: weather.condition.heavyRain ? 90 : 45 }, (_, i) => (
               <div key={i} style={{
                 position: 'absolute',
                 left: `${(i * 13) % 100}%`,
                 top: -10,
-                width: 1, height: weather.condition.heavyRain ? 14 : 10,
-                background: 'rgba(160,180,200,0.4)',
+                width: 1, height: weather.condition.heavyRain ? 16 : 12,
+                background: 'rgba(160,180,200,0.45)',
                 borderRadius: 1,
-                animation: `rainfall ${0.6 + (i % 5) * 0.15}s linear infinite`,
+                animation: `rainfall ${0.5 + (i % 5) * 0.12}s linear infinite`,
                 animationDelay: `${(i % 8) * 0.1}s`,
               }} />
             ))}
@@ -686,13 +724,13 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
         {/* Snow */}
         {weather.condition.snow && (
           <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 25 }}>
-            {Array.from({ length: 50 }, (_, i) => (
+            {Array.from({ length: 55 }, (_, i) => (
               <div key={i} style={{
                 position: 'absolute',
                 left: `${(i * 19) % 100}%`,
                 top: -6,
                 width: 3 + (i % 3), height: 3 + (i % 3),
-                background: 'rgba(230,240,255,0.7)',
+                background: 'rgba(230,240,255,0.8)',
                 borderRadius: '50%',
                 animation: `snowfall ${2 + (i % 4)}s linear infinite`,
                 animationDelay: `${(i % 6) * 0.3}s`,
@@ -705,29 +743,65 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
         {weather.condition.heavyRain && Math.random() > 0.97 && (
           <div style={{
             position: 'absolute', inset: 0,
-            background: 'rgba(255,255,255,0.08)',
+            background: 'rgba(255,255,255,0.1)',
             pointerEvents: 'none',
             animation: 'flash 0.2s ease-out',
             zIndex: 24,
           }} />
         )}
 
-        {/* Sun / Moon */}
-        <div style={{
-          position: 'absolute', right: 60, top: 30,
-          width: sunMoon.size, height: sunMoon.size,
-          borderRadius: '50%',
-          background: sunMoon.bg,
-          boxShadow: sunMoon.glow,
-          transition: 'all 2s ease',
-        }} />
+        {/* Sun */}
+        {sunPos && (
+          <div style={{
+            position: 'absolute',
+            left: `${sunPos.x}%`,
+            top: `${sunPos.y}%`,
+            transform: 'translate(-50%, -50%)',
+            width: 44, height: 44,
+            borderRadius: '50%',
+            background: 'radial-gradient(circle at 30% 30%, #fffce6 10%, #ffd700 50%, #ff8c00 100%)',
+            boxShadow: '0 0 50px rgba(255,200,50,0.5), 0 0 100px rgba(255,140,0,0.25)',
+            zIndex: 4,
+            transition: 'left 2s linear, top 2s linear',
+          }}>
+            {/* Sun rays */}
+            <div style={{
+              position: 'absolute', inset: -10,
+              borderRadius: '50%',
+              background: 'conic-gradient(from 0deg, transparent 0deg, rgba(255,220,100,0.08) 10deg, transparent 20deg, transparent 40deg, rgba(255,220,100,0.06) 50deg, transparent 60deg, transparent 80deg, rgba(255,220,100,0.08) 90deg, transparent 100deg, transparent 120deg, rgba(255,220,100,0.05) 130deg, transparent 140deg, transparent 160deg, rgba(255,220,100,0.06) 170deg, transparent 180deg, transparent 200deg, rgba(255,220,100,0.05) 210deg, transparent 220deg, transparent 240deg, rgba(255,220,100,0.08) 250deg, transparent 260deg, transparent 280deg, rgba(255,220,100,0.06) 290deg, transparent 300deg, transparent 320deg, rgba(255,220,100,0.05) 330deg, transparent 340deg, transparent 360deg)',
+              animation: 'spin 20s linear infinite',
+            }} />
+          </div>
+        )}
+
+        {/* Moon */}
+        {moonPos && (
+          <div style={{
+            position: 'absolute',
+            left: `${moonPos.x}%`,
+            top: `${moonPos.y}%`,
+            transform: 'translate(-50%, -50%)',
+            width: 32, height: 32,
+            borderRadius: '50%',
+            background: 'radial-gradient(circle at 35% 35%, #f0e6d2, #c4b896)',
+            boxShadow: 'inset -3px -3px 6px rgba(0,0,0,0.25), inset 2px 2px 4px rgba(255,255,255,0.15), 0 0 18px rgba(200,200,220,0.15)',
+            zIndex: 4,
+            transition: 'left 3s linear, top 3s linear',
+          }}>
+            {/* Craters */}
+            <div style={{ position: 'absolute', top: '22%', left: '28%', width: '18%', height: '18%', borderRadius: '50%', background: 'rgba(0,0,0,0.07)', boxShadow: 'inset 1px 1px 2px rgba(0,0,0,0.2)' }} />
+            <div style={{ position: 'absolute', top: '52%', left: '48%', width: '14%', height: '14%', borderRadius: '50%', background: 'rgba(0,0,0,0.06)', boxShadow: 'inset 1px 1px 2px rgba(0,0,0,0.2)' }} />
+            <div style={{ position: 'absolute', top: '38%', left: '62%', width: '10%', height: '10%', borderRadius: '50%', background: 'rgba(0,0,0,0.08)', boxShadow: 'inset 1px 1px 2px rgba(0,0,0,0.2)' }} />
+            <div style={{ position: 'absolute', top: '65%', left: '25%', width: '12%', height: '12%', borderRadius: '50%', background: 'rgba(0,0,0,0.05)', boxShadow: 'inset 1px 1px 2px rgba(0,0,0,0.15)' }} />
+          </div>
+        )}
 
         {/* Fog */}
         <div style={{
-          position: 'absolute', bottom: 0, left: 0, right: 0, height: 80,
+          position: 'absolute', bottom: 0, left: 0, right: 0, height: 100,
           background: weather.condition.rain
-            ? 'linear-gradient(0deg, rgba(12,11,9,0.9) 0%, transparent 100%)'
-            : 'linear-gradient(0deg, rgba(12,11,9,0.8) 0%, transparent 100%)',
+            ? 'linear-gradient(0deg, rgba(12,11,9,0.95) 0%, transparent 100%)'
+            : 'linear-gradient(0deg, rgba(12,11,9,0.85) 0%, transparent 100%)',
           zIndex: 20, pointerEvents: 'none',
         }} />
 
@@ -738,26 +812,147 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
           overflowX: 'auto', overflowY: 'hidden',
         }}>
           <div style={{ position: 'relative', width: Math.max(totalWidth, 900), height: '100%', minWidth: '100%' }}>
-            {/* Ground */}
+            
+            {/* Sidewalk */}
             <div style={{
-              position: 'absolute', bottom: 0, left: 0, right: 0, height: 40,
-              background: weather.condition.rain
-                ? 'linear-gradient(0deg, #0a0c10 0%, #111318 100%)'
-                : 'linear-gradient(0deg, #090808 0%, #111010 100%)',
-              borderTop: weather.condition.rain ? '1px solid rgba(80,120,160,0.2)' : '1px solid rgba(212,168,83,0.12)',
+              position: 'absolute', bottom: ROAD_H, left: 0, right: 0, height: SIDEWALK_H,
+              background: 'linear-gradient(0deg, #2a2a2a 0%, #333 100%)',
+              borderTop: '2px solid #3d3d3d',
               zIndex: 15,
+            }} />
+
+            {/* Road */}
+            <div style={{
+              position: 'absolute', bottom: 0, left: 0, right: 0, height: ROAD_H,
+              background: weather.condition.rain
+                ? 'linear-gradient(0deg, #0c0e12 0%, #14161c 100%)'
+                : 'linear-gradient(0deg, #0e0f12 0%, #181a1f 100%)',
+              zIndex: 14,
             }}>
-              {Array.from({ length: 20 }, (_, i) => (
+              {/* Lane markings */}
+              {Array.from({ length: Math.ceil(Math.max(totalWidth, 900) / 80) }, (_, i) => (
                 <div key={i} style={{
-                  position: 'absolute', top: '50%', left: `${i * 100 + 40}px`,
-                  width: 40, height: 2, background: 'rgba(255,251,240,0.06)',
+                  position: 'absolute', top: '50%', left: `${i * 80 + 20}px`,
+                  width: 40, height: 2,
+                  background: 'rgba(255,255,255,0.15)',
                   transform: 'translateY(-50%)',
                 }} />
               ))}
+              {/* Curb */}
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'rgba(255,255,255,0.08)' }} />
             </div>
 
+            {/* Street Lamps */}
+            {layoutItems.filter(it => it.type === 'lamp').map((lamp, i) => (
+              <div key={`lamp-${i}`} style={{ position: 'absolute', bottom: GROUND_Y, left: lamp.x, zIndex: 6, pointerEvents: 'none' }}>
+                {/* Post */}
+                <div style={{ width: 3, height: lamp.h, background: '#1f1f1f', margin: '0 auto', borderRadius: 1 }} />
+                {/* Lamp head */}
+                <div style={{
+                  position: 'absolute', top: -8, left: '50%', transform: 'translateX(-50%)',
+                  width: 12, height: 8,
+                  background: isNightish ? '#ffeb3b' : '#3a3a3a',
+                  borderRadius: '50% 50% 0 0',
+                  boxShadow: isNightish ? '0 0 18px rgba(255,235,59,0.7), 0 0 40px rgba(255,235,59,0.25)' : 'none',
+                  transition: 'all 1.5s ease',
+                }} />
+                {/* Light cone on ground */}
+                {isNightish && (
+                  <div style={{
+                    position: 'absolute', bottom: -GROUND_Y, left: '50%', transform: 'translateX(-50%)',
+                    width: 70, height: GROUND_Y,
+                    background: 'radial-gradient(ellipse at center top, rgba(255,235,59,0.12) 0%, transparent 65%)',
+                    pointerEvents: 'none',
+                  }} />
+                )}
+                {/* Light cone upward */}
+                {isNightish && (
+                  <div style={{
+                    position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
+                    width: 50, height: lamp.h,
+                    background: 'radial-gradient(ellipse at center bottom, rgba(255,235,59,0.06) 0%, transparent 70%)',
+                    pointerEvents: 'none',
+                  }} />
+                )}
+              </div>
+            ))}
+
+            {/* Cars */}
+            {carData.current.map((_, i) => (
+              <div key={`car-${i}`} ref={el => carRefs.current[i] = el} style={{
+                position: 'absolute', bottom: carData.current[i]?.y || 8, left: 0,
+                zIndex: 16, pointerEvents: 'none',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                  {/* Headlights (facing right) */}
+                  {carData.current[i]?.speed > 0 && (
+                    <div style={{
+                      position: 'absolute', right: -30, top: '50%', transform: 'translateY(-50%)',
+                      width: 30, height: 10,
+                      background: 'linear-gradient(90deg, rgba(255,250,200,0.35) 0%, transparent 100%)',
+                      borderRadius: '0 50% 50% 0',
+                      filter: 'blur(2px)',
+                    }} />
+                  )}
+                  {/* Taillights (facing left) */}
+                  {carData.current[i]?.speed < 0 && (
+                    <div style={{
+                      position: 'absolute', left: -12, top: '50%', transform: 'translateY(-50%)',
+                      width: 12, height: 8,
+                      background: 'rgba(220,60,60,0.6)',
+                      borderRadius: '50% 0 0 50%',
+                      filter: 'blur(2px)',
+                      boxShadow: '0 0 6px rgba(220,60,60,0.5)',
+                    }} />
+                  )}
+                  {/* Car body */}
+                  <div style={{
+                    width: carData.current[i]?.width || 28, height: 10,
+                    background: carData.current[i]?.color || '#555',
+                    borderRadius: '3px 3px 1px 1px',
+                    position: 'relative',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
+                  }}>
+                    {/* Windows */}
+                    <div style={{
+                      position: 'absolute', top: -4, left: 3, right: 3, height: 4,
+                      background: 'rgba(180,220,255,0.25)',
+                      borderRadius: '2px 2px 0 0',
+                    }} />
+                  </div>
+                  {/* Wheels */}
+                  <div style={{ position: 'absolute', bottom: -2, left: 4, width: 5, height: 5, background: '#0a0a0a', borderRadius: '50%' }} />
+                  <div style={{ position: 'absolute', bottom: -2, right: 4, width: 5, height: 5, background: '#0a0a0a', borderRadius: '50%' }} />
+                </div>
+              </div>
+            ))}
+
+            {/* Pedestrians */}
+            {pedData.current.map((_, i) => (
+              <div key={`ped-${i}`} ref={el => pedRefs.current[i] = el} style={{
+                position: 'absolute', bottom: GROUND_Y + (pedData.current[i]?.y || 2), left: 0,
+                zIndex: 17, pointerEvents: 'none',
+              }}>
+                <div style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'center',
+                  animation: `walkBob 0.8s ease-in-out infinite`,
+                  animationDelay: `${i * 0.2}s`,
+                }}>
+                  {/* Head */}
+                  <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#c4b9a8', marginBottom: 1 }} />
+                  {/* Body */}
+                  <div style={{ width: 5, height: 7, background: `hsl(${(i * 60) % 360}, 40%, 55%)`, borderRadius: 1 }} />
+                  {/* Legs */}
+                  <div style={{ display: 'flex', gap: 1, marginTop: 1 }}>
+                    <div style={{ width: 2, height: 5, background: '#3a3a3a', borderRadius: 1, animation: `legMove 0.8s ease-in-out infinite`, animationDelay: '0s' }} />
+                    <div style={{ width: 2, height: 5, background: '#3a3a3a', borderRadius: 1, animation: `legMove 0.8s ease-in-out infinite`, animationDelay: '0.4s' }} />
+                  </div>
+                </div>
+              </div>
+            ))}
+
             {/* Buildings */}
-            {buildingData.map(({ user, spec, x }) => (
+            {layoutItems.filter(it => it.type === 'building').map(({ user, spec, x }) => (
               <Building
                 key={user.id}
                 user={user}
@@ -767,12 +962,12 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
                 studying={user.studying}
                 mode={user.mode}
                 animOffset={animOffset}
-                weather={weather.condition}
+                weather={{ ...weather.condition, phase: weather.phase }}
                 onClick={() => setSelectedUser(user)}
               />
             ))}
 
-            {buildingData.length === 0 && !loading && (
+            {layoutItems.length === 0 && !loading && (
               <div style={{
                 position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
                 color: 'rgba(255,255,255,0.3)', fontSize: '0.9rem', zIndex: 30,
@@ -1017,17 +1212,21 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
           0%, 100% { opacity: 1; }
           50% { opacity: 0.4; }
         }
+        @keyframes twinkle {
+          0%, 100% { opacity: 0.3; transform: scale(1); }
+          50% { opacity: 1; transform: scale(1.3); }
+        }
         @keyframes rainfall {
           0% { transform: translateY(-10px); opacity: 0; }
           10% { opacity: 1; }
           90% { opacity: 1; }
-          100% { transform: translateY(440px); opacity: 0; }
+          100% { transform: translateY(460px); opacity: 0; }
         }
         @keyframes snowfall {
           0% { transform: translateY(-6px) translateX(0); opacity: 0; }
-          10% { opacity: 0.8; }
-          90% { opacity: 0.8; }
-          100% { transform: translateY(440px) translateX(20px); opacity: 0; }
+          10% { opacity: 0.9; }
+          90% { opacity: 0.9; }
+          100% { transform: translateY(460px) translateX(20px); opacity: 0; }
         }
         @keyframes flash {
           0% { opacity: 0; }
@@ -1038,6 +1237,18 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
           0% { transform: translateX(0); }
           50% { transform: translateX(20px); }
           100% { transform: translateX(0); }
+        }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        @keyframes walkBob {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-2px); }
+        }
+        @keyframes legMove {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-2px); }
         }
       `}</style>
     </div>
