@@ -685,9 +685,11 @@ export default function StudyOS({ session }) {
         </div>
 
         <div className="grid2" style={{ marginBottom: 14 }}>
-          <div className=" I need to continue from where the code was cut off. Let me continue with the rest of the StudyOS component and all the sub-components. I was in the middle of the Dashboard page's "What I Did Today" / "Plan for Tomorrow" section.
-
-Let me continue from that point and complete the entire file.  ```jsx
+          <div className="card">
+            <div className="sec-label">What I Did Today</div>
+            <textarea placeholder="Write what you accomplished..." value={S.did || ''} style={{ minHeight: 72 }}
+              onChange={e => updateS(prev => ({ ...prev, did: e.target.value }))} />
+          </div>
           <div className="card">
             <div className="sec-label">What I Did Today</div>
             <textarea placeholder="Write what you accomplished..." value={S.did || ''} style={{ minHeight: 72 }}
