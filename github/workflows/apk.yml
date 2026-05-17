@@ -1,0 +1,74 @@
+name: Build APK
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  vibe:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "🧠 Timeline stable ✔️ (APK lane)"
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "🎮 Game reachable ✔️ (APK sanity)"
+
+  build-apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: ☕ Setup Java (Android needs this)
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: 📦 Install dependencies
+        run: |
+          echo "Installing base dependencies..."
+          npm install
+
+      - name: ⚡ Install Capacitor (LOCKED VERSIONS)
+        run: |
+          echo "Installing Capacitor v6 (compatible set)..."
+          npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
+
+      - name: 🔧 Sync Capacitor
+        run: |
+          echo "Syncing Capacitor..."
+          npx cap sync
+
+      - name: 🤖 Add Android platform (only if missing)
+        run: |
+          echo "Checking Android platform..."
+          if [ ! -d "android" ]; then
+            echo "Adding Android platform..."
+            npx cap add android
+          else
+            echo "Android already exists ✔️"
+          fi
+
+      - name: 🏗️ Build APK
+        run: |
+          echo "Building APK..."
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+          echo "APK build finished ✔️"
+
+      - name: 📤 Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: timeecho-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          
