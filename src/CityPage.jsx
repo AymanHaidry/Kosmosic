@@ -1466,7 +1466,7 @@ useEffect(() => {
           0%, 100% { opacity: 0.3; transform: scale(1); }
           50% { opacity: 1; transform: scale(1.3); }
         }
-                @keyframes mothFlutter {
+        @keyframes mothFlutter {
           0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.6; }
           25% { transform: translate(4px, -3px) scale(1.2); opacity: 1; }
           50% { transform: translate(-2px, -6px) scale(0.9); opacity: 0.4; }
