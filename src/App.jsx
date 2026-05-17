@@ -3,6 +3,7 @@ import { Routes, Route, useNavigate } from 'react-router-dom'
 import { supabase } from './supabase.js'
 import Launcher from './Launcher.jsx'
 import StudyOS from './StudyOS.jsx'
+import StudyRoom from './StudyRoom'
 
 export default function App() {
   const [session, setSession] = useState(null)

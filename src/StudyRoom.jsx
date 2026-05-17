@@ -1,21 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase.js'
 
-/* ── Module-level singletons: survive StudyRoom unmount/remount ── */
-let gChannel = null
-let gRoomCode = ''
-let gIntentionallyLeft = false
-let gHeartbeat = null
-let gPresence = {}
-
-// Registry so the global channel can push state to whichever instance is mounted
-const reg = {
-  setMembers: null,
-  setMessages: null,
-  setLoading: null,
-  chatRef: null,
-}
-
 function generateCode() {
   return Math.random().toString(36).substring(2, 8).toUpperCase()
 }
@@ -60,30 +45,24 @@ export default function StudyRoom({ S, session, isStudying, timerSecs, timerMode
   const [showSQL, setShowSQL] = useState(false)
 
   const chatRef = useRef(null)
-  const mountedRef = useRef(true)
+  const channelRef = useRef(null)
 
   const myName = session?.user?.user_metadata?.full_name || session?.user?.email?.split('@')[0] || 'Anonymous'
   const myId = session?.user?.id
 
-  /* ── register this instance so global channel can reach it ── */
-  useEffect(() => {
-    mountedRef.current = true
-    reg.setMembers = setMembers
-    reg.setMessages = setMessages
-    reg.setLoading = setLoading
-    reg.chatRef = chatRef
-    return () => {
-      mountedRef.current = false
-      reg.setMembers = null
-      reg.setMessages = null
-      reg.setLoading = null
-      reg.chatRef = null
-    }
-  }, [])
+  /* ── ref that always holds latest timer/study state ── */
+  const presenceRef = useRef({
+    user_id: myId,
+    name: myName,
+    streak: S?.streak || 0,
+    subject: S?.activeSubject || 'General',
+    studying: isStudying,
+    timer_secs: timerSecs,
+    timer_mode: timerMode,
+  })
 
-  /* ── global presence ref (latest timer/study state) ── */
   useEffect(() => {
-    gPresence = {
+    presenceRef.current = {
       user_id: myId,
       name: myName,
       streak: S?.streak || 0,
@@ -94,7 +73,7 @@ export default function StudyRoom({ S, session, isStudying, timerSecs, timerMode
     }
   }, [myId, myName, S?.streak, S?.activeSubject, isStudying, timerSecs, timerMode])
 
-  /* ── restore room on mount if one was active ── */
+  /* ── reconnect on mount if previously in a room ── */
   useEffect(() => {
     const saved = localStorage.getItem('kosmosic_room_code')
     if (saved && myId) {
@@ -103,49 +82,12 @@ export default function StudyRoom({ S, session, isStudying, timerSecs, timerMode
     }
   }, [myId])
 
-  /* ── core room connection (singleton, survives tab switch) ── */
+  /* ── core room connection (stable: never rebuilds on timer tick) ── */
   useEffect(() => {
     if (view !== 'room' || !roomCode || !myId) return
 
-    // Already connected to this room globally — just sync UI
-    if (gChannel && gRoomCode === roomCode) {
-      const state = gChannel.presenceState()
-      const users = Object.values(state).map(presences => presences[0])
-      if (mountedRef.current) {
-        setMembers(users)
-        setLoading(false)
-      }
-      // Refresh history in case chat arrived while unmounted
-      supabase
-        .from('room_messages')
-        .select('*')
-        .eq('room_code', roomCode)
-        .order('created_at', { ascending: true })
-        .limit(200)
-        .then(({ data: history }) => {
-          if (mountedRef.current && history) {
-            setMessages(history.map(m => ({
-              name: m.display_name,
-              text: m.text,
-              ts: new Date(m.created_at).getTime(),
-            })))
-            setTimeout(() => chatRef.current?.scrollTo(0, chatRef.current.scrollHeight), 50)
-          }
-        })
-      return
-    }
-
-    // Tear down any previous global channel (different room)
-    if (gChannel) {
-      gIntentionallyLeft = true
-      gChannel.unsubscribe()
-      clearInterval(gHeartbeat)
-      gChannel = null
-    }
-
-    gIntentionallyLeft = false
-    gRoomCode = roomCode
-    if (mountedRef.current) setLoading(true)
+    let mounted = true
+    setLoading(true)
 
     const channel = supabase.channel(`kosmosic-room-${roomCode}`, {
       config: { presence: { key: myId } }
@@ -153,23 +95,27 @@ export default function StudyRoom({ S, session, isStudying, timerSecs, timerMode
 
     channel
       .on('presence', { event: 'sync' }, () => {
+        if (!mounted) return
         const state = channel.presenceState()
         const users = Object.values(state).map(presences => presences[0])
-        reg.setMembers?.(users)
-        reg.setLoading?.(false)
+        setMembers(users)
+        setLoading(false)
       })
       .on('broadcast', { event: 'chat' }, ({ payload }) => {
-        reg.setMessages?.(prev => {
+        if (!mounted) return
+        setMessages(prev => {
           if (prev.some(m => m.ts === payload.ts && m.name === payload.name)) return prev
           return [...prev.slice(-199), payload]
         })
-        setTimeout(() => reg.chatRef?.current?.scrollTo(0, reg.chatRef.current.scrollHeight), 50)
+        setTimeout(() => chatRef.current?.scrollTo(0, chatRef.current.scrollHeight), 50)
       })
       .subscribe(async (status) => {
-        if (status !== 'SUBSCRIBED') return
+        if (status !== 'SUBSCRIBED' || !mounted) return
 
-        await channel.track(gPresence)
+        // announce self to room
+        await channel.track(presenceRef.current)
 
+        // load persisted chat history
         const { data: history } = await supabase
           .from('room_messages')
           .select('*')
@@ -177,38 +123,36 @@ export default function StudyRoom({ S, session, isStudying, timerSecs, timerMode
           .order('created_at', { ascending: true })
           .limit(200)
 
-        if (history) {
-          reg.setMessages?.(history.map(m => ({
+        if (mounted && history) {
+          setMessages(history.map(m => ({
             name: m.display_name,
             text: m.text,
             ts: new Date(m.created_at).getTime(),
           })))
-          setTimeout(() => reg.chatRef?.current?.scrollTo(0, reg.chatRef.current.scrollHeight), 50)
+          setTimeout(() => chatRef.current?.scrollTo(0, chatRef.current.scrollHeight), 50)
         }
-        reg.setLoading?.(false)
       })
 
-    gChannel = channel
+    channelRef.current = channel
 
-    gHeartbeat = setInterval(() => {
-      gChannel?.track(gPresence).catch(() => {})
+    // heartbeat every 10s so presence stays fresh
+    const heartbeat = setInterval(() => {
+      channelRef.current?.track(presenceRef.current).catch(() => {})
     }, 10000)
 
     return () => {
-      // Only kill the global connection if the user explicitly clicked Leave
-      if (gIntentionallyLeft) {
-        clearInterval(gHeartbeat)
-        gChannel?.unsubscribe()
-        gChannel = null
-        gRoomCode = ''
-      }
+      mounted = false
+      clearInterval(heartbeat)
+      channel.unsubscribe()
+      channelRef.current = null
     }
   }, [view, roomCode, myId])
 
-  /* ── push presence updates on user action (not timer tick) ── */
+  /* ── instant presence update when study state changes (not every timer tick) ── */
   useEffect(() => {
-    if (view !== 'room' || !gChannel) return
-    gChannel.track(gPresence).catch(() => {})
+    if (view !== 'room' || !channelRef.current) return
+    channelRef.current.track(presenceRef.current).catch(() => {})
+    // deps: only things that change on user action, not timerSecs
   }, [isStudying, timerMode, S?.activeSubject, view])
 
   /* ── actions ── */
@@ -232,12 +176,8 @@ export default function StudyRoom({ S, session, isStudying, timerSecs, timerMode
   }
 
   const leaveRoom = () => {
-    gIntentionallyLeft = true
-    gChannel?.unsubscribe()
-    gChannel = null
-    clearInterval(gHeartbeat)
-    gHeartbeat = null
-    gRoomCode = ''
+    channelRef.current?.unsubscribe()
+    channelRef.current = null
     localStorage.removeItem('kosmosic_room_code')
     setView('lobby')
     setRoomCode('')
@@ -252,8 +192,10 @@ export default function StudyRoom({ S, session, isStudying, timerSecs, timerMode
     const text = chatInput.trim()
     const payload = { name: myName, text, ts: Date.now() }
 
-    gChannel?.send({ type: 'broadcast', event: 'chat', payload })
+    // instant broadcast to everyone in room
+    channelRef.current?.send({ type: 'broadcast', event: 'chat', payload })
 
+    // persist to db
     await supabase.from('room_messages').insert({
       room_code: roomCode,
       user_id: myId,
@@ -262,6 +204,7 @@ export default function StudyRoom({ S, session, isStudying, timerSecs, timerMode
     })
 
     setChatInput('')
+    // optimistic local append
     setMessages(prev => {
       if (prev.some(m => m.ts === payload.ts && m.name === payload.name)) return prev
       return [...prev.slice(-199), payload]
