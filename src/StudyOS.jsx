@@ -78,16 +78,28 @@ function todayKey() {
 }
 
 function calcStreak(days) {
-  if (!days || days.length === 0) return 0
-  const sorted = [...days].sort().reverse()
-  const today = todayKey()
+  if (!Array.isArray(days)) return 0
+
+  const set = new Set(
+    days.filter(d => typeof d === 'string')
+  )
+
   let streak = 0
-  let check = new Date(today)
-  for (const d of sorted) {
-    const dt = new Date(d)
-    const diff = Math.round((check - dt) / 86400000)
-    if (diff === 0 || diff === 1) { streak++; check = dt } else break
+  let current = new Date()
+
+  current.setHours(0,0,0,0)
+
+  while (true) {
+    const key = current.toISOString().split('T')[0]
+
+    if (set.has(key)) {
+      streak++
+      current.setDate(current.getDate() - 1)
+    } else {
+      break
+    }
   }
+
   return streak
 }
 
