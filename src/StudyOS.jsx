@@ -1972,3 +1972,4 @@ function SettingsPage({ S, updateS, dark, setDark, signOut, session, notify }) {
     </div>
   )
 }
+}
