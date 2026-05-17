@@ -550,6 +550,558 @@ export default function StudyOS({ session }) {
     }
   }, [])
 
+ import { useState, useEffect, useRef, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { supabase } from './supabase.js'
+import CityPage from './CityPage.jsx'
+import StudyRoom from './StudyRoom.jsx'
+
+const QUOTES = [
+  { text: 'Stay hungry, stay foolish.', author: 'Steve Jobs' },
+  { text: 'The only way to do great work is to love what you do.', author: 'Steve Jobs' },
+  { text: 'Success is not final, failure is not fatal.', author: 'Winston Churchill' },
+  { text: 'An investment in knowledge pays the best interest.', author: 'Benjamin Franklin' },
+  { text: 'The secret of getting ahead is getting started.', author: 'Mark Twain' },
+  { text: 'Hard work beats talent when talent doesn\'t work hard.', author: 'Tim Notke' },
+  { text: 'Discipline is the bridge between goals and accomplishment.', author: 'Jim Rohn' },
+  { text: 'You don\'t rise to the level of your goals, you fall to the level of your systems.', author: 'James Clear' },
+]
+
+const AWARDS = [
+  { id: 'first_session', icon: '🌱', title: 'First Steps', desc: 'Complete your first session', req: s => (s.sessions || []).length >= 1, criteria: '1 session' },
+  { id: 'streak_3', icon: '🔥', title: 'On Fire', desc: '3-day streak', req: s => s.streak >= 3, criteria: '3 day streak' },
+  { id: 'streak_7', icon: '⚡', title: 'Weekly Warrior', desc: '7-day streak', req: s => s.streak >= 7, criteria: '7 day streak' },
+  { id: 'streak_30', icon: '🏆', title: 'Iron Discipline', desc: '30-day streak', req: s => s.streak >= 30, criteria: '30 day streak' },
+  { id: 'hours_10', icon: '⏰', title: 'Time Investor', desc: '10 hours studied', req: s => (s.totalMinutes || 0) >= 600, criteria: '10 hours' },
+  { id: 'hours_50', icon: '📚', title: 'Knowledge Seeker', desc: '50 hours studied', req: s => (s.totalMinutes || 0) >= 3000, criteria: '50 hours' },
+  { id: 'hours_100', icon: '💎', title: 'Century Scholar', desc: '100 hours studied', req: s => (s.totalMinutes || 0) >= 6000, criteria: '100 hours' },
+  { id: 'days_10', icon: '📅', title: 'Consistent', desc: '10 days studied', req: s => (s.studiedDays || []).length >= 10, criteria: '10 study days' },
+  { id: 'days_50', icon: '🌟', title: 'Dedicated', desc: '50 days studied', req: s => (s.studiedDays || []).length >= 50, criteria: '50 study days' },
+  { id: 'goal_met', icon: '🎯', title: 'Goal Crusher', desc: 'Hit daily goal once', req: s => (s.todayMinutes || 0) >= (s.dailyGoal || 120), criteria: 'Hit daily goal' },
+]
+
+const SUBJECT_COLORS = ['#d4a853','#c9956a','#5c8c6e','#4a7a9b','#8b7a9b','#c0574a','#7a9b4a','#9b4a7a']
+
+const THEMES = [
+  { id:'premium-dark',  label:'Premium Dark',   icon:'✦' },
+  { id:'premium-light', label:'Premium Light',   icon:'☀' },
+  { id:'pure-dark',     label:'Pure Dark',       icon:'⬛' },
+  { id:'pure-light',    label:'Pure Light',      icon:'⬜' },
+  { id:'neon',          label:'Neon',            icon:'⚡' },
+  { id:'minecraft',     label:'Minecraft',       icon:'🟩' },
+  { id:'garden',        label:'Garden',          icon:'🌿' },
+  { id:'skylines',      label:'Skylines',        icon:'🌃' },
+  { id:'tame-impala',   label:'Tame Impala',     icon:'🔮' },
+  { id:'vibe-coded',    label:'Vibe Coded',      icon:'🌈' },
+]
+
+const defaultState = () => ({
+  streak: 0, studiedDays: [], missedDays: [], totalMinutes: 0, todayMinutes: 0,
+  events: [], diary: [], marks: [], sessions: [], examGroups: [],
+  subjects: ['Mathematics', 'Science', 'English', 'History', 'Physics'],
+  subjectMinutes: {}, subjectTargets: {},
+  dailyGoal: 120, weeklyGoal: 900, targetPct: 98,
+  did: '', plan: '',
+  timerMode: 'focus', timerTotal: 1500,
+  distractionCount: 0, lastStudiedDate: null,
+  studyMode: 'focus',
+  settings: {
+    darkMode: true, sound: true, strictMode: false, autoBreak: false,
+    autoNextSession: false, sessionSounds: true, animatedBg: true,
+    studyReminders: true, breakReminders: true, goalReminder: true, streakNotif: true,
+    detectInactivity: false, warnQuit: true, pauseStreakExams: false,
+    focusSessionMins: 25, breakMins: 5, longBreakMins: 15,
+    burnoutDetection: false, moodCheckins: true, dopamineDetox: false,
+    theme: 'premium-dark',
+  },
+  aiHistory: [],
+  activityFeed: [],
+})
+
+function sendBrowserNotif(title, body) {
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification(title, { body, icon: '/favicon.ico' })
+  }
+}
+
+function notify(msg, { browser = false, title = 'Kosmosic' } = {}) {
+  const el = document.getElementById('kosm-notif')
+  if (el) {
+    el.querySelector('.notif-msg').textContent = msg
+    el.classList.add('show')
+    setTimeout(() => el.classList.remove('show'), 3500)
+  }
+  if (browser) sendBrowserNotif(title, msg)
+}
+
+function fmtTime(secs) {
+  const m = Math.floor(secs / 60).toString().padStart(2, '0')
+  const s = (secs % 60).toString().padStart(2, '0')
+  return `${m}:${s}`
+}
+
+function todayKey() {
+  return new Date().toISOString().split('T')[0]
+}
+
+function cleanStudiedDays(days) {
+  if (!days || !Array.isArray(days)) return []
+  return days.filter(d => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d))
+}
+
+function calcStreakFromDays(days) {
+  const clean = cleanStudiedDays(days)
+  if (clean.length === 0) return 0
+  const sorted = [...clean].sort().reverse()
+  const td = todayKey()
+  let streak = 0
+  let check = new Date(td)
+  for (const d of sorted) {
+    const dt = new Date(d)
+    const diff = Math.round((check - dt) / 86400000)
+    if (diff === 0 || diff === 1) { streak++; check = dt } else break
+  }
+  return streak
+}
+
+function isFocusTimerMode(mode) {
+  return mode === 'focus' || mode === 'custom'
+}
+
+/* ══════════════════════════════
+   JELLYFISH PET
+══════════════════════════════ */
+function JellyfishPet({ daysSinceStudy }) {
+  const dead = daysSinceStudy > 2
+  const sick = daysSinceStudy === 2
+  const health = dead ? 0 : sick ? 50 : 100
+  const color = dead ? '#555' : sick ? '#f0a' : '#7ef'
+  const glow = dead ? 'none' : sick ? '0 0 18px rgba(255,0,170,0.5)' : '0 0 24px rgba(100,240,255,0.7)'
+
+  return (
+    <div style={{ textAlign:'center', padding:'12px 0' }}>
+      <div style={{ position:'relative', display:'inline-block', filter:dead?'grayscale(1)':'none', transition:'all 1s', animation: dead ? 'none' : 'jellybob 3s ease-in-out infinite' }}>
+        <svg width="70" height="80" viewBox="0 0 70 80" style={{ filter:`drop-shadow(${glow})`, transition:'filter 1s' }}>
+          <ellipse cx="35" cy="34" rx="24" ry="22" fill={color} fillOpacity="0.35" />
+          <ellipse cx="35" cy="32" rx="24" ry="22" fill={color} fillOpacity="0.6" />
+          <ellipse cx="27" cy="22" rx="7" ry="5" fill="rgba(255,255,255,0.35)" transform="rotate(-15 27 22)" />
+          {dead ? (
+            <>
+              <line x1="25" y1="36" x2="29" y2="40" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" />
+              <line x1="29" y1="36" x2="25" y2="40" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" />
+              <line x1="41" y1="36" x2="45" y2="40" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" />
+              <line x1="45" y1="36" x2="41" y2="40" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" />
+              <path d="M28 44 Q35 40 42 44" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" />
+            </>
+          ) : sick ? (
+            <>
+              <ellipse cx="27" cy="37" rx="3" ry="3.5" fill="rgba(255,255,255,0.8)" />
+              <ellipse cx="43" cy="37" rx="3" ry="3.5" fill="rgba(255,255,255,0.8)" />
+              <ellipse cx="27.5" cy="36.5" rx="1.2" ry="1.5" fill="#444" />
+              <ellipse cx="43.5" cy="36.5" rx="1.2" ry="1.5" fill="#444" />
+              <path d="M28 46 Q35 43 42 46" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="1.5" strokeLinecap="round" />
+            </>
+          ) : (
+            <>
+              <ellipse cx="27" cy="36" rx="3" ry="3.5" fill="rgba(255,255,255,0.85)" />
+              <ellipse cx="43" cy="36" rx="3" ry="3.5" fill="rgba(255,255,255,0.85)" />
+              <ellipse cx="27.5" cy="35.5" rx="1.5" ry="1.8" fill="#114" />
+              <ellipse cx="43.5" cy="35.5" rx="1.5" ry="1.8" fill="#114" />
+              <path d="M29 45 Q35 49 41 45" fill="none" stroke="rgba(255,255,255,0.8)" strokeWidth="1.5" strokeLinecap="round" />
+            </>
+          )}
+          {[14,22,30,38,46,54].map((tx, i) => (
+            <path key={i} d={`M${tx} 54 Q${tx + (i%2===0?-4:4)} ${62+i*1.5} ${tx} ${70+i}`} fill="none" stroke={color} strokeWidth={i%2===0?2:1.5} strokeOpacity="0.7" strokeLinecap="round" style={{ animation: dead ? 'none' : `tentacle${i%3} 2.5s ease-in-out ${i*0.3}s infinite` }} />
+          ))}
+        </svg>
+      </div>
+      <div style={{ fontSize:'0.68rem', color:'var(--text3)', marginTop:4, fontFamily:"'Anthropic Serif',Georgia,serif" }}>
+        {dead ? '💀 Your jellyfish died! Study now to revive.' : sick ? `😰 Lumina is unwell (${daysSinceStudy}d absent)` : `💙 Lumina is happy${health===100?' & thriving':''}`}
+      </div>
+      {dead && (
+        <div style={{ fontSize:'0.62rem', color:'var(--red)', marginTop:2 }}>Start a session to bring her back</div>
+      )}
+    </div>
+  )
+}
+
+/* ══════════════════════════════
+   ACTIVITY FEED
+══════════════════════════════ */
+function ActivityFeed({ events }) {
+  if (!events || events.length === 0) return (
+    <div style={{ color:'var(--text3)', fontSize:'0.78rem', textAlign:'center', padding:'16px 0' }}>No recent activity yet — start your first session!</div>
+  )
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+      {events.slice(0, 8).map((ev, i) => (
+        <div key={i} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', background:'var(--surface2)', borderRadius:'var(--r-sm)', border:'1px solid var(--border)', transition:'all 0.2s' }}>
+          <span style={{ fontSize:'1.1rem', flexShrink:0 }}>{ev.icon}</span>
+          <div style={{ flex:1 }}>
+            <div style={{ fontSize:'0.82rem', color:'var(--text)', fontWeight:500 }}>{ev.text}</div>
+            <div style={{ fontSize:'0.62rem', color:'var(--text3)', marginTop:2 }}>{ev.time}</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/* ══════════════════════════════
+   MAIN STUDY OS
+══════════════════════════════ */
+export default function StudyOS({ session }) {
+  const nav = useNavigate()
+  const [page, setPage] = useState('dash')
+  const [authMode, setAuthMode] = useState('login')
+  const [authEmail, setAuthEmail] = useState('')
+  const [authPass, setAuthPass] = useState('')
+  const [authName, setAuthName] = useState('')
+  const [authErr, setAuthErr] = useState('')
+  const [authLoading, setAuthLoading] = useState(false)
+  const [S, setS] = useState(defaultState())
+  const [dataLoaded, setDataLoaded] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
+
+  // ─── CLOUD TIMER STATE ───
+  const [timerSecs, setTimerSecs] = useState(1500)
+  const [timerRunning, setTimerRunning] = useState(false)
+  const [timerMode, setTimerMode] = useState('focus')
+  const [timerTotal, setTimerTotal] = useState(1500)
+  const [customMins, setCustomMins] = useState(45)
+  const [timerReady, setTimerReady] = useState(false)
+  const timerRef = useRef(null)
+  const segmentStartRef = useRef(null)
+  const timerStartRef = useRef(null)
+  const activeSubjectRef = useRef(S.activeSubject || 'General')
+
+  useEffect(() => {
+    activeSubjectRef.current = S.activeSubject || 'General'
+  }, [S.activeSubject])
+
+  // Theme
+  const [dark, setDark] = useState(true)
+  const [theme, setTheme] = useState('premium-dark')
+  const [showThemePicker, setShowThemePicker] = useState(false)
+
+  const [quote] = useState(QUOTES[Math.floor(Math.random() * QUOTES.length)])
+  const particlesRef = useRef(null)
+
+  useEffect(() => {
+    if (!particlesRef.current) return
+    for (let i = 0; i < 25; i++) {
+      const p = document.createElement('div')
+      p.className = 'particle'
+      p.style.cssText = `left:${Math.random()*100}%;animation-delay:${Math.random()*15}s;animation-duration:${10+Math.random()*10}s`
+      particlesRef.current.appendChild(p)
+    }
+  }, [])
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+  }, [theme])
+
+  // ─── LOAD USER DATA + CLOUD TIMER ───
+  useEffect(() => {
+    if (!session) return
+    loadData()
+    loadCloudTimer()
+  }, [session])
+
+  useEffect(() => {
+    if (!timerRunning && timerMode === 'focus') {
+      const mins = S.settings?.focusSessionMins || 25
+      const secs = mins * 60
+      setTimerTotal(secs)
+      setTimerSecs(secs)
+      saveCloudTimer({ timer_total: secs, timer_secs: secs, timer_mode: 'focus' })
+    }
+  }, [S.settings?.focusSessionMins, timerMode, timerRunning])
+
+  const loadData = async () => {
+    const { data, error } = await supabase
+      .from('user_data')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .single()
+    if (error && error.code !== 'PGRST116') { console.error(error); setDataLoaded(true); return }
+    if (data?.data) {
+      const merged = { ...defaultState(), ...data.data }
+      const today = todayKey()
+      if (merged.lastStudiedDate && merged.lastStudiedDate !== today) {
+        merged.todayMinutes = 0
+      }
+      // FIX: Clean corrupted studiedDays and recalculate streak from Supabase data
+      merged.studiedDays = cleanStudiedDays(merged.studiedDays || [])
+      merged.streak = calcStreakFromDays(merged.studiedDays)
+      setS(merged)
+      setDark(merged.settings?.darkMode !== false)
+      const savedTheme = merged.settings?.theme || 'premium-dark'
+      setTheme(savedTheme)
+      document.documentElement.setAttribute('data-theme', savedTheme)
+    }
+    setDataLoaded(true)
+  }
+  }
+
+  // ─── CLOUD TIMER: LOAD FROM DB ───
+  const loadCloudTimer = async () => {
+    if (!session?.user?.id) return
+    const { data } = await supabase
+      .from('timer_state')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .single()
+
+    if (data) {
+      const now = Date.now()
+      const startedAt = data.started_at ? new Date(data.started_at).getTime() : 0
+      const wasRunning = data.is_running && startedAt
+
+      let newSecs = data.timer_secs
+      let newTotal = data.timer_total || 1500
+      let newMode = data.timer_mode || 'focus'
+      let newStudyMode = data.study_mode || 'focus'
+
+      if (wasRunning) {
+        const elapsed = Math.floor((now - startedAt) / 1000)
+        if (data.segment_start_secs != null) {
+          newSecs = Math.max(0, data.segment_start_secs - elapsed)
+        } else {
+          newSecs = Math.max(0, data.timer_secs - elapsed)
+        }
+
+        if (newSecs <= 0) {
+          const completedSecs = data.segment_start_secs || data.timer_total || 1500
+          if (isFocusTimerMode(newMode) && completedSecs > 0) {
+            recordFocusSessionDirect(completedSecs, newStudyMode, activeSubjectRef.current)
+          }
+          setTimerRunning(false)
+          segmentStartRef.current = null
+        } else {
+          setTimerRunning(true)
+          segmentStartRef.current = data.segment_start_secs || data.timer_secs
+          timerStartRef.current = Date.now() - elapsed * 1000
+          startLocalTimer()
+        }
+      } else {
+        setTimerRunning(false)
+        segmentStartRef.current = null
+      }
+
+      setTimerSecs(newSecs)
+      setTimerTotal(newTotal)
+      setTimerMode(newMode)
+      updateS(prev => ({ ...prev, studyMode: newStudyMode }))
+    }
+    setTimerReady(true)
+  }
+
+  // ─── SAVE DATA ───
+  const saveData = useCallback(async (newS) => {
+    if (!session) return
+    await supabase.from('user_data').upsert(
+      { user_id: session.user.id, data: newS, updated_at: new Date().toISOString() },
+      { onConflict: 'user_id' }
+    )
+  }, [session])
+
+  const updateS = useCallback((updater) => {
+    setS(prev => {
+      const next = typeof updater === 'function' ? updater(prev) : { ...prev, ...updater }
+      clearTimeout(window._saveTimeout)
+      window._saveTimeout = setTimeout(() => saveData(next), 1200)
+      return next
+    })
+  }, [saveData])
+
+  // ─── CLOUD TIMER: SAVE TO DB ───
+  const saveCloudTimer = useCallback(async (updates) => {
+    if (!session?.user?.id) return
+    await supabase.from('timer_state').upsert({
+      user_id: session.user.id,
+      timer_secs: updates.timer_secs ?? timerSecs,
+      timer_total: updates.timer_total ?? timerTotal,
+      timer_mode: updates.timer_mode ?? timerMode,
+      is_running: updates.is_running ?? timerRunning,
+      started_at: updates.started_at ?? null,
+      paused_at: updates.paused_at ?? null,
+      segment_start_secs: updates.segment_start_secs ?? segmentStartRef.current,
+      study_mode: updates.study_mode ?? S.studyMode,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id' })
+  }, [session, timerSecs, timerTotal, timerMode, timerRunning, S.studyMode])
+
+  // ─── LOCAL TIMER INTERVAL ───
+  const startLocalTimer = () => {
+    clearInterval(timerRef.current)
+    timerStartRef.current = Date.now()
+    const startSecs = timerSecs
+    timerRef.current = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - timerStartRef.current) / 1000)
+      const remaining = Math.max(0, startSecs - elapsed)
+      setTimerSecs(remaining)
+      if (remaining <= 0) {
+        clearInterval(timerRef.current)
+        setTimerRunning(false)
+        handleTimerComplete(segmentStartRef.current || timerTotal)
+      }
+    }, 1000)
+  }
+
+  // ─── TIMER COMPLETION ───
+  const handleTimerComplete = useCallback((elapsedSecs) => {
+    notify(isFocusTimerMode(timerMode) ? '✓ Session complete! Take a break.' : 'Break over. Back to work.')
+    if (isFocusTimerMode(timerMode)) {
+      recordFocusSessionDirect(elapsedSecs, S.studyMode, activeSubjectRef.current)
+    }
+    segmentStartRef.current = null
+    timerStartRef.current = null
+    saveCloudTimer({ is_running: false, started_at: null, timer_secs: 0, segment_start_secs: null })
+  }, [timerMode, S.studyMode])
+
+   // ─── RECORD SESSION (direct, no closure dependencies on timer state) ───
+  const recordFocusSessionDirect = (elapsedSecs, studyMode, subject) => {
+    const mins = Math.round(elapsedSecs / 60)
+    if (mins < 1) return
+    const today = todayKey()
+    const activeSub = subject || 'General'
+    const timeStr = new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' })
+
+    updateS(prev => {
+      const sessions = [...(prev.sessions || []), { date: today, mins, mode: studyMode || 'focus', ts: Date.now(), subject: activeSub }]
+      const totalMinutes = (prev.totalMinutes || 0) + mins
+      const todayMinutes = (prev.todayMinutes || 0) + mins
+      // FIX: Clean studiedDays before adding today, dedupe, then recalculate streak
+      const cleanDays = cleanStudiedDays(prev.studiedDays || [])
+      const studiedDays = cleanDays.includes(today) ? cleanDays : [...cleanDays, today]
+      const missedDays = (prev.missedDays || []).filter(d => d !== today)
+      const streak = calcStreakFromDays(studiedDays)
+      const isNewStreak = streak > (prev.streak || 0)
+      const subjectMinutes = { ...prev.subjectMinutes, [activeSub]: (prev.subjectMinutes?.[activeSub] || 0) + mins }
+
+      const feedEvents = [
+        { icon:'⏱', text:`Completed ${mins}min ${activeSub !== 'General' ? `(${activeSub})` : 'focus'} session`, time: timeStr },
+        ...(isNewStreak && streak > 0 ? [{ icon:'🔥', text:`Now on a ${streak}-day streak!`, time: timeStr }] : []),
+        ...(totalMinutes >= 600 && (prev.totalMinutes||0) < 600 ? [{ icon:'⏰', text:'Hit 10 hours total study!', time: timeStr }] : []),
+        ...(totalMinutes >= 3000 && (prev.totalMinutes||0) < 3000 ? [{ icon:'📚', text:'Hit 50 hours total study!', time: timeStr }] : []),
+        ...(totalMinutes >= 6000 && (prev.totalMinutes||0) < 6000 ? [{ icon:'💎', text:'Hit 100 hours! Century Scholar!', time: timeStr }] : []),
+      ]
+      const activityFeed = [...feedEvents, ...(prev.activityFeed || [])].slice(0, 20)
+
+      return { ...prev, sessions, totalMinutes, todayMinutes, studiedDays, missedDays, streak, lastStudiedDate: today, subjectMinutes, activityFeed }
+    })
+  }
+
+  // ─── TIMER CONTROLS ───
+  const startTimer = async () => {
+    if (timerSecs <= 0) return
+    const now = new Date().toISOString()
+    segmentStartRef.current = timerSecs
+    timerStartRef.current = Date.now()
+    setTimerRunning(true)
+    await saveCloudTimer({ is_running: true, started_at: now, segment_start_secs: timerSecs, timer_secs: timerSecs })
+    startLocalTimer()
+  }
+
+  const pauseTimer = async () => {
+    clearInterval(timerRef.current)
+    setTimerRunning(false)
+    let remaining = timerSecs
+    if (isFocusTimerMode(timerMode) && segmentStartRef.current !== null && timerStartRef.current) {
+      const realElapsed = Math.floor((Date.now() - timerStartRef.current) / 1000)
+      const elapsedSecs = Math.min(segmentStartRef.current, realElapsed)
+      remaining = Math.max(0, segmentStartRef.current - elapsedSecs)
+      setTimerSecs(remaining)
+      if (elapsedSecs > 0) {
+        recordFocusSessionDirect(elapsedSecs, S.studyMode, activeSubjectRef.current)
+      }
+      segmentStartRef.current = null
+      timerStartRef.current = null
+    }
+    await saveCloudTimer({ is_running: false, paused_at: new Date().toISOString(), timer_secs: remaining, segment_start_secs: null })
+  }
+
+  const resetTimer = async () => {
+    clearInterval(timerRef.current)
+    if (isFocusTimerMode(timerMode) && segmentStartRef.current !== null && timerRunning && timerStartRef.current) {
+      const realElapsed = Math.floor((Date.now() - timerStartRef.current) / 1000)
+      const elapsedSecs = Math.min(segmentStartRef.current, realElapsed)
+      if (elapsedSecs > 0) {
+        recordFocusSessionDirect(elapsedSecs, S.studyMode, activeSubjectRef.current)
+      }
+    }
+    setTimerRunning(false)
+    setTimerSecs(timerTotal)
+    segmentStartRef.current = null
+    timerStartRef.current = null
+    await saveCloudTimer({ is_running: false, timer_secs: timerTotal, started_at: null, segment_start_secs: null })
+  }
+
+  const setMode = async (mode, mins) => {
+    clearInterval(timerRef.current)
+    if (isFocusTimerMode(timerMode) && segmentStartRef.current !== null && timerRunning && timerStartRef.current) {
+      const realElapsed = Math.floor((Date.now() - timerStartRef.current) / 1000)
+      const elapsedSecs = Math.min(segmentStartRef.current, realElapsed)
+      if (elapsedSecs > 0) {
+        recordFocusSessionDirect(elapsedSecs, S.studyMode, activeSubjectRef.current)
+      }
+    }
+    setTimerRunning(false)
+    setTimerMode(mode)
+    const secs = mins * 60
+    setTimerTotal(secs)
+    setTimerSecs(secs)
+    segmentStartRef.current = null
+    timerStartRef.current = null
+    await saveCloudTimer({ timer_mode: mode, timer_total: secs, timer_secs: secs, is_running: false, started_at: null, segment_start_secs: null })
+  }
+
+  const toggleTimer = () => {
+    if (timerRunning) pauseTimer()
+    else startTimer()
+  }
+
+  const timerProgress = timerTotal > 0 ? (timerTotal - timerSecs) / timerTotal : 0
+  const circumference = 628
+  const dashoffset = circumference * (1 - timerProgress)
+
+  const signOut = async () => {
+    await supabase.auth.signOut()
+    nav('/')
+  }
+
+  const handleAuth = async () => {
+    setAuthErr('')
+    if (!authEmail || !authPass) { setAuthErr('Please fill in all fields.'); return }
+    setAuthLoading(true)
+    if (authMode === 'signup') {
+      const { error } = await supabase.auth.signUp({
+        email: authEmail, password: authPass,
+        options: { data: { full_name: authName || authEmail.split('@')[0] } }
+      })
+      if (error) { setAuthErr(error.message); setAuthLoading(false); return }
+      notify('Account created! Welcome to Kosmosic.')
+    } else {
+      const { error } = await supabase.auth.signInWithPassword({ email: authEmail, password: authPass })
+      if (error) { setAuthErr(error.message); setAuthLoading(false); return }
+      notify('Welcome back.')
+    }
+    setAuthLoading(false)
+  }
+
+  const signInGoogle = async () => {
+    await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin + '/app' } })
+  }
+
+  // Reset today's minutes at midnight
+  useEffect(() => {
+    const today = todayKey()
+    if (S.lastStudiedDate && S.lastStudiedDate !== today) {
+      updateS(prev => ({ ...prev, todayMinutes: 0 }))
+    }
+  }, [])
+
   const initials = session
     ? (session.user.user_metadata?.full_name || session.user.email || 'U').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
     : 'KS'
@@ -574,12 +1126,12 @@ export default function StudyOS({ session }) {
       </div>
 
       <div className={`mobile-nav-overlay ${mobileOpen ? 'open' : ''}`}>
-        {['city','room','dash','timer','music','cal','marks','diary','awards','ai','profile','settings'].map(p => (
-          <a key={p} href="#" className={page === p ? 'active' : ''} onClick={e => { e.preventDefault(); setPage(p); setMobileOpen(false); setShowThemePicker(false) }}>
-            {{ city:'City 🏙', room:'Study Rooms', dash:'Home', timer:'Focus', music:'Music', cal:'Calendar', marks:'Marks', diary:'Diary', awards:'Awards', ai:'AI Coach', profile:'Profile', settings:'Settings' }[p]}
-          </a>
-        ))}
-      </div>
+  {['dash','timer','city','room','music','cal','marks','diary','awards','ai','profile','settings'].map(p => (
+    <a key={p} href="#" className={page === p ? 'active' : ''} onClick={e => { e.preventDefault(); setPage(p); setMobileOpen(false); setShowThemePicker(false) }}>
+      {{ city:'City', room:'Study Rooms', dash:'Home', timer:'Focus', music:'Music', cal:'Calendar', marks:'Marks', diary:'Diary', awards:'Awards', ai:'AI Coach', profile:'Profile', settings:'Settings' }[p]}
+    </a>
+  ))}
+</div>
 
       <nav className="nav">
         <div className="nav-logo" style={{ cursor: 'pointer' }} onClick={() => nav('/')}>
@@ -587,10 +1139,10 @@ export default function StudyOS({ session }) {
           Kosmosic
         </div>
         <div className="nav-tabs">
-          {[['city','City 🏙'],['room','Rooms'],['dash','Home'],['timer','Focus'],['music','Music'],['cal','Calendar'],['marks','Marks'],['diary','Diary'],['awards','Awards'],['ai','AI'],['settings','Settings']].map(([p, label]) => (
-            <button key={p} className={`tab ${page === p ? 'active' : ''}`} onClick={() => setPage(p)}>{label}</button>
-          ))}
-        </div>
+  {[['dash','Home'],['timer','Focus'],['city','City'],['room','Rooms'],['music','Music'],['cal','Calendar'],['marks','Marks'],['diary','Diary'],['awards','Awards'],['ai','AI'],['settings','Settings']].map(([p, label]) => (
+    <button key={p} className={`tab ${page === p ? 'active' : ''}`} onClick={() => setPage(p)}>{label}</button>
+  ))}
+</div>
         <div className="nav-right" style={{ position:'relative' }}>
           <button className="icon-btn" onClick={() => setShowThemePicker(p => !p)} title="Change theme" style={{ fontSize:'0.8rem' }}>🎨</button>
           {showThemePicker && (
