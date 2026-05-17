@@ -1,67 +1,74 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { supabase } from './supabase.js'
 
-// ─── TILE GEOMETRY ────────────────────────────────────────────────────────────
-const TW = 72, TH = 36
-const COLS = 22, ROWS = 18
-const OFFX = 0, OFFY = 80
-
-function iso(col, row) {
-  return { x: (col - row) * TW / 2 + OFFX, y: (col + row) * TH / 2 + OFFY }
-}
-
-// ─── ZONE MAP  (0=ocean 1=village 2=beach 3=forest 4=mountain 5=metro 6=exam 7=banned) ───
-const ZMAP = [
-  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-  [0,0,0,0,0,0,0,7,7,7,7,0,0,0,0,0,0,0,0,0,0,0],
-  [0,0,0,0,0,0,7,7,7,7,7,7,7,0,0,0,0,0,0,0,0,0],
-  [0,0,0,0,0,7,4,4,4,4,7,7,7,0,5,5,5,5,0,0,0,0],
-  [0,0,0,0,2,1,4,4,4,4,4,7,7,5,5,5,5,5,0,0,0,0],
-  [0,0,0,2,2,1,1,4,4,4,7,7,5,5,5,5,5,0,0,0,0,0],
-  [0,0,2,2,2,1,1,1,7,7,3,3,3,5,5,5,0,0,0,0,0,0],
-  [0,0,2,2,1,1,1,1,1,3,3,3,3,3,5,5,0,0,0,0,0,0],
-  [0,0,2,1,1,1,1,1,1,3,3,3,3,3,0,0,0,0,0,0,0,0],
-  [0,0,1,1,1,1,1,1,3,3,3,3,6,6,0,0,0,0,0,0,0,0],
-  [0,0,0,1,1,1,1,1,3,3,3,6,6,6,0,0,0,0,0,0,0,0],
-  [0,0,0,1,1,1,1,3,3,3,6,6,6,0,0,0,0,0,0,0,0,0],
-  [0,0,0,0,1,1,1,3,3,6,6,6,0,0,0,0,0,0,0,0,0,0],
-  [0,0,0,0,0,1,1,6,6,6,0,0,0,0,0,0,0,0,0,0,0,0],
-  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-]
-
-const ZONES = {
-  1: { name:'Starting Village', top:'#a5d66b', left:'#8bc34a', right:'#6a9e2a' },
-  2: { name:'Beachside',        top:'#ffe082', left:'#ffd54f', right:'#ffca28' },
-  3: { name:'Pine Forest',      top:'#4caf50', left:'#388e3c', right:'#2e7d32' },
-  4: { name:'Mountain Peak',    top:'#b0bec5', left:'#90a4ae', right:'#78909c' },
-  5: { name:'Dustopian Metro',  top:'#9c27b0', left:'#7b1fa2', right:'#6a1b9a' },
-  6: { name:'Exam Quarter',     top:'#ef5350', left:'#e53935', right:'#c62828' },
-  7: { name:'Banned Lands',     top:'#424242', left:'#212121', right:'#1a1a1a' },
-}
-
-// ─── DETERMINISTIC HASH ──────────────────────────────────────────────────────
-function hash(str) {
+/* ─── helpers ─── */
+const hashString = (str) => {
   let h = 2166136261
   for (let i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 16777619)
-  return h >>> 0
+  return Math.abs(h >>> 0)
 }
 
-// ─── ZONE / TIER LOGIC ───────────────────────────────────────────────────────
-function getZoneId(u) {
-  if ((u.missed_streak || 0) >= 5) return 7
-  if (u.is_exam_mode) return 6
-  const h = u.total_hours || 0
-  if (h >= 100 || (u.goals_hit || 0) >= 10) return 5
-  if ((u.avg_score || 0) >= 85 && h >= 30) return 4
-  if (h >= 30) return 3
-  if (h >= 10) return 2
-  return 1
+/* ─── reduced shape catalog: best 2 per tier ─── */
+const SHAPE_CATALOG = {
+  1: [
+    { h: 3, w: 24, floors: 1, wp: 2, roof: 'peak',  name: 'Cottage' },
+    { h: 3, w: 28, floors: 1, wp: 3, roof: 'flat',  name: 'Loft' },
+  ],
+  2: [
+    { h: 6, w: 38, floors: 2, wp: 4, roof: 'peak',  name: 'Townhouse' },
+    { h: 7, w: 30, floors: 3, wp: 3, roof: 'flat',  name: 'Triplex' },
+  ],
+  3: [
+    { h: 9, w: 38, floors: 3, wp: 4, roof: 'peak',   name: 'Clock-tower' },
+    { h: 9, w: 36, floors: 4, wp: 3, roof: 'setback', name: 'Stepped' },
+  ],
+  4: [
+    { h: 14, w: 46, floors: 6, wp: 4, roof: 'setback', name: 'Ziggurat' },
+    { h: 12, w: 42, floors: 5, wp: 4, roof: 'spire',   name: 'Needle' },
+  ],
+  5: [
+    { h: 17, w: 58, floors: 7, wp: 6, roof: 'dome',    name: 'Observatory' },
+    { h: 17, w: 56, floors: 7, wp: 5, roof: 'setback', name: 'Cascade' },
+  ],
+  6: [
+    { h: 22, w: 64, floors: 10, wp: 6, roof: 'spire', name: 'Shard' },
+    { h: 20, w: 70, floors: 9,  wp: 7, roof: 'none',  name: 'Monolith' },
+  ],
 }
 
-function getTier(hours) {
+const getBuildingSpec = (hours, streak, userId = '') => {
+  const tier = Math.min(6, Math.floor(Math.log2(Math.max(hours + 1, 1))))
+  const catalog = SHAPE_CATALOG[tier] || SHAPE_CATALOG[1]
+  const seed = hashString(userId || 'anon')
+  const shape = catalog[seed % catalog.length]
+  const growth = Math.min(1.25, 1 + (hours % 50) / 160)
+  let style = 'default'
+  if (hours >= 200) style = 'cyberpunk'
+  else if (hours >= 100) style = 'glass'
+  else if (hours >= 50) style = 'modern'
+  return {
+    height: Math.floor(shape.h * growth),
+    width: Math.floor(shape.w * growth),
+    floors: shape.floors,
+    windowsPerFloor: shape.wp,
+    level: tier,
+    style,
+    roof: shape.roof,
+    seed,
+    name: shape.name,
+  }
+}
+
+const getRankLabel = (hours) => {
+  if (hours >= 200) return { label: 'Skyline Tower', color: '#d4a853' }
+  if (hours >= 100) return { label: 'Penthouse', color: '#c9956a' }
+  if (hours >= 50)  return { label: 'High-Rise', color: '#4a7a9b' }
+  if (hours >= 20)  return { label: 'Mid-Rise', color: '#5c8c6e' }
+  if (hours >= 5)   return { label: 'Apartment', color: '#7a7468' }
+  return { label: 'Studio', color: '#5a5248' }
+}
+
+const getTier = (hours) => {
   if (hours >= 200) return 6
   if (hours >= 100) return 5
   if (hours >= 50)  return 4
@@ -70,384 +77,82 @@ function getTier(hours) {
   return 1
 }
 
-function getCellForUser(uid, zid) {
-  const cells = []
-  for (let r = 0; r < ZMAP.length; r++)
-    for (let c = 0; c < ZMAP[r].length; c++)
-      if (ZMAP[r][c] === zid) cells.push([r, c])
-  if (!cells.length) return [7, 5]
-  return cells[hash(uid) % cells.length]
+/* ─── weather helpers ─── */
+const PHASES = { NIGHT: 'night', DAWN: 'dawn', DAY: 'day', EVENING: 'evening' }
+
+function getPhase(now, sunrise, sunset) {
+  const t = now.getTime(), sr = sunrise.getTime(), ss = sunset.getTime()
+  const dawnLen = 30 * 60 * 1000, eveLen = 40 * 60 * 1000
+  if (t < sr - dawnLen) return PHASES.NIGHT
+  if (t < sr + dawnLen) return PHASES.DAWN
+  if (t < ss - eveLen) return PHASES.DAY
+  if (t < ss + eveLen) return PHASES.EVENING
+  return PHASES.NIGHT
 }
 
-// ─── SEASON ───────────────────────────────────────────────────────────────────
-function season(month) {
-  if (month <= 1 || month === 11) return 'winter'
-  if (month <= 4) return 'spring'
-  if (month <= 7) return 'summer'
-  return 'autumn'
-}
-const TREE = {
-  winter: ['#eceff1','#cfd8dc','#5d4037'],
-  spring: ['#f48fb1','#f8bbd0','#4e342e'],
-  summer: ['#2e7d32','#43a047','#4e342e'],
-  autumn: ['#e65100','#ff6f00','#3e2723'],
-}
-const SNOW_SEASON = { winter:true, spring:false, summer:false, autumn:false }
-
-// ─── DAY / NIGHT ─────────────────────────────────────────────────────────────
-function tod(hour) {
-  if (hour >= 6 && hour < 8)   return 'sunrise'
-  if (hour >= 8 && hour < 18)  return 'day'
-  if (hour >= 18 && hour < 20) return 'sunset'
-  return 'night'
-}
-const SKY = {
-  sunrise: ['#ff7043','#ffb300','#ffe082'],
-  day:     ['#1565c0','#1e88e5','#64b5f6'],
-  sunset:  ['#6a1b9a','#e53935','#ff8f00'],
-  night:   ['#060614','#0a0a2a','#101030'],
-}
-const AMBIENT_COLOR = {
-  sunrise: [255,200,100, 0.14],
-  day:     [255,252,230, 0   ],
-  sunset:  [255, 80, 20, 0.18],
-  night:   [ 10, 10, 80, 0.40],
-}
-
-// ─── UTILITY COLOR ────────────────────────────────────────────────────────────
-function hexToRgb(hex) {
-  const n = parseInt(hex.replace('#',''),16)
-  return [(n>>16)&0xff,(n>>8)&0xff,n&0xff]
-}
-function shiftColor(hex, todKey) {
-  const [r,g,b] = hexToRgb(hex)
-  const [ar,ag,ab,aa] = AMBIENT_COLOR[todKey]
-  return `rgba(${Math.min(255,r*(1-aa)+ar*aa)|0},${Math.min(255,g*(1-aa)+ag*aa)|0},${Math.min(255,b*(1-aa)+ab*aa)|0},1)`
-}
-function darkenHex(hex, amt) {
-  const [r,g,b] = hexToRgb(hex)
-  return `rgb(${(r*(1-amt))|0},${(g*(1-amt))|0},${(b*(1-amt))|0})`
-}
-
-// ─── BUILDING SPECS ───────────────────────────────────────────────────────────
-const BSPEC = [
-  null,
-  // tier 1 – tiny house  (wood)
-  { h:22, floors:0, top:'#c8a96e', left:'#b5956c', right:'#9a7a56', roof:true, roofColor:'#546e7a' },
-  // tier 2 – small house (brick)
-  { h:36, floors:1, top:'#d4b898', left:'#c4a484', right:'#a88c70', roof:true, roofColor:'#455a64' },
-  // tier 3 – townhouse   (stone)
-  { h:56, floors:2, top:'#9db4be', left:'#7a98a8', right:'#607888', roof:false, roofColor:'#37474f' },
-  // tier 4 – apartment   (concrete)
-  { h:80, floors:3, top:'#7b90a0', left:'#5a7280', right:'#3e5a6e', roof:false, roofColor:'#263238' },
-  // tier 5 – tall block  (steel)
-  { h:112, floors:5, top:'#5a6e84', left:'#3e5268', right:'#2a3e52', roof:false, roofColor:'#1a2a3a' },
-  // tier 6 – skyscraper  (glass)
-  { h:160, floors:8, top:'#3a4a60', left:'#202e42', right:'#141e2e', roof:false, roofColor:'#0d1520' },
-]
-
-function poly(ctx, pts) {
-  ctx.beginPath()
-  pts.forEach((p,i) => i===0 ? ctx.moveTo(p[0],p[1]) : ctx.lineTo(p[0],p[1]))
-  ctx.closePath()
-}
-
-function drawBuilding(ctx, sx, sy, tier, todKey, isStudying, studyMd, hasParty, seas, uid, time) {
-  const sp = BSPEC[tier]
-  if (!sp) return
-  const bh = sp.h
-  const hw = TW * 0.4
-  const hd = TH * 0.4
-  const fn = (c) => todKey==='night' ? darkenHex(c, 0.1) : shiftColor(c, todKey)
-
-  // Left face
-  poly(ctx, [
-    [sx-hw, sy], [sx, sy+hd], [sx, sy+hd-bh], [sx-hw, sy-bh]
-  ])
-  ctx.fillStyle = fn(sp.left)
-  ctx.fill()
-  ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=0.5; ctx.stroke()
-
-  // Right face
-  poly(ctx, [
-    [sx, sy+hd], [sx+hw, sy], [sx+hw, sy-bh], [sx, sy+hd-bh]
-  ])
-  ctx.fillStyle = fn(sp.right)
-  ctx.fill(); ctx.stroke()
-
-  // Top / roof
-  poly(ctx, [
-    [sx-hw, sy-bh], [sx, sy+hd-bh], [sx+hw, sy-bh], [sx, sy-hd-bh]
-  ])
-  ctx.fillStyle = fn(sp.top)
-  ctx.fill(); ctx.stroke()
-
-  // Peaked roof (low tiers)
-  if (sp.roof) {
-    const ry = sy-bh
-    const rh = bh * 0.3
-    // left slope
-    poly(ctx, [[sx-hw,ry],[sx,ry-hd],[sx,ry+hd-rh],[sx-hw,ry]])
-    ctx.fillStyle=fn(sp.roofColor); ctx.fill(); ctx.stroke()
-    // right slope
-    poly(ctx, [[sx,ry-hd],[sx+hw,ry],[sx+hw,ry],[sx,ry+hd-rh]])
-    ctx.fillStyle=darkenHex(sp.roofColor,0.15); ctx.fill(); ctx.stroke()
-    // ridge top
-    poly(ctx, [[sx-hw,ry],[sx,ry-hd],[sx+hw,ry],[sx,ry-hd+hd*0.2]])
-    ctx.fillStyle=darkenHex(sp.roofColor,0.25); ctx.fill()
-
-    // chimney
-    const cx=sx+hw*0.4, cy=ry-rh*0.3
-    ctx.fillStyle=fn(sp.right)
-    ctx.fillRect(cx-3, cy-12, 6, 12)
-    ctx.fillStyle=fn(sp.left)
-    ctx.fillRect(cx-4, cy-13, 8, 4)
-    if (todKey==='night') {
-      const sg=ctx.createRadialGradient(cx,cy-13,0,cx,cy-13,8)
-      sg.addColorStop(0,'rgba(255,150,50,0.5)'); sg.addColorStop(1,'rgba(0,0,0,0)')
-      ctx.fillStyle=sg; ctx.fillRect(cx-8,cy-20,16,10)
-    }
+function getSkyGradient(phase, weather) {
+  const w = weather
+  if (w.snow) {
+    if (phase === PHASES.NIGHT)   return 'linear-gradient(180deg, #060a10 0%, #0c1218 60%, #111820 100%)'
+    if (phase === PHASES.DAWN)    return 'linear-gradient(180deg, #1a2028 0%, #2a3540 50%, #3a4858 100%)'
+    if (phase === PHASES.EVENING) return 'linear-gradient(180deg, #1e2830 0%, #2a3845 50%, #3a4a5a 100%)'
+    return 'linear-gradient(180deg, #8aa0b0 0%, #a0b8c8 40%, #c0d8e8 100%)'
   }
-
-  // Snow on roof
-  if (SNOW_SEASON[seas]) {
-    poly(ctx, [[sx-hw,sy-bh],[sx,sy+hd-bh],[sx+hw,sy-bh],[sx,sy-hd-bh]])
-    ctx.fillStyle='rgba(235,245,255,0.75)'; ctx.fill()
+  if (w.rain || w.heavyRain) {
+    if (phase === PHASES.NIGHT)   return 'linear-gradient(180deg, #050810 0%, #0a1018 60%, #0e1620 100%)'
+    if (phase === PHASES.DAWN)    return 'linear-gradient(180deg, #1a1e28 0%, #252a38 60%, #303848 100%)'
+    if (phase === PHASES.EVENING) return 'linear-gradient(180deg, #1a1a28 0%, #252038 50%, #302848 100%)'
+    return 'linear-gradient(180deg, #4a5568 0%, #5a6a80 40%, #6a8098 100%)'
   }
-
-  // Windows
-  if (sp.floors > 0) {
-    const isNight = todKey==='night'
-    const winCol = isStudying ? (isNight?'#ffd54f':'rgba(255,230,100,0.6)') : (isNight?'#ffe0b2':'rgba(170,210,255,0.25)')
-    const winAlpha = isNight ? 0.9 : 0.4
-    const floorH = bh / (sp.floors + 1)
-    for (let fl=0; fl < sp.floors; fl++) {
-      const fy = sy - floorH * (fl+1)
-      // left face windows (2 per floor)
-      for (let w=0; w<2; w++) {
-        const t = (w+0.7)/(2+0.4)
-        const wx = sx-hw + t*hw - 2
-        const wy = fy - 4
-        ctx.fillStyle=winCol; ctx.globalAlpha=winAlpha
-        ctx.fillRect(wx,wy,5,7)
-        ctx.globalAlpha=1
-        if (isNight && isStudying) {
-          const gl=ctx.createRadialGradient(wx+2,wy+3,0,wx+2,wy+3,10)
-          gl.addColorStop(0,'rgba(255,210,80,0.35)'); gl.addColorStop(1,'rgba(0,0,0,0)')
-          ctx.fillStyle=gl; ctx.globalAlpha=0.6; ctx.fillRect(wx-8,wy-6,22,18); ctx.globalAlpha=1
-        }
-      }
-      // right face windows (2 per floor)
-      for (let w=0; w<2; w++) {
-        const t = (w+0.7)/(2+0.4)
-        const wx = sx + t*hw - 2
-        const wy = fy - 4
-        ctx.fillStyle=winCol; ctx.globalAlpha=winAlpha
-        ctx.fillRect(wx,wy,5,7); ctx.globalAlpha=1
-      }
-    }
+  if (w.cloudy) {
+    if (phase === PHASES.NIGHT)   return 'linear-gradient(180deg, #080c14 0%, #0e1420 60%, #121a28 100%)'
+    if (phase === PHASES.DAWN)    return 'linear-gradient(180deg, #2a2030 0%, #3a3048 50%, #4a4060 100%)'
+    if (phase === PHASES.EVENING) return 'linear-gradient(180deg, #2a1e28 0%, #3a2838 50%, #4a3848 100%)'
+    return 'linear-gradient(180deg, #5a6880 0%, #6a8098 40%, #8aa0b8 100%)'
   }
-
-  // Antenna for high tiers
-  if (tier >= 5) {
-    const ay = sy-bh-hd
-    ctx.strokeStyle=fn(sp.right); ctx.lineWidth=1.5
-    ctx.beginPath(); ctx.moveTo(sx,ay); ctx.lineTo(sx,ay-20); ctx.stroke()
-    if (todKey==='night') {
-      ctx.beginPath(); ctx.arc(sx,ay-20,3,0,Math.PI*2)
-      ctx.fillStyle=`rgba(255,${Math.sin(time*0.003)*127+128|0},0,${0.7+Math.sin(time*0.003)*0.3})`
-      ctx.fill()
-    }
-  }
-
-  // Studying glow ring
-  if (isStudying) {
-    const glowCol = studyMd==='focus' ? 'rgba(255,213,79,' : studyMd==='short' ? 'rgba(92,180,110,' : 'rgba(74,150,200,'
-    const g=ctx.createRadialGradient(sx,sy-bh/2,0,sx,sy-bh/2,hw*2)
-    g.addColorStop(0,glowCol+'0.28)'); g.addColorStop(1,'rgba(0,0,0,0)')
-    ctx.fillStyle=g; ctx.fillRect(sx-hw*2,sy-bh-hd*2,hw*4,bh+hd*3)
-  }
-
-  // Party decorations
-  if (hasParty) {
-    const pcols=['#f44336','#e91e63','#9c27b0','#2196f3','#4caf50','#ffeb3b','#ff9800']
-    const t2=time*0.001
-    for (let i=0;i<10;i++) {
-      const ang=(i/10)*Math.PI*2+t2
-      const px=sx+Math.cos(ang)*hw*1.1
-      const py=sy-bh*0.5+Math.sin(ang)*hd*1.2
-      ctx.beginPath(); ctx.arc(px,py,3.5,0,Math.PI*2)
-      ctx.fillStyle=pcols[i%pcols.length]; ctx.fill()
-    }
-    // garland lines
-    ctx.save(); ctx.setLineDash([4,4])
-    ctx.strokeStyle='rgba(255,255,255,0.25)'; ctx.lineWidth=0.8
-    ctx.beginPath(); ctx.moveTo(sx-hw,sy-bh+6); ctx.lineTo(sx+hw,sy-bh+6); ctx.stroke()
-    ctx.restore()
-    // banner stars
-    const starY=sy-bh-hd-6
-    for (let i=-1;i<=1;i+=1) {
-      ctx.font='9px sans-serif'; ctx.fillStyle='#ffd700'
-      ctx.fillText('★',sx+i*14-4,starY)
-    }
-  }
+  if (phase === PHASES.NIGHT)   return 'linear-gradient(180deg, #02010a 0%, #080618 40%, #0c0b18 100%)'
+  if (phase === PHASES.DAWN)    return 'linear-gradient(180deg, #1a0c2e 0%, #3a1e48 40%, #6a3a58 100%)'
+  if (phase === PHASES.EVENING) return 'linear-gradient(180deg, #1e0a28 0%, #4a1e38 30%, #8a3a28 70%, #c45a18 100%)'
+  return 'linear-gradient(180deg, #0c4a8e 0%, #1e6ab0 30%, #4a9ad8 70%, #8ac8f0 100%)'
 }
 
-// ─── TREE ─────────────────────────────────────────────────────────────────────
-function drawTree(ctx, sx, sy, seas, scale=1) {
-  const [l1,l2,trunk]=TREE[seas]
-  const s=scale*10
-  ctx.fillStyle=trunk; ctx.fillRect(sx-2*scale,sy-s*0.5,4*scale,s*0.6)
-  ctx.fillStyle=l1
-  poly(ctx,[[sx,sy-s*2.4],[sx-s,sy-s*1.2],[sx+s,sy-s*1.2]])
-  ctx.fill()
-  ctx.fillStyle=l2
-  poly(ctx,[[sx,sy-s*3.0],[sx-s*0.65,sy-s*2.1],[sx+s*0.65,sy-s*2.1]])
-  ctx.fill()
+function getWeatherCondition(data) {
+  const p = data.current.precipitation || 0
+  const r = data.current.rain || 0
+  const s = data.current.snowfall || 0
+  const c = data.hourly?.cloud_cover?.[0] ?? 50
+  if (s > 0.5) return { snow: true, rain: false, heavyRain: false, cloudy: true, label: 'Snowing' }
+  if (p > 2.5) return { snow: false, rain: true, heavyRain: true, cloudy: true, label: 'Heavy Rain' }
+  if (p > 0.1 || r > 0.1) return { snow: false, rain: true, heavyRain: false, cloudy: true, label: 'Rain' }
+  if (c > 70) return { snow: false, rain: false, heavyRain: false, cloudy: true, label: 'Cloudy' }
+  return { snow: false, rain: false, heavyRain: false, cloudy: false, label: 'Clear' }
 }
 
-// ─── MOUNTAIN ────────────────────────────────────────────────────────────────
-function drawMountain(ctx, sx, sy, seas) {
-  poly(ctx,[[sx,sy-72],[sx-36,sy],[sx+36,sy]])
-  ctx.fillStyle='#78909c'; ctx.fill()
-  poly(ctx,[[sx-14,sy-72],[sx+14,sy-72],[sx+18,sy-50],[sx-18,sy-50]])
-  ctx.fillStyle='#607d8b'; ctx.fill()
-  if (SNOW_SEASON[seas]||seas==='winter') {
-    poly(ctx,[[sx,sy-72],[sx-12,sy-50],[sx+12,sy-50]])
-    ctx.fillStyle='rgba(240,245,255,0.85)'; ctx.fill()
-  }
+/* ─── celestial positioning ─── */
+function getSunPosition(now, sunrise, sunset) {
+  const t = now.getTime(), sr = sunrise.getTime(), ss = sunset.getTime()
+  if (t < sr || t > ss) return null
+  const progress = (t - sr) / (ss - sr)
+  const x = 6 + progress * 88
+  const y = 68 - 58 * Math.sin(progress * Math.PI)
+  return { x, y }
 }
 
-// ─── OCEAN + SKY ─────────────────────────────────────────────────────────────
-function drawBackground(ctx, W, H, todKey, time) {
-  const skyCols=SKY[todKey]
-  const sg=ctx.createLinearGradient(0,0,0,H*0.6)
-  sg.addColorStop(0,skyCols[0]); sg.addColorStop(0.6,skyCols[1]); sg.addColorStop(1,skyCols[2])
-  ctx.fillStyle=sg; ctx.fillRect(0,0,W,H)
-
-  // ocean
-  const og=ctx.createLinearGradient(0,H*0.5,0,H)
-  const oa=todKey==='night'?'0.7':'0.55'
-  og.addColorStop(0,`rgba(21,101,192,${oa})`); og.addColorStop(1,'rgba(13,71,161,0.85)')
-  ctx.fillStyle=og; ctx.fillRect(0,H*0.5,W,H*0.5)
-
-  // wave shimmer
-  ctx.save(); ctx.strokeStyle='rgba(255,255,255,0.07)'; ctx.lineWidth=1
-  for (let i=0;i<7;i++) {
-    const wy=H*0.52+i*22
-    ctx.beginPath(); ctx.moveTo(0,wy)
-    for (let x=0;x<W;x+=24) ctx.lineTo(x,wy+Math.sin(x*0.025+time*0.0015+i)*4)
-    ctx.stroke()
-  }
-  ctx.restore()
+function getMoonPosition(now, sunrise, sunset) {
+  const t = now.getTime(), sr = sunrise.getTime(), ss = sunset.getTime()
+  const dayLen = ss - sr
+  const nightLen = 24 * 60 * 60 * 1000 - dayLen
+  let prog
+  if (t > ss) prog = (t - ss) / nightLen
+  else if (t < sr) prog = 0.5 + (t - (ss - 24 * 60 * 60 * 1000)) / nightLen
+  else return null
+  const x = 6 + (prog % 1) * 88
+  const y = 14 + 22 * Math.sin((prog % 1) * Math.PI)
+  return { x, y }
 }
 
-// ─── STARS ───────────────────────────────────────────────────────────────────
-function drawStars(ctx, W, H, time) {
-  for (let i=0;i<90;i++) {
-    const sx2=(hash(`sx${i}`)%1000)/1000*W
-    const sy2=(hash(`sy${i}`)%600)/600*H*0.48
-    const tw2=0.3+0.7*Math.abs(Math.sin(time*0.0008+i*0.9))
-    ctx.globalAlpha=tw2*0.8; ctx.fillStyle='#fff'
-    ctx.fillRect(sx2,sy2,1.5,1.5)
-  }
-  ctx.globalAlpha=1
-}
-
-// ─── CELESTIAL ───────────────────────────────────────────────────────────────
-function drawCelestial(ctx, W, H, todKey, hour, time) {
-  if (todKey!=='night') {
-    const t=(hour-6)/14
-    const cx2=W*0.08+t*W*0.84, cy2=H*0.22-Math.sin(t*Math.PI)*H*0.13
-    const sg=ctx.createRadialGradient(cx2,cy2,0,cx2,cy2,34)
-    sg.addColorStop(0,todKey==='day'?'#fffde7':'#ffe082')
-    sg.addColorStop(0.35,todKey==='day'?'#fff176':'#ffb300')
-    sg.addColorStop(1,'rgba(255,200,0,0)')
-    ctx.fillStyle=sg; ctx.beginPath(); ctx.arc(cx2,cy2,34,0,Math.PI*2); ctx.fill()
-    ctx.fillStyle='#fff9e6'; ctx.beginPath(); ctx.arc(cx2,cy2,14,0,Math.PI*2); ctx.fill()
-  } else {
-    const mx=W*0.82+Math.sin(time*0.0004)*5, my=H*0.1
-    ctx.fillStyle='#e8eaf6'; ctx.beginPath(); ctx.arc(mx,my,16,0,Math.PI*2); ctx.fill()
-    ctx.fillStyle=SKY.night[1]; ctx.beginPath(); ctx.arc(mx+8,my-4,12,0,Math.PI*2); ctx.fill()
-  }
-}
-
-// ─── GROUND TILE ─────────────────────────────────────────────────────────────
-function drawTile(ctx, col, row, zid, todKey) {
-  if (!zid||!ZONES[zid]) return
-  const {x,y}=iso(col,row)
-  const z=ZONES[zid]
-  const top=todKey==='night'?darkenHex(z.top,0.45):shiftColor(z.top,todKey)
-  poly(ctx,[[x,y+TH/2],[x+TW/2,y],[x,y-TH/2],[x-TW/2,y]])
-  ctx.fillStyle=top; ctx.fill()
-  ctx.strokeStyle='rgba(0,0,0,0.07)'; ctx.lineWidth=0.5; ctx.stroke()
-}
-
-// ─── INFO PANEL ───────────────────────────────────────────────────────────────
-function InfoPanel({users,myZone,myTier,hovered,todKey,seas}) {
-  const TOD_L={day:'Day ☀️',night:'Night 🌙',sunrise:'Sunrise 🌅',sunset:'Sunset 🌇'}
-  const SEAS_L={winter:'❄️ Winter',spring:'🌸 Spring',summer:'☀️ Summer',autumn:'🍂 Autumn'}
-  return (
-    <div style={{position:'absolute',top:12,right:12,width:210,background:'rgba(8,8,20,0.9)',backdropFilter:'blur(14px)',border:'1px solid rgba(255,255,255,0.09)',borderRadius:14,padding:'12px 14px',color:'#fff',fontSize:'0.72rem',fontFamily:"'Anthropic Serif',Georgia,serif",zIndex:10}}>
-      <div style={{display:'flex',justifyContent:'space-between',marginBottom:9}}>
-        <span style={{color:'#d4a853',fontWeight:600,fontSize:'0.78rem'}}>City</span>
-        <span style={{color:'rgba(255,255,255,0.4)',fontSize:'0.65rem'}}>{TOD_L[todKey]}</span>
-      </div>
-      <div style={{color:'rgba(255,255,255,0.4)',fontSize:'0.65rem',marginBottom:3,textTransform:'uppercase',letterSpacing:'0.1em'}}>{SEAS_L[seas]}</div>
-
-      {hovered ? (
-        <div style={{background:'rgba(255,255,255,0.06)',border:'1px solid rgba(212,168,83,0.3)',borderRadius:9,padding:'9px 10px',marginBottom:9}}>
-          <div style={{color:'#ffd54f',fontWeight:600,marginBottom:5}}>{hovered.display_name}</div>
-          <div style={{color:'rgba(255,255,255,0.55)',lineHeight:1.9}}>
-            🏘 {ZONES[hovered.zone]?.name}<br/>
-            ⏱ {(hovered.total_hours||0).toFixed(1)}h<br/>
-            🔥 {hovered.streak||0} day streak<br/>
-            📅 {hovered.studied_days||0} days<br/>
-            {hovered.is_studying&&<span style={{color:'#69f0ae'}}>● Studying now</span>}
-            {(hovered.goals_hit||0)>=5&&<> · <span style={{color:'#ff8a65'}}>🎉 Goal crusher</span></>}
-          </div>
-        </div>
-      ) : (
-        <div style={{marginBottom:9,padding:'6px 0',borderBottom:'1px solid rgba(255,255,255,0.07)'}}>
-          <span style={{color:'rgba(255,255,255,0.45)'}}>Hover a building to inspect</span>
-        </div>
-      )}
-
-      <div style={{marginBottom:9,paddingBottom:9,borderBottom:'1px solid rgba(255,255,255,0.07)'}}>
-        <div style={{color:'rgba(255,255,255,0.35)',fontSize:'0.6rem',textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:4}}>Your plot</div>
-        <div style={{color:'rgba(255,255,255,0.65)',lineHeight:1.8}}>
-          Zone: <span style={{color:'#d4a853'}}>{ZONES[myZone]?.name}</span><br/>
-          Tier: <span style={{color:'#d4a853'}}>T{myTier}</span>
-        </div>
-      </div>
-
-      <div style={{marginBottom:9,paddingBottom:9,borderBottom:'1px solid rgba(255,255,255,0.07)'}}>
-        <div style={{color:'rgba(255,255,255,0.35)',fontSize:'0.6rem',textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:4}}>Studying now</div>
-        {users.filter(u=>u.is_studying).length===0
-          ? <div style={{color:'rgba(255,255,255,0.25)',fontStyle:'italic'}}>Nobody online</div>
-          : users.filter(u=>u.is_studying).slice(0,5).map(u=>(
-              <div key={u.user_id} style={{display:'flex',alignItems:'center',gap:5,marginBottom:2}}>
-                <span style={{width:5,height:5,background:'#69f0ae',borderRadius:'50%',display:'inline-block',boxShadow:'0 0 5px #69f0ae'}}/>
-                <span style={{color:'rgba(255,255,255,0.6)'}}>{u.display_name}</span>
-              </div>
-            ))
-        }
-      </div>
-
-      {Object.entries(ZONES).map(([k,z])=>(
-        <div key={k} style={{display:'flex',alignItems:'center',gap:6,marginBottom:3}}>
-          <span style={{width:9,height:9,borderRadius:2,background:z.top,flexShrink:0,display:'inline-block'}}/>
-          <span style={{color:'rgba(255,255,255,0.4)',fontSize:'0.6rem'}}>{z.name}</span>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-// ─── SQL SCHEMA STRING ────────────────────────────────────────────────────────
-const SQL = `-- Run in Supabase SQL Editor (once)
-
-create table if not exists city_profiles (
+/* ─── SQL SCHEMA ─── */
+const SQL_SCHEMA = `create table if not exists city_profiles (
   user_id       uuid primary key references auth.users(id) on delete cascade,
   display_name  text,
   total_hours   float   default 0,
@@ -459,241 +164,1093 @@ create table if not exists city_profiles (
   study_mode    text    default 'focus',
   missed_streak int     default 0,
   is_exam_mode  boolean default false,
-  zone          int     default 1,
   building_tier int     default 1,
   last_active   timestamptz,
   updated_at    timestamptz default now()
 );
-
 alter table city_profiles enable row level security;
+create policy "Readable by authenticated" on city_profiles for select using (auth.role() = 'authenticated');
+create policy "Users manage own profile" on city_profiles for all using (auth.uid() = user_id);`
 
-create policy "Readable by authenticated"
-  on city_profiles for select
-  using (auth.role() = 'authenticated');
+/* ─── constants ─── */
+const ROAD_H = 52
+const SIDEWALK_H = 12
+const GROUND_Y = ROAD_H + SIDEWALK_H // 64
 
-create policy "Users manage own profile"
-  on city_profiles for all
-  using (auth.uid() = user_id);
+/* ─── single building component ─── */
+function Building({ user, spec, x, isMe, onClick, studying, mode, animOffset, weather }) {
+  const { height, width, floors, windowsPerFloor, level, style, roof, seed } = spec
+  const pxH = height * 18
+  const isDark = weather.phase === PHASES.NIGHT || weather.phase === PHASES.EVENING
 
--- Auto-update updated_at
-create or replace function update_city_ts()
-returns trigger language plpgsql as $$
-begin new.updated_at = now(); return new; end; $$;
+  const getBuildingBg = () => {
+    if (style === 'cyberpunk') return 'linear-gradient(180deg, #0a0818 0%, #12102a 100%)'
+    if (style === 'glass')     return 'linear-gradient(180deg, #0d1a1f 0%, #111820 100%)'
+    if (style === 'modern')    return 'linear-gradient(180deg, #141414 0%, #1a1a1a 100%)'
+    return 'linear-gradient(180deg, #111 0%, #1a1915 100%)'
+  }
 
-create trigger city_profiles_ts
-  before update on city_profiles
-  for each row execute procedure update_city_ts();`
+  const getBorderColor = () => {
+    if (isMe) return 'rgba(212,168,83,0.8)'
+    if (style === 'cyberpunk') return 'rgba(100,80,255,0.4)'
+    if (style === 'glass')     return 'rgba(80,160,200,0.3)'
+    return 'rgba(255,251,240,0.12)'
+  }
 
-// ─── MAIN ────────────────────────────────────────────────────────────────────
+  const getGlow = () => {
+    if (isMe && studying) return '0 0 30px rgba(212,168,83,0.4), 0 0 60px rgba(212,168,83,0.15)'
+    if (isMe) return '0 0 20px rgba(212,168,83,0.2)'
+    if (studying && mode === 'deep') return '0 0 20px rgba(80,120,255,0.25)'
+    if (studying) return '0 0 16px rgba(255,220,80,0.2)'
+    return 'none'
+  }
+
+  const bColor = getBorderColor()
+
+  const renderRoof = () => {
+    if (!roof || roof === 'none') return null
+    if (roof === 'peak') {
+      return (
+        <div style={{
+          position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)',
+          width: 0, height: 0,
+          borderLeft: `${width * 0.2}px solid transparent`,
+          borderRight: `${width * 0.2}px solid transparent`,
+          borderBottom: `10px solid ${bColor}`,
+          opacity: 0.6,
+        }} />
+      )
+    }
+    if (roof === 'dome') {
+      return (
+        <div style={{
+          position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)',
+          width: width * 0.55, height: 10,
+          background: bColor, opacity: 0.5,
+          borderRadius: '50% 50% 0 0',
+        }} />
+      )
+    }
+    if (roof === 'slant') {
+      return (
+        <div style={{
+          position: 'absolute', top: -6, left: '50%', transform: 'translateX(-50%) skewX(-12deg)',
+          width: width * 0.55, height: 6,
+          background: bColor, opacity: 0.5,
+        }} />
+      )
+    }
+    if (roof === 'spire') {
+      return (
+        <div style={{
+          position: 'absolute', top: -22, left: '50%', transform: 'translateX(-50%)',
+          width: 2, height: 22,
+          background: isMe ? '#d4a853' : style === 'cyberpunk' ? 'rgba(100,80,255,0.8)' : 'rgba(255,251,240,0.3)',
+          boxShadow: isMe ? '0 0 8px rgba(212,168,83,0.6)' : 'none',
+        }} />
+      )
+    }
+    if (roof === 'setback') {
+      return (
+        <div style={{
+          position: 'absolute', top: -6, left: '10%',
+          width: '80%', height: 6,
+          background: bColor, opacity: 0.35,
+          borderRadius: '2px 2px 0 0',
+        }} />
+      )
+    }
+    return null
+  }
+
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        position: 'absolute', bottom: GROUND_Y, left: x,
+        width, height: pxH,
+        background: getBuildingBg(),
+        border: `1px solid ${bColor}`,
+        borderBottom: 'none',
+        borderRadius: '3px 3px 0 0',
+        boxShadow: getGlow(),
+        cursor: 'pointer',
+        transition: 'box-shadow 0.5s ease',
+        overflow: 'visible',
+        zIndex: isMe ? 10 : 5,
+      }}
+    >
+      {/* Roof snow cap */}
+      {weather.snow && roof !== 'none' && (
+        <div style={{
+          position: 'absolute',
+          top: roof === 'peak' ? -12 : roof === 'dome' ? -12 : -6,
+          left: -2, right: -2, height: 5,
+          background: 'rgba(240,248,255,0.95)',
+          borderRadius: roof === 'dome' ? '50% 50% 0 0' : '3px 3px 0 0',
+          zIndex: 2,
+        }} />
+      )}
+
+      {style === 'cyberpunk' && (
+        <>
+          <div style={{ position: 'absolute', top: 0, left: '30%', width: 1, height: '100%', background: 'rgba(100,80,255,0.15)' }} />
+          <div style={{ position: 'absolute', top: 0, left: '60%', width: 1, height: '100%', background: 'rgba(100,80,255,0.1)' }} />
+        </>
+      )}
+      {style === 'glass' && (
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, transparent 0%, rgba(80,160,200,0.05) 50%, transparent 100%)' }} />
+      )}
+
+      {renderRoof()}
+
+      {/* Windows */}
+      <div style={{ padding: '6px 4px', display: 'flex', flexDirection: 'column', gap: 3, height: '100%' }}>
+        {Array.from({ length: floors }, (_, f) => (
+          <div key={f} style={{ display: 'flex', gap: 3, justifyContent: 'center', flex: 1, alignItems: 'center' }}>
+            {Array.from({ length: windowsPerFloor }, (_, w) => {
+              const noise = Math.sin(f * 7 + w * 13 + animOffset + seed)
+              const isStudyLit = studying && noise > 0.1
+              const isAmbientLit = !studying && isDark && noise > 0.35 // city ambient glow at night
+              const color = isStudyLit
+                ? mode === 'deep'  ? 'rgba(80,120,255,0.9)'
+                : mode === 'exam'  ? 'rgba(220,80,80,0.9)'
+                : 'rgba(255,215,80,0.9)'
+                : isAmbientLit
+                ? 'rgba(255,160,60,0.45)'
+                : 'rgba(255,255,255,0.04)'
+              const glow = isStudyLit
+                ? mode === 'deep'  ? '0 0 6px rgba(80,120,255,0.8)'
+                : mode === 'exam'  ? '0 0 6px rgba(220,80,80,0.8)'
+                : '0 0 6px rgba(255,215,80,0.7)'
+                : isAmbientLit
+                ? '0 0 4px rgba(255,140,40,0.4)'
+                : 'none'
+              return (
+                <div key={w} style={{
+                  width: 6, height: 7, background: color,
+                  borderRadius: 1, boxShadow: glow,
+                  transition: 'background 1.2s ease, box-shadow 1.2s ease',
+                }} />
+              )
+            })}
+          </div>
+        ))}
+      </div>
+
+      {/* Antenna / mast for tall buildings */}
+      {height >= 12 && roof !== 'spire' && (
+        <div style={{
+          position: 'absolute', top: -16, left: '50%', transform: 'translateX(-50%)',
+          width: 2, height: 16,
+          background: isMe ? '#d4a853' : style === 'cyberpunk' ? 'rgba(100,80,255,0.8)' : 'rgba(255,251,240,0.2)',
+          boxShadow: isMe ? '0 0 8px rgba(212,168,83,0.6)' : 'none',
+        }} />
+      )}
+
+      {isMe && (
+        <div style={{
+          position: 'absolute', top: -30, left: '50%', transform: 'translateX(-50%)',
+          background: '#d4a853', borderRadius: 4, padding: '2px 6px',
+          fontSize: '0.55rem', fontWeight: 700, color: '#000', whiteSpace: 'nowrap',
+          fontFamily: "'Anthropic Serif',Georgia,serif",
+          zIndex: 20,
+        }}>YOU</div>
+      )}
+
+      {studying && (
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: mode === 'deep'
+            ? 'linear-gradient(0deg, rgba(80,120,255,0.04) 0%, transparent 60%)'
+            : 'linear-gradient(0deg, rgba(255,215,80,0.04) 0%, transparent 60%)',
+          pointerEvents: 'none',
+        }} />
+      )}
+
+      {/* Wet foundation during rain */}
+      {weather.rain && (
+        <div style={{
+          position: 'absolute', bottom: -10, left: -4, right: -4, height: 10,
+          background: 'linear-gradient(180deg, rgba(80,120,160,0.2) 0%, transparent 100%)',
+          filter: 'blur(4px)',
+          pointerEvents: 'none',
+        }} />
+      )}
+    </div>
+  )
+}
+
+/* ─── main page ─── */
 export default function CityPage({ S, session, isStudying, studyMode }) {
-  const canvasRef = useRef(null)
-  const rafRef    = useRef(null)
-  const usersRef  = useRef([])
-
   const [users, setUsers] = useState([])
-  const [hovered, setHovered] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [selectedUser, setSelectedUser] = useState(null)
+  const [animOffset, setAnimOffset] = useState(0)
+  const [time, setTime] = useState(new Date())
   const [showSQL, setShowSQL] = useState(false)
 
-  const now   = new Date()
-  const hour  = now.getHours()
-  const month = now.getMonth()
-  const todKey  = tod(hour)
-  const seas  = season(month)
+  /* weather state */
+  const [weather, setWeather] = useState({
+    data: null,
+    phase: PHASES.NIGHT,
+    condition: { snow: false, rain: false, heavyRain: false, cloudy: false, label: 'Clear' },
+    temp: null,
+    sunrise: null,
+    sunset: null,
+    loc: { lat: 51.5074, lon: -0.1278, name: 'London' },
+  })
 
-  const myHours   = (S.totalMinutes || 0) / 60
-  const myZoneId  = getZoneId({ total_hours:myHours, streak:S.streak||0, goals_hit:(S.sessions||[]).length, avg_score:S.targetPct||0, missed_streak:(S.missedDays||[]).length, is_exam_mode:studyMode==='exam' })
-  const myTier    = getTier(myHours)
-  const myParty   = (S.sessions||[]).length >= 5
+  /* animated entities (refs to avoid re-renders) */
+  const carRefs = useRef([])
+  const carData = useRef([])
+  const pedRefs = useRef([])
+  const pedData = useRef([])
+  const rafRef = useRef()
 
-  // ── upsert own profile ────────────────────────────────────────────────────
+  const myHours = Math.floor((S?.totalMinutes || 0) / 60)
+  const mySpec = getBuildingSpec(myHours, S?.streak || 0, session?.user?.id)
+  const myName = session?.user?.user_metadata?.full_name || session?.user?.email?.split('@')[0] || 'You'
+  const myRank = getRankLabel(myHours)
+
+  const STALE_MS = 600000
+
+  /* 1. geolocation */
+  useEffect(() => {
+    if (!navigator.geolocation) return
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setWeather(prev => ({
+          ...prev,
+          loc: { lat: pos.coords.latitude, lon: pos.coords.longitude, name: 'Local' },
+        }))
+      },
+      () => { /* fallback London */ }
+    )
+  }, [])
+
+  /* 2. fetch weather */
+  const fetchWeather = useCallback(async () => {
+    const { lat, lon } = weather.loc
+    const url = new URL('https://api.open-meteo.com/v1/forecast')
+    url.searchParams.set('latitude', String(lat))
+    url.searchParams.set('longitude', String(lon))
+    url.searchParams.set('current', 'temperature_2m,is_day,precipitation,rain,showers,snowfall')
+    url.searchParams.set('hourly', 'temperature_2m,cloud_cover')
+    url.searchParams.set('daily', 'sunrise,sunset')
+    url.searchParams.set('timezone', 'auto')
+    try {
+      const res = await fetch(url.toString())
+      const json = await res.json()
+      if (!json.current) return
+      const now = new Date()
+      const sunrise = json.daily?.sunrise?.[0] ? new Date(json.daily.sunrise[0]) : new Date(now.getFullYear(), now.getMonth(), now.getDate(), 6, 0)
+      const sunset = json.daily?.sunset?.[0] ? new Date(json.daily.sunset[0]) : new Date(now.getFullYear(), now.getMonth(), now.getDate(), 18, 0)
+      const phase = getPhase(now, sunrise, sunset)
+      const condition = getWeatherCondition({ current: json.current, hourly: { cloud_cover: json.hourly?.cloud_cover } })
+      setWeather(prev => ({
+        ...prev,
+        data: json,
+        phase,
+        condition,
+        temp: json.current.temperature_2m,
+        sunrise,
+        sunset,
+      }))
+    } catch (e) {
+      console.error('weather fetch error', e)
+    }
+  }, [weather.loc])
+
+  useEffect(() => {
+    fetchWeather()
+    const id = setInterval(fetchWeather, 600000)
+    return () => clearInterval(id)
+  }, [fetchWeather])
+
+  /* 3. clock + flicker */
+  useEffect(() => {
+    const id = setInterval(() => {
+      setAnimOffset(o => o + 0.3)
+      setTime(new Date())
+    }, 800)
+    return () => clearInterval(id)
+  }, [])
+
+  /* 4. upsert profile */
   const upsert = useCallback(async () => {
-    if (!session) return
-    await supabase.from('city_profiles').upsert({
+    if (!session?.user?.id) return
+    const payload = {
       user_id: session.user.id,
-      display_name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Anonymous',
+      display_name: myName,
       total_hours: myHours,
-      streak: S.streak || 0,
-      studied_days: (S.studiedDays||[]).length,
-      goals_hit: (S.sessions||[]).length,
-      avg_score: S.targetPct || 80,
-      is_studying: isStudying,
+      streak: S?.streak || 0,
+      studied_days: (S?.studiedDays || []).length,
+      goals_hit: (S?.sessions || []).length,
+      avg_score: S?.targetPct || 80,
+      is_studying: !!isStudying,
       study_mode: studyMode || 'focus',
-      missed_streak: (S.missedDays||[]).length,
-      is_exam_mode: studyMode==='exam',
-      zone: myZoneId,
-      building_tier: myTier,
+      missed_streak: (S?.missedDays || []).length,
+      is_exam_mode: studyMode === 'exam',
+      building_tier: getTier(myHours),
       last_active: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-    }, { onConflict:'user_id' })
-  }, [session, myHours, S.streak, S.studiedDays, S.sessions, isStudying, studyMode])
-
-  // ── fetch all ─────────────────────────────────────────────────────────────
-  const fetch = useCallback(async () => {
-    const { data } = await supabase.from('city_profiles').select('*')
-    if (data) {
-      const mapped = data.map(u => ({ ...u, zone: getZoneId(u) }))
-      setUsers(mapped)
-      usersRef.current = mapped
     }
+    const { error } = await supabase.from('city_profiles').upsert(payload, { onConflict: 'user_id' })
+    if (error) console.error('city upsert error:', error)
+  }, [session, myName, myHours, S, isStudying, studyMode])
+
+  useEffect(() => { upsert() }, [upsert])
+  useEffect(() => {
+    if (!isStudying) return
+    const id = setInterval(upsert, 30000)
+    return () => clearInterval(id)
+  }, [isStudying, upsert])
+
+  /* 5. fetch users */
+  const fetchUsers = useCallback(async () => {
+    const { data, error } = await supabase.from('city_profiles').select('*')
+    if (error) { console.error('city fetch error:', error); setLoading(false); return }
+    if (data) setUsers(data)
     setLoading(false)
   }, [])
 
-  useEffect(() => { upsert() }, [myHours, S.streak, isStudying])
   useEffect(() => {
-    fetch()
-    const ch = supabase.channel('city-rt')
-      .on('postgres_changes', { event:'*', schema:'public', table:'city_profiles' }, fetch)
+    fetchUsers()
+    const ch = supabase.channel('city-profiles')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'city_profiles' }, fetchUsers)
       .subscribe()
-    return () => supabase.removeChannel(ch)
-  }, [])
+    const poll = setInterval(fetchUsers, 10000)
+    return () => { supabase.removeChannel(ch); clearInterval(poll) }
+  }, [fetchUsers])
 
-  // keep ref in sync without restarting render loop
-  useEffect(() => { usersRef.current = users }, [users])
+  /* 6. layout with lamps */
+  const allResidents = users.map(u => ({
+    id: u.user_id,
+    name: u.display_name || 'Anonymous',
+    hours: Math.floor(u.total_hours || 0),
+    streak: u.streak || 0,
+    studying: u.is_studying && (Date.now() - new Date(u.updated_at || 0).getTime() < STALE_MS),
+    mode: u.study_mode,
+    subject: u.study_mode === 'exam' ? 'Exam' : u.study_mode === 'deep' ? 'Deep Work' : 'Focus',
+    isMe: u.user_id === session?.user?.id,
+  }))
 
-  // ── render loop ───────────────────────────────────────────────────────────
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-
-    const resize = () => {
-      const p = canvas.parentElement
-      if (!p) return
-      canvas.width  = p.clientWidth
-      canvas.height = p.clientHeight || 540
-    }
-    resize()
-    window.addEventListener('resize', resize)
-
-    const render = (time) => {
-      const W=canvas.width, H=canvas.height
-      ctx.clearRect(0,0,W,H)
-
-      // sky + ocean
-      drawBackground(ctx, W, H, todKey, time)
-      if (todKey==='night'||todKey==='sunset') drawStars(ctx, W, H, time)
-      drawCelestial(ctx, W, H, todKey, hour, time)
-
-      ctx.save()
-      ctx.translate(W/2, 0)
-
-      // collect user -> cell map
-      const ucells = {}
-      usersRef.current.forEach(u => {
-        const [r,c] = getCellForUser(u.user_id, u.zone)
-        ucells[`${r}_${c}`] = u
-      })
-
-      // painter order
-      const order = []
-      for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++) order.push([r,c])
-      order.sort((a,b)=>(a[0]+a[1])-(b[0]+b[1]))
-
-      // ground tiles
-      for (const [r,c] of order) {
-        const zid = ZMAP[r]?.[c]||0
-        if (zid>0) drawTile(ctx, c, r, zid, todKey)
-      }
-
-      // decorative mountains
-      const mtCells = order.filter(([r,c])=>ZMAP[r]?.[c]===4&&hash(`m${r}${c}`)%4===0&&!ucells[`${r}_${c}`])
-      for (const [r,c] of mtCells.slice(0,5)) {
-        const {x,y}=iso(c,r); drawMountain(ctx,x,y-TH/2,seas)
-      }
-
-      // decorative trees (forest + mountain zones)
-      const treeCells = order.filter(([r,c])=>{
-        const z=ZMAP[r]?.[c]||0
-        return (z===3||z===4)&&!ucells[`${r}_${c}`]&&hash(`t${r}${c}`)%3!==0
-      })
-      for (const [r,c] of treeCells) {
-        const {x,y}=iso(c,r)
-        drawTree(ctx,x,y-TH/2,seas,0.55+((hash(`ts${r}${c}`)%5)*0.1))
-      }
-
-      // buildings
-      const isNight=todKey==='night'
-      for (const [r,c] of order) {
-        const u=ucells[`${r}_${c}`]
-        if (!u) continue
-        const {x,y}=iso(c,r)
-        const uStudying=u.is_studying && (Date.now()-new Date(u.updated_at).getTime()<600000)
-        const hasParty=(u.goals_hit||0)>=5
-        drawBuilding(ctx,x,y-TH/2,u.building_tier||1,todKey,uStudying,u.study_mode,hasParty,seas,u.user_id,time)
-      }
-
-      // ambient colour overlay
-      const [ar,ag,ab,aa]=AMBIENT_COLOR[todKey]
-      if (aa>0) {
-        ctx.fillStyle=`rgba(${ar},${ag},${ab},${aa})`
-        ctx.fillRect(-W,-60,W*3,H*3)
-      }
-
-      ctx.restore()
-      rafRef.current = requestAnimationFrame(render)
-    }
-
-    rafRef.current = requestAnimationFrame(render)
-    return () => {
-      cancelAnimationFrame(rafRef.current)
-      window.removeEventListener('resize', resize)
-    }
-  }, [todKey, seas, hour, isStudying, studyMode])
-
-  // ── hover detection (inverse iso) ─────────────────────────────────────────
-  const onMouseMove = useCallback(e => {
-    const canvas=canvasRef.current; if (!canvas) return
-    const rect=canvas.getBoundingClientRect()
-    const mx=e.clientX-rect.left-canvas.width/2
-    const my=e.clientY-rect.top
-    const col=Math.round((mx/(TW/2)+my/(TH/2))/2)
-    const row=Math.round((my/(TH/2)-mx/(TW/2))/2)
-    const ucells={}
-    usersRef.current.forEach(u=>{
-      const [r,c]=getCellForUser(u.user_id,u.zone)
-      ucells[`${r}_${c}`]=u
+  const meIndex = allResidents.findIndex(r => r.isMe)
+  if (meIndex === -1 && session?.user?.id) {
+    allResidents.push({
+      id: session.user.id,
+      name: myName,
+      hours: myHours,
+      streak: S?.streak || 0,
+      studying: !!isStudying,
+      mode: studyMode || 'focus',
+      subject: studyMode === 'exam' ? 'Exam' : 'Focus',
+      isMe: true,
     })
-    setHovered(ucells[`${row}_${col}`]||null)
-  },[])
+  }
+
+  const sorted = [...allResidents].sort((a, b) => b.hours - a.hours)
+  const meId = session?.user?.id
+  const meInSorted = sorted.findIndex(u => u.id === meId)
+  let displayOrder = sorted
+  if (meInSorted > -1) {
+    const meItem = sorted[meInSorted]
+    const withoutMe = sorted.filter(u => u.id !== meId)
+    const mid = Math.floor(withoutMe.length / 2)
+    displayOrder = [...withoutMe.slice(0, mid), meItem, ...withoutMe.slice(mid)]
+  }
+
+  const layoutItems = []
+  let xCursor = 30
+  displayOrder.forEach((user, idx) => {
+    const spec = getBuildingSpec(user.hours, user.streak, user.id)
+    layoutItems.push({ type: 'building', user, spec, x: xCursor })
+    xCursor += spec.width
+    if (idx < displayOrder.length - 1) {
+      const gap = 16
+      const lampH = Math.min(100, Math.max(60, spec.height * 8))
+      layoutItems.push({ type: 'lamp', x: xCursor + gap / 2 - 2, h: lampH })
+      xCursor += gap
+    }
+  })
+  const totalWidth = xCursor + 30
+
+  /* 7. animated cars & pedestrians (rAF, no state churn) */
+  useEffect(() => {
+    const W = Math.max(totalWidth, 1200)
+    carData.current = Array.from({ length: 7 }, (_, i) => ({
+      x: Math.random() * W,
+      speed: (0.6 + Math.random() * 1.2) * (i % 2 === 0 ? 1 : -1),
+      y: 6 + Math.random() * 32,
+      width: 22 + Math.random() * 14,
+      color: ['#c0392b','#2980b9','#27ae60','#f39c12','#8e44ad','#2c3e50','#d35400'][i],
+    }))
+    pedData.current = Array.from({ length: 5 }, (_, i) => ({
+      x: Math.random() * W,
+      speed: (0.15 + Math.random() * 0.25) * (i % 2 === 0 ? 1 : -1),
+      y: 4 + Math.random() * 4,
+    }))
+
+    const loop = () => {
+      carData.current.forEach((car, i) => {
+        const el = carRefs.current[i]
+        if (!el) return
+        car.x += car.speed
+        if (car.x > W + 60) car.x = -60
+        if (car.x < -60) car.x = W + 60
+        el.style.transform = `translateX(${car.x}px)`
+      })
+      pedData.current.forEach((ped, i) => {
+        const el = pedRefs.current[i]
+        if (!el) return
+        ped.x += ped.speed
+        if (ped.x > W + 20) ped.x = -10
+        if (ped.x < -10) ped.x = W + 20
+        el.style.transform = `translateX(${ped.x}px)`
+      })
+      rafRef.current = requestAnimationFrame(loop)
+    }
+    rafRef.current = requestAnimationFrame(loop)
+    return () => cancelAnimationFrame(rafRef.current)
+  }, [totalWidth])
+
+  /* derived visuals */
+  const skyColor = getSkyGradient(weather.phase, weather.condition)
+  const sunPos = useMemo(() => getSunPosition(time, weather.sunrise || new Date(), weather.sunset || new Date()), [time, weather.sunrise, weather.sunset])
+  const moonPos = useMemo(() => getMoonPosition(time, weather.sunrise || new Date(), weather.sunset || new Date()), [time, weather.sunrise, weather.sunset])
+  const liveCount = allResidents.filter(u => u.studying).length
+  const showStars = (weather.phase === PHASES.NIGHT || weather.phase === PHASES.DAWN) && !weather.condition.rain && !weather.condition.heavyRain
+  const isNightish = weather.phase === PHASES.NIGHT || weather.phase === PHASES.EVENING || weather.phase === PHASES.DAWN
 
   return (
-    <div className="page active" style={{padding:0,maxWidth:'100%',margin:0}}>
-      <div style={{position:'relative',width:'100%',height:'calc(100vh - 60px)',overflow:'hidden',background:'#060614'}}>
+    <div style={{ position: 'relative', zIndex: 2, fontFamily: "'Anthropic Serif',Georgia,serif" }}>
+      {/* HEADER */}
+      <div style={{ padding: '80px 24px 0', maxWidth: 920, margin: '0 auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+          <div>
+            <div style={{ fontSize: '1.6rem', fontWeight: 700, color: '#fff', marginBottom: 4 }}>Study City</div>
+            <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.82rem' }}>
+              {liveCount} studying live right now
+              <span style={{ marginLeft: 8, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#5c8c6e', display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
+                <span style={{ color: '#5c8c6e' }}>Live</span>
+              </span>
+            </div>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: 10, padding: '6px 12px', marginBottom: 6,
+            }}>
+              <span style={{ fontSize: '0.85rem' }}>
+                {weather.condition.snow ? '❄️' : weather.condition.heavyRain ? '⛈️' : weather.condition.rain ? '🌧️' : weather.condition.cloudy ? '☁️' : '☀️'}
+              </span>
+              <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)' }}>
+                {weather.temp !== null ? `${Math.round(weather.temp)}°C` : '--'} · {weather.condition.label} · {weather.phase}
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: 16, fontSize: '0.72rem', justifyContent: 'flex-end' }}>
+              {[
+                { c: 'rgba(255,215,80,0.9)', g: '0 0 6px rgba(255,215,80,0.7)', l: 'Focus' },
+                { c: 'rgba(80,120,255,0.9)', g: '0 0 6px rgba(80,120,255,0.8)', l: 'Deep Work' },
+                { c: 'rgba(220,80,80,0.9)',  g: '0 0 6px rgba(220,80,80,0.8)', l: 'Exam' },
+                { c: 'rgba(255,255,255,0.06)', g: 'none', l: 'Offline' },
+              ].map(item => (
+                <div key={item.l} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: 1, background: item.c, boxShadow: item.g }} />
+                  <span style={{ color: 'rgba(255,255,255,0.5)' }}>{item.l}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
 
-        {loading && (
-          <div style={{position:'absolute',inset:0,display:'grid',placeItems:'center',zIndex:20,background:'rgba(6,6,20,0.8)',color:'#d4a853',fontFamily:"'Anthropic Serif',Georgia,serif"}}>
-            Loading city…
+      {/* CITY VIEWPORT */}
+      <div style={{
+        width: '100%', height: 460,
+        background: skyColor,
+        position: 'relative', overflow: 'hidden',
+        borderTop: '1px solid rgba(255,255,255,0.05)',
+        borderBottom: '1px solid rgba(255,255,255,0.05)',
+        transition: 'background 2s ease',
+      }}>
+        {/* Stars */}
+        {showStars && Array.from({ length: 70 }, (_, i) => (
+          <div key={i} style={{
+            position: 'absolute',
+            left: `${(i * 37) % 100}%`,
+            top: `${(i * 23) % 45}%`,
+            width: i % 5 === 0 ? 2 : 1,
+            height: i % 5 === 0 ? 2 : 1,
+            background: '#fff',
+            borderRadius: '50%',
+            opacity: 0.25 + (i % 7) * 0.1,
+            animation: `twinkle ${2 + (i % 5)}s ease-in-out infinite`,
+            animationDelay: `${(i % 7) * 0.5}s`,
+          }} />
+        ))}
+
+        {/* Cloud overlay */}
+        {weather.condition.cloudy && !weather.condition.rain && (
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: 'radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.06) 0%, transparent 60%), radial-gradient(ellipse at 70% 40%, rgba(255,255,255,0.04) 0%, transparent 50%)',
+            pointerEvents: 'none',
+            animation: 'drift 60s linear infinite',
+          }} />
+        )}
+
+        {/* Rain */}
+        {weather.condition.rain && (
+          <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 25 }}>
+            {Array.from({ length: weather.condition.heavyRain ? 90 : 45 }, (_, i) => (
+              <div key={i} style={{
+                position: 'absolute',
+                left: `${(i * 13) % 100}%`,
+                top: -10,
+                width: 1, height: weather.condition.heavyRain ? 16 : 12,
+                background: 'rgba(160,180,200,0.45)',
+                borderRadius: 1,
+                animation: `rainfall ${0.5 + (i % 5) * 0.12}s linear infinite`,
+                animationDelay: `${(i % 8) * 0.1}s`,
+              }} />
+            ))}
           </div>
         )}
 
-        <canvas ref={canvasRef} style={{display:'block',width:'100%',height:'100%',cursor:'crosshair'}}
-          onMouseMove={onMouseMove} onMouseLeave={()=>setHovered(null)} />
-
-        <InfoPanel users={users} myZone={myZoneId} myTier={myTier} hovered={hovered} todKey={todKey} seas={seas} />
-
-        {/* badges */}
-        <div style={{position:'absolute',top:12,left:12,display:'flex',flexDirection:'column',gap:6,zIndex:10}}>
-          <div style={{background:'rgba(8,8,20,0.88)',backdropFilter:'blur(10px)',border:'1px solid rgba(255,255,255,0.09)',borderRadius:20,padding:'4px 12px',color:'rgba(255,255,255,0.65)',fontSize:'0.7rem',fontFamily:"'Anthropic Serif',Georgia,serif"}}>
-            {({winter:'❄️ Winter',spring:'🌸 Spring',summer:'☀️ Summer',autumn:'🍂 Autumn'})[seas]} · {({day:'Day ☀️',night:'Night 🌙',sunrise:'Sunrise 🌅',sunset:'Sunset 🌇'})[todKey]}
+        {/* Snow */}
+        {weather.condition.snow && (
+          <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 25 }}>
+            {Array.from({ length: 55 }, (_, i) => (
+              <div key={i} style={{
+                position: 'absolute',
+                left: `${(i * 19) % 100}%`,
+                top: -6,
+                width: 3 + (i % 3), height: 3 + (i % 3),
+                background: 'rgba(230,240,255,0.8)',
+                borderRadius: '50%',
+                animation: `snowfall ${2 + (i % 4)}s linear infinite`,
+                animationDelay: `${(i % 6) * 0.3}s`,
+              }} />
+            ))}
           </div>
-          <div style={{background:'rgba(8,8,20,0.88)',backdropFilter:'blur(10px)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:20,padding:'3px 12px',color:'rgba(255,255,255,0.4)',fontSize:'0.65rem',fontFamily:"'Anthropic Serif',Georgia,serif"}}>
-            {users.length} resident{users.length!==1?'s':''} · {users.filter(u=>u.is_studying).length} studying
+        )}
+
+        {/* Lightning */}
+        {weather.condition.heavyRain && Math.random() > 0.97 && (
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: 'rgba(255,255,255,0.1)',
+            pointerEvents: 'none',
+            animation: 'flash 0.2s ease-out',
+            zIndex: 24,
+          }} />
+        )}
+
+        {/* Sun */}
+        {sunPos && (
+          <div style={{
+            position: 'absolute',
+            left: `${sunPos.x}%`,
+            top: `${sunPos.y}%`,
+            transform: 'translate(-50%, -50%)',
+            width: 44, height: 44,
+            borderRadius: '50%',
+            background: 'radial-gradient(circle at 30% 30%, #fffce6 10%, #ffd700 50%, #ff8c00 100%)',
+            boxShadow: '0 0 50px rgba(255,200,50,0.5), 0 0 100px rgba(255,140,0,0.25)',
+            zIndex: 4,
+            transition: 'left 2s linear, top 2s linear',
+          }}>
+            {/* Sun rays */}
+            <div style={{
+              position: 'absolute', inset: -10,
+              borderRadius: '50%',
+              background: 'conic-gradient(from 0deg, transparent 0deg, rgba(255,220,100,0.08) 10deg, transparent 20deg, transparent 40deg, rgba(255,220,100,0.06) 50deg, transparent 60deg, transparent 80deg, rgba(255,220,100,0.08) 90deg, transparent 100deg, transparent 120deg, rgba(255,220,100,0.05) 130deg, transparent 140deg, transparent 160deg, rgba(255,220,100,0.06) 170deg, transparent 180deg, transparent 200deg, rgba(255,220,100,0.05) 210deg, transparent 220deg, transparent 240deg, rgba(255,220,100,0.08) 250deg, transparent 260deg, transparent 280deg, rgba(255,220,100,0.06) 290deg, transparent 300deg, transparent 320deg, rgba(255,220,100,0.05) 330deg, transparent 340deg, transparent 360deg)',
+              animation: 'spin 20s linear infinite',
+            }} />
+          </div>
+        )}
+
+        {/* Moon */}
+        {moonPos && (
+          <div style={{
+            position: 'absolute',
+            left: `${moonPos.x}%`,
+            top: `${moonPos.y}%`,
+            transform: 'translate(-50%, -50%)',
+            width: 32, height: 32,
+            borderRadius: '50%',
+            background: 'radial-gradient(circle at 35% 35%, #f0e6d2, #c4b896)',
+            boxShadow: 'inset -3px -3px 6px rgba(0,0,0,0.25), inset 2px 2px 4px rgba(255,255,255,0.15), 0 0 18px rgba(200,200,220,0.15)',
+            zIndex: 4,
+            transition: 'left 3s linear, top 3s linear',
+          }}>
+            {/* Craters */}
+            <div style={{ position: 'absolute', top: '22%', left: '28%', width: '18%', height: '18%', borderRadius: '50%', background: 'rgba(0,0,0,0.07)', boxShadow: 'inset 1px 1px 2px rgba(0,0,0,0.2)' }} />
+            <div style={{ position: 'absolute', top: '52%', left: '48%', width: '14%', height: '14%', borderRadius: '50%', background: 'rgba(0,0,0,0.06)', boxShadow: 'inset 1px 1px 2px rgba(0,0,0,0.2)' }} />
+            <div style={{ position: 'absolute', top: '38%', left: '62%', width: '10%', height: '10%', borderRadius: '50%', background: 'rgba(0,0,0,0.08)', boxShadow: 'inset 1px 1px 2px rgba(0,0,0,0.2)' }} />
+            <div style={{ position: 'absolute', top: '65%', left: '25%', width: '12%', height: '12%', borderRadius: '50%', background: 'rgba(0,0,0,0.05)', boxShadow: 'inset 1px 1px 2px rgba(0,0,0,0.15)' }} />
+          </div>
+        )}
+
+        {/* Fog */}
+        <div style={{
+          position: 'absolute', bottom: 0, left: 0, right: 0, height: 100,
+          background: weather.condition.rain
+            ? 'linear-gradient(0deg, rgba(12,11,9,0.95) 0%, transparent 100%)'
+            : 'linear-gradient(0deg, rgba(12,11,9,0.85) 0%, transparent 100%)',
+          zIndex: 20, pointerEvents: 'none',
+        }} />
+
+        {/* Scrollable city */}
+        <div style={{
+          position: 'absolute', bottom: 0, left: 0,
+          width: '100%', height: '100%',
+          overflowX: 'auto', overflowY: 'hidden',
+        }}>
+          <div style={{ position: 'relative', width: Math.max(totalWidth, 900), height: '100%', minWidth: '100%' }}>
+            
+            {/* Sidewalk */}
+            <div style={{
+              position: 'absolute', bottom: ROAD_H, left: 0, right: 0, height: SIDEWALK_H,
+              background: 'linear-gradient(0deg, #2a2a2a 0%, #333 100%)',
+              borderTop: '2px solid #3d3d3d',
+              zIndex: 15,
+            }} />
+
+            {/* Road */}
+            <div style={{
+              position: 'absolute', bottom: 0, left: 0, right: 0, height: ROAD_H,
+              background: weather.condition.rain
+                ? 'linear-gradient(0deg, #0c0e12 0%, #14161c 100%)'
+                : 'linear-gradient(0deg, #0e0f12 0%, #181a1f 100%)',
+              zIndex: 14,
+            }}>
+              {/* Lane markings */}
+              {Array.from({ length: Math.ceil(Math.max(totalWidth, 900) / 80) }, (_, i) => (
+                <div key={i} style={{
+                  position: 'absolute', top: '50%', left: `${i * 80 + 20}px`,
+                  width: 40, height: 2,
+                  background: 'rgba(255,255,255,0.15)',
+                  transform: 'translateY(-50%)',
+                }} />
+              ))}
+              {/* Curb */}
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'rgba(255,255,255,0.08)' }} />
+            </div>
+
+            {/* Street Lamps */}
+            {layoutItems.filter(it => it.type === 'lamp').map((lamp, i) => (
+              <div key={`lamp-${i}`} style={{ position: 'absolute', bottom: GROUND_Y, left: lamp.x, zIndex: 6, pointerEvents: 'none' }}>
+                {/* Post */}
+                <div style={{ width: 3, height: lamp.h, background: '#1f1f1f', margin: '0 auto', borderRadius: 1 }} />
+                {/* Lamp head */}
+                <div style={{
+                  position: 'absolute', top: -8, left: '50%', transform: 'translateX(-50%)',
+                  width: 12, height: 8,
+                  background: isNightish ? '#ffeb3b' : '#3a3a3a',
+                  borderRadius: '50% 50% 0 0',
+                  boxShadow: isNightish ? '0 0 18px rgba(255,235,59,0.7), 0 0 40px rgba(255,235,59,0.25)' : 'none',
+                  transition: 'all 1.5s ease',
+                }} />
+                {/* Light cone on ground */}
+                {isNightish && (
+                  <div style={{
+                    position: 'absolute', bottom: -GROUND_Y, left: '50%', transform: 'translateX(-50%)',
+                    width: 70, height: GROUND_Y,
+                    background: 'radial-gradient(ellipse at center top, rgba(255,235,59,0.12) 0%, transparent 65%)',
+                    pointerEvents: 'none',
+                  }} />
+                )}
+                {/* Light cone upward */}
+                {isNightish && (
+                  <div style={{
+                    position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
+                    width: 50, height: lamp.h,
+                    background: 'radial-gradient(ellipse at center bottom, rgba(255,235,59,0.06) 0%, transparent 70%)',
+                    pointerEvents: 'none',
+                  }} />
+                )}
+              </div>
+            ))}
+
+            {/* Cars */}
+            {carData.current.map((_, i) => (
+              <div key={`car-${i}`} ref={el => carRefs.current[i] = el} style={{
+                position: 'absolute', bottom: carData.current[i]?.y || 8, left: 0,
+                zIndex: 16, pointerEvents: 'none',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                  {/* Headlights (facing right) */}
+                  {carData.current[i]?.speed > 0 && (
+                    <div style={{
+                      position: 'absolute', right: -30, top: '50%', transform: 'translateY(-50%)',
+                      width: 30, height: 10,
+                      background: 'linear-gradient(90deg, rgba(255,250,200,0.35) 0%, transparent 100%)',
+                      borderRadius: '0 50% 50% 0',
+                      filter: 'blur(2px)',
+                    }} />
+                  )}
+                  {/* Taillights (facing left) */}
+                  {carData.current[i]?.speed < 0 && (
+                    <div style={{
+                      position: 'absolute', left: -12, top: '50%', transform: 'translateY(-50%)',
+                      width: 12, height: 8,
+                      background: 'rgba(220,60,60,0.6)',
+                      borderRadius: '50% 0 0 50%',
+                      filter: 'blur(2px)',
+                      boxShadow: '0 0 6px rgba(220,60,60,0.5)',
+                    }} />
+                  )}
+                  {/* Car body */}
+                  <div style={{
+                    width: carData.current[i]?.width || 28, height: 10,
+                    background: carData.current[i]?.color || '#555',
+                    borderRadius: '3px 3px 1px 1px',
+                    position: 'relative',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
+                  }}>
+                    {/* Windows */}
+                    <div style={{
+                      position: 'absolute', top: -4, left: 3, right: 3, height: 4,
+                      background: 'rgba(180,220,255,0.25)',
+                      borderRadius: '2px 2px 0 0',
+                    }} />
+                  </div>
+                  {/* Wheels */}
+                  <div style={{ position: 'absolute', bottom: -2, left: 4, width: 5, height: 5, background: '#0a0a0a', borderRadius: '50%' }} />
+                  <div style={{ position: 'absolute', bottom: -2, right: 4, width: 5, height: 5, background: '#0a0a0a', borderRadius: '50%' }} />
+                </div>
+              </div>
+            ))}
+
+            {/* Pedestrians */}
+            {pedData.current.map((_, i) => (
+              <div key={`ped-${i}`} ref={el => pedRefs.current[i] = el} style={{
+                position: 'absolute', bottom: GROUND_Y + (pedData.current[i]?.y || 2), left: 0,
+                zIndex: 17, pointerEvents: 'none',
+              }}>
+                <div style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'center',
+                  animation: `walkBob 0.8s ease-in-out infinite`,
+                  animationDelay: `${i * 0.2}s`,
+                }}>
+                  {/* Head */}
+                  <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#c4b9a8', marginBottom: 1 }} />
+                  {/* Body */}
+                  <div style={{ width: 5, height: 7, background: `hsl(${(i * 60) % 360}, 40%, 55%)`, borderRadius: 1 }} />
+                  {/* Legs */}
+                  <div style={{ display: 'flex', gap: 1, marginTop: 1 }}>
+                    <div style={{ width: 2, height: 5, background: '#3a3a3a', borderRadius: 1, animation: `legMove 0.8s ease-in-out infinite`, animationDelay: '0s' }} />
+                    <div style={{ width: 2, height: 5, background: '#3a3a3a', borderRadius: 1, animation: `legMove 0.8s ease-in-out infinite`, animationDelay: '0.4s' }} />
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {/* Buildings */}
+            {layoutItems.filter(it => it.type === 'building').map(({ user, spec, x }) => (
+              <Building
+                key={user.id}
+                user={user}
+                spec={spec}
+                x={x}
+                isMe={user.isMe}
+                studying={user.studying}
+                mode={user.mode}
+                animOffset={animOffset}
+                weather={{ ...weather.condition, phase: weather.phase }}
+                onClick={() => setSelectedUser(user)}
+              />
+            ))}
+
+            {layoutItems.length === 0 && !loading && (
+              <div style={{
+                position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: 'rgba(255,255,255,0.3)', fontSize: '0.9rem', zIndex: 30,
+              }}>
+                No residents yet. Start studying to found the city.
+              </div>
+            )}
+
+            {loading && (
+              <div style={{
+                position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: '#d4a853', fontSize: '0.9rem', zIndex: 30,
+              }}>
+                Loading city…
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* BELOW CITY */}
+      <div style={{ padding: '16px 24px 40px', maxWidth: 920, margin: '0 auto' }}>
+
+        {/* YOUR CARD + LEADERBOARD */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+          <div style={{
+            background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
+            borderRadius: 14, padding: 16,
+          }}>
+            <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>Your Building</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 12 }}>
+              <div>
+                <div style={{ fontSize: '1.3rem', fontWeight: 700, color: myRank.color, marginBottom: 2 }}>
+                  {myRank.label}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)' }}>{myHours}h studied · {S?.streak || 0} day streak</div>
+              </div>
+            </div>
+            <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.6)', lineHeight: 1.6 }}>
+              {myHours < 5 && "Your studio is quiet. Start studying to light it up."}
+              {myHours >= 5 && myHours < 20 && "Your apartment windows are starting to glow. Keep going."}
+              {myHours >= 20 && myHours < 50 && "Your mid-rise is rising. The city is noticing."}
+              {myHours >= 50 && myHours < 100 && "Your high-rise towers above most. Neighbors look up."}
+              {myHours >= 100 && myHours < 200 && "Penthouse life. You're becoming a local legend."}
+              {myHours >= 200 && "Skyline Tower. You're the most recognizable building in the city."}
+            </div>
+            {isStudying && (
+              <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.72rem', color: '#d4a853' }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#d4a853', display: 'inline-block', animation: 'pulse 1s infinite' }} />
+                Your windows are glowing right now
+              </div>
+            )}
+            <div style={{ marginTop: 12 }}>
+              <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>Next Level</div>
+              <div style={{ width: '100%', height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
+                <div style={{ width: `${Math.min(100, (myHours % 50) * 2)}%`, height: '100%', background: '#d4a853', borderRadius: 2 }} />
+              </div>
+              <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.35)', marginTop: 4 }}>
+                {Math.max(0, 50 - (myHours % 50))}h until next upgrade
+              </div>
+            </div>
+          </div>
+
+          <div style={{
+            background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
+            borderRadius: 14, padding: 16,
+          }}>
+            <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>City Leaderboard</div>
+            {allResidents
+              .sort((a, b) => b.hours - a.hours)
+              .slice(0, 5)
+              .map((u, i) => {
+                const rank = getRankLabel(u.hours)
+                return (
+                  <div key={u.id} style={{
+                    display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0',
+                    borderBottom: i < 4 ? '1px solid rgba(255,255,255,0.06)' : 'none',
+                  }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.8rem', color: i === 0 ? '#d4a853' : i === 1 ? '#aaa' : i === 2 ? '#c9956a' : 'rgba(255,255,255,0.3)', width: 16 }}>
+                      {i + 1}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '0.82rem', fontWeight: 500, color: u.isMe ? '#d4a853' : '#fff', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        {u.name}
+                        {u.studying && <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#5c8c6e', display: 'inline-block' }} />}
+                      </div>
+                      <div style={{ fontSize: '0.65rem', color: rank.color }}>{rank.label}</div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#fff' }}>{u.hours}h</div>
+                      <div style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.4)' }}>🔥 {u.streak}d</div>
+                    </div>
+                  </div>
+                )
+              })}
           </div>
         </div>
 
-        {/* SQL button */}
-        <div style={{position:'absolute',bottom:16,left:16,zIndex:10}}>
-          <button onClick={()=>setShowSQL(s=>!s)} style={{background:'rgba(8,8,20,0.88)',border:'1px solid rgba(255,255,255,0.09)',color:'rgba(255,255,255,0.45)',borderRadius:8,padding:'5px 12px',fontSize:'0.65rem',cursor:'pointer',fontFamily:"'Anthropic Serif',Georgia,serif"}}>
-            {showSQL?'Hide':'📋 Supabase Schema'}
+        {/* LIVE ACTIVITY */}
+        <div style={{
+          background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
+          borderRadius: 14, padding: 16, marginBottom: 14,
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Live Activity</div>
+            <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)' }}>Real-time · updates every 10s</div>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {allResidents.filter(u => u.studying).map(u => (
+              <div key={u.id} style={{
+                display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px',
+                background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
+                borderRadius: 10, cursor: 'pointer',
+              }} onClick={() => setSelectedUser(u)}>
+                <div style={{
+                  width: 10, height: 10, borderRadius: 2,
+                  background: u.mode === 'deep' ? 'rgba(80,120,255,0.9)' : u.mode === 'exam' ? 'rgba(220,80,80,0.9)' : 'rgba(255,215,80,0.9)',
+                  boxShadow: u.mode === 'deep' ? '0 0 6px rgba(80,120,255,0.8)' : u.mode === 'exam' ? '0 0 6px rgba(220,80,80,0.8)' : '0 0 6px rgba(255,215,80,0.7)',
+                  animation: 'pulse 1.5s ease-in-out infinite',
+                  flexShrink: 0,
+                }} />
+                <div>
+                  <div style={{ fontSize: '0.78rem', fontWeight: 500, color: '#fff' }}>{u.name}</div>
+                  <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)' }}>{u.subject || 'Studying'}</div>
+                </div>
+              </div>
+            ))}
+            {allResidents.filter(u => u.studying).length === 0 && (
+              <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.3)', padding: '8px 0' }}>
+                Nobody is studying right now. Start a focus session to light up your windows →
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* HOW IT WORKS */}
+        <div style={{
+          background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
+          borderRadius: 14, padding: 16,
+        }}>
+          <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>How Your Building Evolves</div>
+          <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 4 }}>
+            {[
+              { label: 'Studio', hours: '0–5h', color: '#5a5248' },
+              { label: 'Apartment', hours: '5–20h', color: '#7a7468' },
+              { label: 'Mid-Rise', hours: '20–50h', color: '#5c8c6e' },
+              { label: 'High-Rise', hours: '50–100h', color: '#4a7a9b' },
+              { label: 'Penthouse', hours: '100–200h', color: '#c9956a' },
+              { label: 'Skyline Tower', hours: '200h+', color: '#d4a853' },
+            ].map((tier, i) => (
+              <div key={tier.label} style={{
+                flex: '0 0 auto', textAlign: 'center', padding: '12px 16px',
+                background: myHours >= [0, 5, 20, 50, 100, 200][i] ? 'rgba(212,168,83,0.08)' : 'rgba(255,255,255,0.03)',
+                border: `1px solid ${myHours >= [0, 5, 20, 50, 100, 200][i] ? tier.color + '50' : 'rgba(255,255,255,0.06)'}`,
+                borderRadius: 10,
+              }}>
+                <div style={{ fontWeight: 700, color: tier.color, fontSize: '0.82rem', marginBottom: 2 }}>{tier.label}</div>
+                <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)' }}>{tier.hours}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* SQL Toggle */}
+        <div style={{ marginTop: 14 }}>
+          <button onClick={() => setShowSQL(s => !s)} style={{
+            background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
+            color: 'rgba(255,255,255,0.4)', borderRadius: 8, padding: '6px 12px',
+            fontSize: '0.65rem', cursor: 'pointer', fontFamily: "'Anthropic Serif',Georgia,serif",
+          }}>
+            {showSQL ? 'Hide Supabase Schema' : 'Show Supabase Schema'}
           </button>
-          {showSQL&&(
-            <pre style={{marginTop:8,background:'rgba(6,6,20,0.97)',border:'1px solid rgba(255,255,255,0.09)',borderRadius:10,padding:14,fontSize:'0.62rem',color:'#a5d6a7',maxWidth:480,maxHeight:280,overflowY:'auto',whiteSpace:'pre-wrap',fontFamily:'monospace'}}>
-              {SQL}
+          {showSQL && (
+            <pre style={{
+              marginTop: 8, background: 'rgba(6,6,20,0.97)', border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: 10, padding: 14, fontSize: '0.62rem', color: '#a5d6a7',
+              maxWidth: '100%', maxHeight: 300, overflowY: 'auto', whiteSpace: 'pre-wrap', fontFamily: 'monospace',
+            }}>
+              {SQL_SCHEMA}
             </pre>
           )}
         </div>
       </div>
+
+      {/* MODAL */}
+      {selectedUser && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100,
+          backdropFilter: 'blur(6px)',
+        }} onClick={e => e.target === e.currentTarget && setSelectedUser(null)}>
+          <div style={{
+            background: '#0c0b18', border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 16, padding: 24, width: 360, maxWidth: '90vw',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff' }}>{selectedUser.name}</div>
+              <button onClick={() => setSelectedUser(null)} style={{
+                background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)',
+                fontSize: '1.2rem', cursor: 'pointer',
+              }}>✕</button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+              <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: 12, textAlign: 'center' }}>
+                <div style={{ fontSize: '1.8rem', fontWeight: 700, color: '#d4a853' }}>{selectedUser.hours}h</div>
+                <div style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Total Study</div>
+              </div>
+              <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: 12, textAlign: 'center' }}>
+                <div style={{ fontSize: '1.8rem', fontWeight: 700, color: '#5c8c6e' }}>🔥{selectedUser.streak}d</div>
+                <div style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Streak</div>
+              </div>
+            </div>
+            <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: 12, marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{
+                  width: 12, height: 12, borderRadius: 2,
+                  background: selectedUser.studying
+                    ? selectedUser.mode === 'deep' ? 'rgba(80,120,255,0.9)' : 'rgba(255,215,80,0.9)'
+                    : 'rgba(255,255,255,0.08)',
+                  boxShadow: selectedUser.studying ? '0 0 8px rgba(255,215,80,0.7)' : 'none',
+                  flexShrink: 0,
+                }} />
+                <div>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 500, color: '#fff' }}>
+                    {selectedUser.studying ? `Studying ${selectedUser.subject || 'right now'}` : 'Offline'}
+                  </div>
+                  <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)' }}>
+                    {selectedUser.studying ? 'Window is glowing' : 'Window is dark'}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.4)', lineHeight: 1.6 }}>
+              {getRankLabel(selectedUser.hours).label} · {selectedUser.hours}h studied
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.4; }
+        }
+        @keyframes twinkle {
+          0%, 100% { opacity: 0.3; transform: scale(1); }
+          50% { opacity: 1; transform: scale(1.3); }
+        }
+        @keyframes rainfall {
+          0% { transform: translateY(-10px); opacity: 0; }
+          10% { opacity: 1; }
+          90% { opacity: 1; }
+          100% { transform: translateY(460px); opacity: 0; }
+        }
+        @keyframes snowfall {
+          0% { transform: translateY(-6px) translateX(0); opacity: 0; }
+          10% { opacity: 0.9; }
+          90% { opacity: 0.9; }
+          100% { transform: translateY(460px) translateX(20px); opacity: 0; }
+        }
+        @keyframes flash {
+          0% { opacity: 0; }
+          50% { opacity: 1; }
+          100% { opacity: 0; }
+        }
+        @keyframes drift {
+          0% { transform: translateX(0); }
+          50% { transform: translateX(20px); }
+          100% { transform: translateX(0); }
+        }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        @keyframes walkBob {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-2px); }
+        }
+        @keyframes legMove {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-2px); }
+        }
+      `}</style>
     </div>
   )
 }
