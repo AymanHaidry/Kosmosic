@@ -158,9 +158,17 @@ function JellyfishPet({ daysSinceStudy }) {
               <path d="M29 45 Q35 49 41 45" fill="none" stroke="rgba(255,255,255,0.8)" strokeWidth="1.5" strokeLinecap="round" />
             </>
           )}
-          {[14,22,30,38,46,54].map((tx, i) => (
-            <path key={i} d={`M${tx} 54 Q${tx + (i%2===0?-4:4)} ${62+i*1.5} ${tx} ${70+i}`} fill="none" stroke={color} strokeWidth={i%2===0?2:1.5} strokeOpacity="0.7" strokeLinecap="round" style={{ animation: dead ? 'none' : `tentacle${i%3} 2.5s ease-in-out ${i*0.3}s infinite` }} />
-          ))}
+          {[18,26,34,42,50].map((tx, i) => (
+  <path key={i} 
+    d={`M${tx} 56 Q${tx + (i%2===0?-6:6)} ${68+i*2} ${tx} ${78+i*3}`} 
+    fill="none" 
+    stroke={color} 
+    strokeWidth={2.2 - i*0.15} 
+    strokeOpacity="0.7" 
+    strokeLinecap="round" 
+    style={{ animation: dead ? 'none' : `tentacle${i%3} 2.5s ease-in-out ${i*0.3}s infinite` }} 
+  />
+))}
         </svg>
       </div>
       <div style={{ fontSize:'0.68rem', color:'var(--text3)', marginTop:4, fontFamily:"'Anthropic Serif',Georgia,serif" }}>
