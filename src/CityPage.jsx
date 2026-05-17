@@ -577,43 +577,72 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
   const totalWidth = xCursor + 30
 
   /* 7. animated cars & pedestrians (rAF, no state churn) */
-  useEffect(() => {
+useEffect(() => {
     const W = Math.max(totalWidth, 1200)
-    carData.current = Array.from({ length: 7 }, (_, i) => ({
+    const LANE_TOP = 8
+    const LANE_BOT = 38
+    const SIDEWALK_Y = 4
+
+    const CAR_TYPES = [
+      { type: 'sedan', w: 34, h: 13, cabinW: 0.55, cabinH: 0.5, wheelR: 3, color: '#8e2b2b', window: '#1a2a3a' },
+      { type: 'suv', w: 38, h: 16, cabinW: 0.5, cabinH: 0.55, wheelR: 3.5, color: '#1e3a5f', window: '#152535' },
+      { type: 'hatch', w: 30, h: 12, cabinW: 0.65, cabinH: 0.48, wheelR: 2.8, color: '#2d5a3d', window: '#1a2a2a' },
+      { type: 'bus', w: 72, h: 20, cabinW: 0.85, cabinH: 0.6, wheelR: 4, color: '#c4a035', window: '#0f1a25' },
+      { type: 'sports', w: 40, h: 11, cabinW: 0.4, cabinH: 0.4, wheelR: 3, color: '#a83232', window: '#050a10' },
+      { type: 'van', w: 44, h: 17, cabinW: 0.45, cabinH: 0.55, wheelR: 3.2, color: '#4a5568', window: '#1e2530' },
+      { type: 'taxi', w: 34, h: 13, cabinW: 0.55, cabinH: 0.5, wheelR: 3, color: '#d4a853', window: '#1a2a3a' },
+    ]
+
+    const carCount = 9
+    carData.current = Array.from({ length: carCount }, (_, i) => {
+      const tpl = CAR_TYPES[i % CAR_TYPES.length]
+      const dir = i % 2 === 0 ? 1 : -1
+      const lane = dir === 1 ? LANE_BOT : LANE_TOP
+      return {
+        x: Math.random() * W,
+        speed: (dir === 1 ? 0.9 : 1.3) + Math.random() * 0.7,
+        dir,
+        y: lane,
+        ...tpl,
+        headlightOn: isNightish || weather.condition.rain || weather.condition.heavyRain,
+      }
+    })
+
+    pedData.current = Array.from({ length: 6 }, (_, i) => ({
       x: Math.random() * W,
-      speed: (0.6 + Math.random() * 1.2) * (i % 2 === 0 ? 1 : -1),
-      y: 6 + Math.random() * 32,
-      width: 22 + Math.random() * 14,
-      color: ['#c0392b','#2980b9','#27ae60','#f39c12','#8e44ad','#2c3e50','#d35400'][i],
-    }))
-    pedData.current = Array.from({ length: 5 }, (_, i) => ({
-      x: Math.random() * W,
-      speed: (0.15 + Math.random() * 0.25) * (i % 2 === 0 ? 1 : -1),
-      y: 4 + Math.random() * 4,
+      speed: (0.2 + Math.random() * 0.25) * (i % 2 === 0 ? 1 : -1),
+      y: SIDEWALK_Y + Math.random() * 6,
+      bobOffset: Math.random() * Math.PI * 2,
+      stride: 0.5 + Math.random() * 0.3,
+      shirt: `hsl(${(i * 55 + 20) % 360}, 55%, ${35 + (i % 3) * 10}%)`,
+      pants: `hsl(${(i * 40 + 180) % 360}, 30%, 25%)`,
+      skin: ['#e8c4a0','#d4a574','#c4926a','#8d5524','#f5d0b0'][i % 5],
     }))
 
     const loop = () => {
+      const now = performance.now()
       carData.current.forEach((car, i) => {
         const el = carRefs.current[i]
         if (!el) return
-        car.x += car.speed
-        if (car.x > W + 60) car.x = -60
-        if (car.x < -60) car.x = W + 60
+        car.x += car.speed * car.dir
+        if (car.dir > 0 && car.x > W + 100) car.x = -car.w - 20
+        if (car.dir < 0 && car.x < -car.w - 20) car.x = W + 100
         el.style.transform = `translateX(${car.x}px)`
       })
       pedData.current.forEach((ped, i) => {
         const el = pedRefs.current[i]
         if (!el) return
         ped.x += ped.speed
-        if (ped.x > W + 20) ped.x = -10
-        if (ped.x < -10) ped.x = W + 20
-        el.style.transform = `translateX(${ped.x}px)`
+        if (ped.speed > 0 && ped.x > W + 20) ped.x = -16
+        if (ped.speed < 0 && ped.x < -16) ped.x = W + 20
+        const bob = Math.sin(now * 0.008 + ped.bobOffset) * 2
+        el.style.transform = `translateX(${ped.x}px) translateY(${-bob}px)`
       })
       rafRef.current = requestAnimationFrame(loop)
     }
     rafRef.current = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(rafRef.current)
-  }, [totalWidth])
+  }, [totalWidth, isNightish, weather.condition.rain, weather.condition.heavyRain])
 
   /* derived visuals */
   const skyColor = getSkyGradient(weather.phase, weather.condition)
@@ -842,111 +871,332 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'rgba(255,255,255,0.08)' }} />
             </div>
 
-            {/* Street Lamps */}
+                        {/* Street Lamps */}
             {layoutItems.filter(it => it.type === 'lamp').map((lamp, i) => (
               <div key={`lamp-${i}`} style={{ position: 'absolute', bottom: GROUND_Y, left: lamp.x, zIndex: 6, pointerEvents: 'none' }}>
                 {/* Post */}
-                <div style={{ width: 3, height: lamp.h, background: '#1f1f1f', margin: '0 auto', borderRadius: 1 }} />
-                {/* Lamp head */}
+                <div style={{ 
+                  width: 3, height: lamp.h, 
+                  background: 'linear-gradient(90deg, #1a1a1a 0%, #2a2a2a 50%, #1a1a1a 100%)', 
+                  margin: '0 auto', borderRadius: 1,
+                  position: 'relative',
+                }}>
+                  {/* Post detail rings */}
+                  <div style={{ position: 'absolute', top: '20%', left: -1, right: -1, height: 1, background: 'rgba(255,255,255,0.06)' }} />
+                  <div style={{ position: 'absolute', top: '60%', left: -1, right: -1, height: 1, background: 'rgba(255,255,255,0.06)' }} />
+                </div>
+                
+                {/* Lamp arm */}
                 <div style={{
-                  position: 'absolute', top: -8, left: '50%', transform: 'translateX(-50%)',
-                  width: 12, height: 8,
-                  background: isNightish ? '#ffeb3b' : '#3a3a3a',
-                  borderRadius: '50% 50% 0 0',
-                  boxShadow: isNightish ? '0 0 18px rgba(255,235,59,0.7), 0 0 40px rgba(255,235,59,0.25)' : 'none',
-                  transition: 'all 1.5s ease',
+                  position: 'absolute', top: 2, left: '50%',
+                  width: 10, height: 3,
+                  background: '#2a2a2a',
+                  transform: 'translateX(-50%)',
+                  borderRadius: '0 2px 0 0',
                 }} />
+                
+                {/* Lamp housing */}
+                <div style={{
+                  position: 'absolute', top: -2, left: '50%', transform: 'translateX(-50%)',
+                  width: 14, height: 10,
+                  background: isNightish 
+                    ? 'linear-gradient(180deg, #4a4a3a 0%, #3a3a2a 100%)' 
+                    : '#2a2a2a',
+                  borderRadius: '6px 6px 2px 2px',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                }}>
+                  {/* Bulb glow */}
+                  <div style={{
+                    position: 'absolute', bottom: 1, left: '50%', transform: 'translateX(-50%)',
+                    width: 8, height: 5,
+                    background: isNightish ? '#fff8dc' : '#333',
+                    borderRadius: '0 0 3px 3px',
+                    boxShadow: isNightish 
+                      ? '0 0 20px rgba(255,248,220,0.9), 0 0 50px rgba(255,235,150,0.5), 0 0 100px rgba(255,220,100,0.2), inset 0 0 6px rgba(255,250,200,0.8)' 
+                      : 'none',
+                    transition: 'all 1.2s ease',
+                  }} />
+                </div>
+                
+                {/* Ambient glow halo */}
+                {isNightish && (
+                  <div style={{
+                    position: 'absolute', top: -14, left: '50%', transform: 'translateX(-50%)',
+                    width: 40, height: 40,
+                    background: 'radial-gradient(circle, rgba(255,248,220,0.15) 0%, rgba(255,235,150,0.05) 40%, transparent 70%)',
+                    pointerEvents: 'none',
+                    borderRadius: '50%',
+                  }} />
+                )}
+                
                 {/* Light cone on ground */}
                 {isNightish && (
                   <div style={{
                     position: 'absolute', bottom: -GROUND_Y, left: '50%', transform: 'translateX(-50%)',
-                    width: 70, height: GROUND_Y,
-                    background: 'radial-gradient(ellipse at center top, rgba(255,235,59,0.12) 0%, transparent 65%)',
+                    width: 90, height: GROUND_Y,
+                    background: 'radial-gradient(ellipse at center top, rgba(255,248,220,0.18) 0%, rgba(255,235,150,0.06) 50%, transparent 75%)',
                     pointerEvents: 'none',
+                    zIndex: -1,
                   }} />
                 )}
-                {/* Light cone upward */}
+                
+                {/* Light cone upward (atmospheric) */}
                 {isNightish && (
                   <div style={{
-                    position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
-                    width: 50, height: lamp.h,
-                    background: 'radial-gradient(ellipse at center bottom, rgba(255,235,59,0.06) 0%, transparent 70%)',
+                    position: 'absolute', top: -4, left: '50%', transform: 'translateX(-50%)',
+                    width: 60, height: lamp.h,
+                    background: 'radial-gradient(ellipse at center bottom, rgba(255,248,220,0.08) 0%, transparent 60%)',
                     pointerEvents: 'none',
                   }} />
+                )}
+                
+                {/* Moths (only at night) */}
+                {isNightish && (
+                  <>
+                    <div style={{
+                      position: 'absolute', top: -8, left: '50%',
+                      width: 1.5, height: 1.5, borderRadius: '50%',
+                      background: 'rgba(255,255,200,0.6)',
+                      boxShadow: '0 0 3px rgba(255,255,200,0.8)',
+                      animation: `mothFlutter ${1.5 + (i % 3) * 0.4}s ease-in-out infinite`,
+                      animationDelay: `${(i % 4) * 0.3}s`,
+                    }} />
+                    <div style={{
+                      position: 'absolute', top: -6, left: '55%',
+                      width: 1, height: 1, borderRadius: '50%',
+                      background: 'rgba(255,255,200,0.4)',
+                      animation: `mothFlutter ${2 + (i % 2) * 0.5}s ease-in-out infinite`,
+                      animationDelay: `${(i % 3) * 0.5}s`,
+                    }} />
+                  </>
                 )}
               </div>
             ))}
 
-            {/* Cars */}
-            {carData.current.map((_, i) => (
-              <div key={`car-${i}`} ref={el => carRefs.current[i] = el} style={{
-                position: 'absolute', bottom: carData.current[i]?.y || 8, left: 0,
-                zIndex: 16, pointerEvents: 'none',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                  {/* Headlights (facing right) */}
-                  {carData.current[i]?.speed > 0 && (
-                    <div style={{
-                      position: 'absolute', right: -30, top: '50%', transform: 'translateY(-50%)',
-                      width: 30, height: 10,
-                      background: 'linear-gradient(90deg, rgba(255,250,200,0.35) 0%, transparent 100%)',
-                      borderRadius: '0 50% 50% 0',
-                      filter: 'blur(2px)',
-                    }} />
-                  )}
-                  {/* Taillights (facing left) */}
-                  {carData.current[i]?.speed < 0 && (
-                    <div style={{
-                      position: 'absolute', left: -12, top: '50%', transform: 'translateY(-50%)',
-                      width: 12, height: 8,
-                      background: 'rgba(220,60,60,0.6)',
-                      borderRadius: '50% 0 0 50%',
-                      filter: 'blur(2px)',
-                      boxShadow: '0 0 6px rgba(220,60,60,0.5)',
-                    }} />
-                  )}
-                  {/* Car body */}
-                  <div style={{
-                    width: carData.current[i]?.width || 28, height: 10,
-                    background: carData.current[i]?.color || '#555',
-                    borderRadius: '3px 3px 1px 1px',
-                    position: 'relative',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
-                  }}>
-                    {/* Windows */}
-                    <div style={{
-                      position: 'absolute', top: -4, left: 3, right: 3, height: 4,
-                      background: 'rgba(180,220,255,0.25)',
-                      borderRadius: '2px 2px 0 0',
-                    }} />
-                  </div>
-                  {/* Wheels */}
-                  <div style={{ position: 'absolute', bottom: -2, left: 4, width: 5, height: 5, background: '#0a0a0a', borderRadius: '50%' }} />
-                  <div style={{ position: 'absolute', bottom: -2, right: 4, width: 5, height: 5, background: '#0a0a0a', borderRadius: '50%' }} />
-                </div>
-              </div>
-            ))}
+                        {/* Cars */}
+                        {/* Cars */}
+            {carData.current.map((car, i) => {
+              const isRight = car.dir > 0
+              const hl = car.headlightOn
+              return (
+                <div key={`car-${i}`} ref={el => carRefs.current[i] = el} style={{
+                  position: 'absolute', bottom: car.y, left: 0,
+                  zIndex: 16, pointerEvents: 'none',
+                }}>
+                  <div style={{ position: 'relative', width: car.w, height: car.h }}>
+                    {/* Headlight beams */}
+                    {hl && isRight && (
+                      <div style={{
+                        position: 'absolute', right: -90, top: 2,
+                        width: 90, height: car.h - 4,
+                        background: 'linear-gradient(90deg, rgba(255,250,220,0.35) 0%, rgba(255,250,220,0.08) 60%, transparent 100%)',
+                        clipPath: 'polygon(0 20%, 100% 0, 100% 100%, 0 80%)',
+                        filter: 'blur(3px)',
+                        zIndex: -1,
+                      }} />
+                    )}
+                    {hl && !isRight && (
+                      <div style={{
+                        position: 'absolute', left: -90, top: 2,
+                        width: 90, height: car.h - 4,
+                        background: 'linear-gradient(270deg, rgba(255,250,220,0.35) 0%, rgba(255,250,220,0.08) 60%, transparent 100%)',
+                        clipPath: 'polygon(100% 20%, 0 0, 0 100%, 100% 80%)',
+                        filter: 'blur(3px)',
+                        zIndex: -1,
+                      }} />
+                    )}
+                    
+                    {/* Headlight glows */}
+                    {hl && isRight && (
+                      <div style={{
+                        position: 'absolute', right: -2, top: 3,
+                        width: 6, height: 4, borderRadius: '0 50% 50% 0',
+                        background: 'rgba(255,250,200,0.9)',
+                        boxShadow: '0 0 10px rgba(255,250,200,0.8), 0 0 20px rgba(255,250,200,0.4)',
+                      }} />
+                    )}
+                    {hl && !isRight && (
+                      <div style={{
+                        position: 'absolute', left: -2, top: 3,
+                        width: 6, height: 4, borderRadius: '50% 0 0 50%',
+                        background: 'rgba(255,250,200,0.9)',
+                        boxShadow: '0 0 10px rgba(255,250,200,0.8), 0 0 20px rgba(255,250,200,0.4)',
+                      }} />
+                    )}
 
-            {/* Pedestrians */}
-            {pedData.current.map((_, i) => (
+                    {/* Taillight glows */}
+                    {!isRight && (
+                      <div style={{
+                        position: 'absolute', right: -1, top: 3,
+                        width: 4, height: 5, borderRadius: '0 2px 2px 0',
+                        background: 'rgba(220,50,50,0.85)',
+                        boxShadow: '0 0 8px rgba(220,50,50,0.7), 0 0 14px rgba(220,50,50,0.3)',
+                      }} />
+                    )}
+                    {isRight && (
+                      <div style={{
+                        position: 'absolute', left: -1, top: 3,
+                        width: 4, height: 5, borderRadius: '2px 0 0 2px',
+                        background: 'rgba(220,50,50,0.85)',
+                        boxShadow: '0 0 8px rgba(220,50,50,0.7), 0 0 14px rgba(220,50,50,0.3)',
+                      }} />
+                    )}
+
+                    {/* Chassis shadow */}
+                    <div style={{
+                      position: 'absolute', bottom: -2, left: 2, right: 2, height: 3,
+                      background: 'rgba(0,0,0,0.5)', borderRadius: '50%', filter: 'blur(2px)',
+                    }} />
+
+                    {/* Main body */}
+                    <div style={{
+                      position: 'absolute', bottom: car.wheelR, left: 0, right: 0, height: car.h - car.wheelR,
+                      background: car.color,
+                      borderRadius: isRight ? '6px 4px 2px 2px' : '4px 6px 2px 2px',
+                      overflow: 'hidden',
+                    }}>
+                      {/* Cabin / windows */}
+                      <div style={{
+                        position: 'absolute',
+                        top: 1,
+                        left: isRight ? `${(1 - car.cabinW) * 100}%` : '5%',
+                        width: `${car.cabinW * 100}%`,
+                        height: `${car.cabinH * 100}%`,
+                        background: car.window,
+                        borderRadius: isRight ? '4px 2px 0 0' : '2px 4px 0 0',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                      }}>
+                        {/* Window glint */}
+                        <div style={{
+                          position: 'absolute', top: 0, left: '20%', width: '30%', height: '100%',
+                          background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)',
+                        }} />
+                      </div>
+                      {/* Door line */}
+                      <div style={{
+                        position: 'absolute', bottom: 0, left: '25%', width: 1, height: '60%',
+                        background: 'rgba(0,0,0,0.25)',
+                      }} />
+                      <div style={{
+                        position: 'absolute', bottom: 0, left: '65%', width: 1, height: '60%',
+                        background: 'rgba(0,0,0,0.25)',
+                      }} />
+                      {/* Bumper detail */}
+                      <div style={{
+                        position: 'absolute', bottom: 0, left: isRight ? 'auto' : 0, right: isRight ? 0 : 'auto',
+                        width: '15%', height: 3,
+                        background: 'rgba(0,0,0,0.3)',
+                        borderRadius: isRight ? '0 0 2px 0' : '0 0 0 2px',
+                      }} />
+                    </div>
+
+                    {/* Wheels */}
+                    <div style={{
+                      position: 'absolute', bottom: 0, left: car.w * 0.18,
+                      width: car.wheelR * 2, height: car.wheelR * 2,
+                      background: '#0c0c0c', borderRadius: '50%',
+                      border: '2px solid #1a1a1a', boxSizing: 'border-box',
+                    }}>
+                      <div style={{
+                        position: 'absolute', inset: 2, borderRadius: '50%',
+                        border: '1px dashed rgba(80,80,80,0.5)',
+                      }} />
+                    </div>
+                    <div style={{
+                      position: 'absolute', bottom: 0, right: car.w * 0.18,
+                      width: car.wheelR * 2, height: car.wheelR * 2,
+                      background: '#0c0c0c', borderRadius: '50%',
+                      border: '2px solid #1a1a1a', boxSizing: 'border-box',
+                    }}>
+                      <div style={{
+                        position: 'absolute', inset: 2, borderRadius: '50%',
+                        border: '1px dashed rgba(80,80,80,0.5)',
+                      }} />
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+
+                        {/* Pedestrians */}
+            {pedData.current.map((ped, i) => (
               <div key={`ped-${i}`} ref={el => pedRefs.current[i] = el} style={{
-                position: 'absolute', bottom: GROUND_Y + (pedData.current[i]?.y || 2), left: 0,
+                position: 'absolute', bottom: GROUND_Y + ped.y, left: 0,
                 zIndex: 17, pointerEvents: 'none',
               }}>
-                <div style={{
-                  display: 'flex', flexDirection: 'column', alignItems: 'center',
-                  animation: `walkBob 0.8s ease-in-out infinite`,
-                  animationDelay: `${i * 0.2}s`,
-                }}>
+                <div style={{ position: 'relative', width: 10, height: 22 }}>
+                  {/* Shadow */}
+                  <div style={{
+                    position: 'absolute', bottom: -1, left: -2,
+                    width: 14, height: 3, background: 'rgba(0,0,0,0.35)',
+                    borderRadius: '50%', filter: 'blur(1px)',
+                  }} />
+                  
                   {/* Head */}
-                  <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#c4b9a8', marginBottom: 1 }} />
-                  {/* Body */}
-                  <div style={{ width: 5, height: 7, background: `hsl(${(i * 60) % 360}, 40%, 55%)`, borderRadius: 1 }} />
-                  {/* Legs */}
-                  <div style={{ display: 'flex', gap: 1, marginTop: 1 }}>
-                    <div style={{ width: 2, height: 5, background: '#3a3a3a', borderRadius: 1, animation: `legMove 0.8s ease-in-out infinite`, animationDelay: '0s' }} />
-                    <div style={{ width: 2, height: 5, background: '#3a3a3a', borderRadius: 1, animation: `legMove 0.8s ease-in-out infinite`, animationDelay: '0.4s' }} />
+                  <div style={{
+                    position: 'absolute', top: 0, left: 2,
+                    width: 6, height: 6, borderRadius: '50%',
+                    background: ped.skin,
+                    zIndex: 2,
+                  }}>
+                    {/* Hair */}
+                    <div style={{
+                      position: 'absolute', top: -1, left: -1, right: -1, height: 3,
+                      background: `hsl(${(i * 47) % 360}, 25%, ${15 + (i % 4) * 8}%)`,
+                      borderRadius: '50% 50% 0 0',
+                    }} />
                   </div>
+                  
+                  {/* Neck */}
+                  <div style={{
+                    position: 'absolute', top: 5, left: 3.5,
+                    width: 2, height: 2, background: ped.skin, zIndex: 1,
+                  }} />
+                  
+                  {/* Torso */}
+                  <div style={{
+                    position: 'absolute', top: 7, left: 1,
+                    width: 8, height: 8, borderRadius: '2px 2px 1px 1px',
+                    background: ped.shirt, zIndex: 1,
+                  }}>
+                    {/* Shirt detail */}
+                    <div style={{
+                      position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
+                      width: 1, height: '100%', background: 'rgba(0,0,0,0.15)',
+                    }} />
+                  </div>
+                  
+                  {/* Arms (swinging) */}
+                  <div style={{
+                    position: 'absolute', top: 8, left: -1,
+                    width: 2.5, height: 7, borderRadius: 1,
+                    background: ped.shirt,
+                    transformOrigin: 'top center',
+                    transform: `rotate(${Math.sin(performance.now() * 0.01 + ped.bobOffset) * 20}deg)`,
+                  }} />
+                  <div style={{
+                    position: 'absolute', top: 8, right: -1,
+                    width: 2.5, height: 7, borderRadius: 1,
+                    background: ped.shirt,
+                    transformOrigin: 'top center',
+                    transform: `rotate(${-Math.sin(performance.now() * 0.01 + ped.bobOffset) * 20}deg)`,
+                  }} />
+                  
+                  {/* Legs (walking) */}
+                  <div style={{
+                    position: 'absolute', top: 14, left: 1.5,
+                    width: 3, height: 8, borderRadius: '0 0 1px 1px',
+                    background: ped.pants,
+                    transformOrigin: 'top center',
+                    transform: `rotate(${Math.sin(performance.now() * 0.012 + ped.bobOffset) * 15}deg)`,
+                  }} />
+                  <div style={{
+                    position: 'absolute', top: 14, right: 1.5,
+                    width: 3, height: 8, borderRadius: '0 0 1px 1px',
+                    background: ped.pants,
+                    transformOrigin: 'top center',
+                    transform: `rotate(${-Math.sin(performance.now() * 0.012 + ped.bobOffset) * 15}deg)`,
+                  }} />
                 </div>
               </div>
             ))}
@@ -1216,6 +1466,13 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
           0%, 100% { opacity: 0.3; transform: scale(1); }
           50% { opacity: 1; transform: scale(1.3); }
         }
+                @keyframes mothFlutter {
+          0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.6; }
+          25% { transform: translate(4px, -3px) scale(1.2); opacity: 1; }
+          50% { transform: translate(-2px, -6px) scale(0.9); opacity: 0.4; }
+          75% { transform: translate(3px, -2px) scale(1.1); opacity: 0.8; }
+        }
+        
         @keyframes rainfall {
           0% { transform: translateY(-10px); opacity: 0; }
           10% { opacity: 1; }
