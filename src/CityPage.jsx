@@ -184,24 +184,24 @@ function Building({ user, spec, x, isMe, onClick, studying, mode, animOffset, we
   const isDark = weather.phase === PHASES.NIGHT || weather.phase === PHASES.EVENING
 
   const getBuildingBg = () => {
-    if (style === 'cyberpunk') return 'linear-gradient(180deg, #0a0818 0%, #12102a 100%)'
-    if (style === 'glass')     return 'linear-gradient(180deg, #0d1a1f 0%, #111820 100%)'
-    if (style === 'modern')    return 'linear-gradient(180deg, #141414 0%, #1a1a1a 100%)'
-    return 'linear-gradient(180deg, #111 0%, #1a1915 100%)'
+    if (style === 'cyberpunk') return 'linear-gradient(180deg, var(--bg2) 0%, var(--bg3) 100%)'
+    if (style === 'glass')     return 'linear-gradient(180deg, var(--bg2) 0%, var(--bg3) 100%)'
+    if (style === 'modern')    return 'linear-gradient(180deg, var(--bg2) 0%, var(--bg3) 100%)'
+    return 'linear-gradient(180deg, var(--bg2) 0%, var(--bg3) 100%)'
   }
 
   const getBorderColor = () => {
-    if (isMe) return 'rgba(212,168,83,0.8)'
-    if (style === 'cyberpunk') return 'rgba(100,80,255,0.4)'
-    if (style === 'glass')     return 'rgba(80,160,200,0.3)'
-    return 'rgba(255,251,240,0.12)'
+    if (isMe) return 'var(--accent)'
+    if (style === 'cyberpunk') return 'var(--blue)'
+    if (style === 'glass')     return 'var(--blue)'
+    return 'var(--border2)'
   }
 
   const getGlow = () => {
-    if (isMe && studying) return '0 0 30px rgba(212,168,83,0.4), 0 0 60px rgba(212,168,83,0.15)'
-    if (isMe) return '0 0 20px rgba(212,168,83,0.2)'
+    if (isMe && studying) return '0 0 30px var(--accent-soft), 0 0 60px var(--accent-soft)'
+    if (isMe) return '0 0 20px var(--accent-soft)'
     if (studying && mode === 'deep') return '0 0 20px rgba(80,120,255,0.25)'
-    if (studying) return '0 0 16px rgba(255,220,80,0.2)'
+    if (studying) return '0 0 16px var(--accent-soft)'
     return 'none'
   }
 
@@ -245,8 +245,8 @@ function Building({ user, spec, x, isMe, onClick, studying, mode, animOffset, we
         <div style={{
           position: 'absolute', top: -22, left: '50%', transform: 'translateX(-50%)',
           width: 2, height: 22,
-          background: isMe ? '#d4a853' : style === 'cyberpunk' ? 'rgba(100,80,255,0.8)' : 'rgba(255,251,240,0.3)',
-          boxShadow: isMe ? '0 0 8px rgba(212,168,83,0.6)' : 'none',
+          background: isMe ? 'var(--accent)' : style === 'cyberpunk' ? 'var(--blue)' : 'var(--text2)',
+          boxShadow: isMe ? '0 0 8px var(--accent-soft)' : 'none',
         }} />
       )
     }
@@ -294,12 +294,12 @@ function Building({ user, spec, x, isMe, onClick, studying, mode, animOffset, we
 
       {style === 'cyberpunk' && (
         <>
-          <div style={{ position: 'absolute', top: 0, left: '30%', width: 1, height: '100%', background: 'rgba(100,80,255,0.15)' }} />
-          <div style={{ position: 'absolute', top: 0, left: '60%', width: 1, height: '100%', background: 'rgba(100,80,255,0.1)' }} />
+          <div style={{ position: 'absolute', top: 0, left: '30%', width: 1, height: '100%', background: 'var(--blue)', opacity: 0.15 }} />
+          <div style={{ position: 'absolute', top: 0, left: '60%', width: 1, height: '100%', background: 'var(--blue)', opacity: 0.1 }} />
         </>
       )}
       {style === 'glass' && (
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, transparent 0%, rgba(80,160,200,0.05) 50%, transparent 100%)' }} />
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, transparent 0%, var(--blue) 50%, transparent 100%)', opacity: 0.05 }} />
       )}
 
       {renderRoof()}
@@ -311,20 +311,20 @@ function Building({ user, spec, x, isMe, onClick, studying, mode, animOffset, we
             {Array.from({ length: windowsPerFloor }, (_, w) => {
               const noise = Math.sin(f * 7 + w * 13 + animOffset + seed)
               const isStudyLit = studying && noise > 0.1
-              const isAmbientLit = !studying && isDark && noise > 0.35 // city ambient glow at night
+              const isAmbientLit = !studying && isDark && noise > 0.35
               const color = isStudyLit
-                ? mode === 'deep'  ? 'rgba(80,120,255,0.9)'
-                : mode === 'exam'  ? 'rgba(220,80,80,0.9)'
-                : 'rgba(255,215,80,0.9)'
+                ? mode === 'deep'  ? 'var(--blue)'
+                : mode === 'exam'  ? 'var(--red)'
+                : 'var(--accent)'
                 : isAmbientLit
-                ? 'rgba(255,160,60,0.45)'
-                : 'rgba(255,255,255,0.04)'
+                ? 'var(--accent2)'
+                : 'var(--surface)'
               const glow = isStudyLit
-                ? mode === 'deep'  ? '0 0 6px rgba(80,120,255,0.8)'
-                : mode === 'exam'  ? '0 0 6px rgba(220,80,80,0.8)'
-                : '0 0 6px rgba(255,215,80,0.7)'
+                ? mode === 'deep'  ? '0 0 6px var(--blue)'
+                : mode === 'exam'  ? '0 0 6px var(--red)'
+                : '0 0 6px var(--accent)'
                 : isAmbientLit
-                ? '0 0 4px rgba(255,140,40,0.4)'
+                ? '0 0 4px var(--accent2)'
                 : 'none'
               return (
                 <div key={w} style={{
@@ -343,8 +343,8 @@ function Building({ user, spec, x, isMe, onClick, studying, mode, animOffset, we
         <div style={{
           position: 'absolute', top: -16, left: '50%', transform: 'translateX(-50%)',
           width: 2, height: 16,
-          background: isMe ? '#d4a853' : style === 'cyberpunk' ? 'rgba(100,80,255,0.8)' : 'rgba(255,251,240,0.2)',
-          boxShadow: isMe ? '0 0 8px rgba(212,168,83,0.6)' : 'none',
+          background: isMe ? 'var(--accent)' : style === 'cyberpunk' ? 'var(--blue)' : 'var(--text2)',
+          boxShadow: isMe ? '0 0 8px var(--accent-soft)' : 'none',
         }} />
       )}
 
@@ -362,8 +362,9 @@ function Building({ user, spec, x, isMe, onClick, studying, mode, animOffset, we
         <div style={{
           position: 'absolute', inset: 0,
           background: mode === 'deep'
-            ? 'linear-gradient(0deg, rgba(80,120,255,0.04) 0%, transparent 60%)'
-            : 'linear-gradient(0deg, rgba(255,215,80,0.04) 0%, transparent 60%)',
+            ? 'linear-gradient(0deg, var(--blue) 0%, transparent 60%)'
+            : 'linear-gradient(0deg, var(--accent) 0%, transparent 60%)',
+          opacity: 0.04,
           pointerEvents: 'none',
         }} />
       )}
@@ -634,33 +635,33 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
               {liveCount} studying live right now
               <span style={{ marginLeft: 8, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                 <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--green)', display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
-                <span style={{ color: '#5c8c6e' }}>Live</span>
+                <span style={{ color: 'var(--green)' }}>Live</span>
               </span>
             </div>
           </div>
           <div style={{ textAlign: 'right' }}>
             <div style={{
               display: 'inline-flex', alignItems: 'center', gap: 8,
-              background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.08)',
+              background: 'var(--surface)', border: '1px solid var(--border)',
               borderRadius: 10, padding: '6px 12px', marginBottom: 6,
             }}>
               <span style={{ fontSize: '0.85rem' }}>
                 {weather.condition.snow ? '❄️' : weather.condition.heavyRain ? '⛈️' : weather.condition.rain ? '🌧️' : weather.condition.cloudy ? '☁️' : '☀️'}
               </span>
-              <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)' }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text2)' }}>
                 {weather.temp !== null ? `${Math.round(weather.temp)}°C` : '--'} · {weather.condition.label} · {weather.phase}
               </span>
             </div>
             <div style={{ display: 'flex', gap: 16, fontSize: '0.72rem', justifyContent: 'flex-end' }}>
               {[
-                { c: 'rgba(255,215,80,0.9)', g: '0 0 6px rgba(255,215,80,0.7)', l: 'Focus' },
-                { c: 'rgba(80,120,255,0.9)', g: '0 0 6px rgba(80,120,255,0.8)', l: 'Deep Work' },
-                { c: 'rgba(220,80,80,0.9)',  g: '0 0 6px rgba(220,80,80,0.8)', l: 'Exam' },
-                { c: 'rgba(255,255,255,0.06)', g: 'none', l: 'Offline' },
+                { c: 'var(--accent)', g: '0 0 6px var(--accent-soft)', l: 'Focus' },
+                { c: 'var(--blue)', g: '0 0 6px var(--blue)', l: 'Deep Work' },
+                { c: 'var(--red)',  g: '0 0 6px var(--red)', l: 'Exam' },
+                { c: 'var(--surface3)', g: 'none', l: 'Offline' },
               ].map(item => (
                 <div key={item.l} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                   <div style={{ width: 8, height: 8, borderRadius: 1, background: item.c, boxShadow: item.g }} />
-                  <span style={{ color: 'rgba(255,255,255,0.5)' }}>{item.l}</span>
+                  <span style={{ color: 'var(--text3)' }}>{item.l}</span>
                 </div>
               ))}
             </div>
@@ -673,8 +674,8 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
         width: '100%', height: 460,
         background: skyColor,
         position: 'relative', overflow: 'hidden',
-        borderTop: '1px solid rgba(255,255,255,0.05)',
-        borderBottom: '1px solid rgba(255,255,255,0.05)',
+        borderTop: '1px solid var(--border)',
+        borderBottom: '1px solid var(--border)',
         transition: 'background 2s ease',
       }}>
         {/* Stars */}
@@ -685,7 +686,7 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
             top: `${(i * 23) % 45}%`,
             width: i % 5 === 0 ? 2 : 1,
             height: i % 5 === 0 ? 2 : 1,
-            background: '#fff',
+            background: 'var(--text)',
             borderRadius: '50%',
             opacity: 0.25 + (i % 7) * 0.1,
             animation: `twinkle ${2 + (i % 5)}s ease-in-out infinite`,
@@ -800,8 +801,9 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
         <div style={{
           position: 'absolute', bottom: 0, left: 0, right: 0, height: 100,
           background: weather.condition.rain
-            ? 'linear-gradient(0deg, rgba(12,11,9,0.95) 0%, transparent 100%)'
-            : 'linear-gradient(0deg, rgba(12,11,9,0.85) 0%, transparent 100%)',
+            ? 'linear-gradient(0deg, var(--bg) 0%, transparent 100%)'
+            : 'linear-gradient(0deg, var(--bg) 0%, transparent 100%)',
+          opacity: 0.95,
           zIndex: 20, pointerEvents: 'none',
         }} />
 
@@ -816,8 +818,8 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
             {/* Sidewalk */}
             <div style={{
               position: 'absolute', bottom: ROAD_H, left: 0, right: 0, height: SIDEWALK_H,
-              background: 'linear-gradient(0deg, #2a2a2a 0%, #333 100%)',
-              borderTop: '2px solid #3d3d3d',
+              background: 'linear-gradient(0deg, var(--bg3) 0%, var(--bg2) 100%)',
+              borderTop: '2px solid var(--border2)',
               zIndex: 15,
             }} />
 
@@ -825,8 +827,8 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
             <div style={{
               position: 'absolute', bottom: 0, left: 0, right: 0, height: ROAD_H,
               background: weather.condition.rain
-                ? 'linear-gradient(0deg, #0c0e12 0%, #14161c 100%)'
-                : 'linear-gradient(0deg, #0e0f12 0%, #181a1f 100%)',
+                ? 'linear-gradient(0deg, var(--bg2) 0%, var(--bg3) 100%)'
+                : 'linear-gradient(0deg, var(--bg2) 0%, var(--bg3) 100%)',
               zIndex: 14,
             }}>
               {/* Lane markings */}
@@ -834,26 +836,27 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
                 <div key={i} style={{
                   position: 'absolute', top: '50%', left: `${i * 80 + 20}px`,
                   width: 40, height: 2,
-                  background: 'rgba(255,255,255,0.15)',
+                  background: 'var(--text3)',
+                  opacity: 0.3,
                   transform: 'translateY(-50%)',
                 }} />
               ))}
               {/* Curb */}
-              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'rgba(255,255,255,0.08)' }} />
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'var(--border)' }} />
             </div>
 
             {/* Street Lamps */}
             {layoutItems.filter(it => it.type === 'lamp').map((lamp, i) => (
               <div key={`lamp-${i}`} style={{ position: 'absolute', bottom: GROUND_Y, left: lamp.x, zIndex: 6, pointerEvents: 'none' }}>
                 {/* Post */}
-                <div style={{ width: 3, height: lamp.h, background: '#1f1f1f', margin: '0 auto', borderRadius: 1 }} />
+                <div style={{ width: 3, height: lamp.h, background: 'var(--bg3)', margin: '0 auto', borderRadius: 1 }} />
                 {/* Lamp head */}
                 <div style={{
                   position: 'absolute', top: -8, left: '50%', transform: 'translateX(-50%)',
                   width: 12, height: 8,
-                  background: isNightish ? '#ffeb3b' : '#3a3a3a',
+                  background: isNightish ? 'var(--accent)' : 'var(--bg3)',
                   borderRadius: '50% 50% 0 0',
-                  boxShadow: isNightish ? '0 0 18px rgba(255,235,59,0.7), 0 0 40px rgba(255,235,59,0.25)' : 'none',
+                  boxShadow: isNightish ? '0 0 18px var(--accent-soft), 0 0 40px var(--accent-soft)' : 'none',
                   transition: 'all 1.5s ease',
                 }} />
                 {/* Light cone on ground */}
@@ -861,7 +864,7 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
                   <div style={{
                     position: 'absolute', bottom: -GROUND_Y, left: '50%', transform: 'translateX(-50%)',
                     width: 70, height: GROUND_Y,
-                    background: 'radial-gradient(ellipse at center top, rgba(255,235,59,0.12) 0%, transparent 65%)',
+                    background: 'radial-gradient(ellipse at center top, var(--accent-soft) 0%, transparent 65%)',
                     pointerEvents: 'none',
                   }} />
                 )}
@@ -870,7 +873,7 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
                   <div style={{
                     position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
                     width: 50, height: lamp.h,
-                    background: 'radial-gradient(ellipse at center bottom, rgba(255,235,59,0.06) 0%, transparent 70%)',
+                    background: 'radial-gradient(ellipse at center bottom, var(--accent-soft) 0%, transparent 70%)',
                     pointerEvents: 'none',
                   }} />
                 )}
@@ -899,10 +902,11 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
                     <div style={{
                       position: 'absolute', left: -12, top: '50%', transform: 'translateY(-50%)',
                       width: 12, height: 8,
-                      background: 'rgba(220,60,60,0.6)',
+                      background: 'var(--red)',
+                      opacity: 0.6,
                       borderRadius: '50% 0 0 50%',
                       filter: 'blur(2px)',
-                      boxShadow: '0 0 6px rgba(220,60,60,0.5)',
+                      boxShadow: '0 0 6px var(--red)',
                     }} />
                   )}
                   {/* Car body */}
@@ -921,8 +925,8 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
                     }} />
                   </div>
                   {/* Wheels */}
-                  <div style={{ position: 'absolute', bottom: -2, left: 4, width: 5, height: 5, background: '#0a0a0a', borderRadius: '50%' }} />
-                  <div style={{ position: 'absolute', bottom: -2, right: 4, width: 5, height: 5, background: '#0a0a0a', borderRadius: '50%' }} />
+                  <div style={{ position: 'absolute', bottom: -2, left: 4, width: 5, height: 5, background: 'var(--bg)', borderRadius: '50%' }} />
+                  <div style={{ position: 'absolute', bottom: -2, right: 4, width: 5, height: 5, background: 'var(--bg)', borderRadius: '50%' }} />
                 </div>
               </div>
             ))}
@@ -939,13 +943,13 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
                   animationDelay: `${i * 0.2}s`,
                 }}>
                   {/* Head */}
-                  <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#c4b9a8', marginBottom: 1 }} />
+                  <div style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--text2)', marginBottom: 1 }} />
                   {/* Body */}
                   <div style={{ width: 5, height: 7, background: `hsl(${(i * 60) % 360}, 40%, 55%)`, borderRadius: 1 }} />
                   {/* Legs */}
                   <div style={{ display: 'flex', gap: 1, marginTop: 1 }}>
-                    <div style={{ width: 2, height: 5, background: '#3a3a3a', borderRadius: 1, animation: `legMove 0.8s ease-in-out infinite`, animationDelay: '0s' }} />
-                    <div style={{ width: 2, height: 5, background: '#3a3a3a', borderRadius: 1, animation: `legMove 0.8s ease-in-out infinite`, animationDelay: '0.4s' }} />
+                    <div style={{ width: 2, height: 5, background: 'var(--text3)', borderRadius: 1, animation: `legMove 0.8s ease-in-out infinite`, animationDelay: '0s' }} />
+                    <div style={{ width: 2, height: 5, background: 'var(--text3)', borderRadius: 1, animation: `legMove 0.8s ease-in-out infinite`, animationDelay: '0.4s' }} />
                   </div>
                 </div>
               </div>
@@ -970,7 +974,7 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
             {layoutItems.length === 0 && !loading && (
               <div style={{
                 position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: 'rgba(255,255,255,0.3)', fontSize: '0.9rem', zIndex: 30,
+                color: 'var(--text3)', fontSize: '0.9rem', zIndex: 30,
               }}>
                 No residents yet. Start studying to found the city.
               </div>
@@ -979,7 +983,7 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
             {loading && (
               <div style={{
                 position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: '#d4a853', fontSize: '0.9rem', zIndex: 30,
+                color: 'var(--accent)', fontSize: '0.9rem', zIndex: 30,
               }}>
                 Loading city…
               </div>
@@ -1003,10 +1007,10 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
                 <div style={{ fontSize: '1.3rem', fontWeight: 700, color: myRank.color, marginBottom: 2 }}>
                   {myRank.label}
                 </div>
-                <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)' }}>{myHours}h studied · {S?.streak || 0} day streak</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text3)' }}>{myHours}h studied · {S?.streak || 0} day streak</div>
               </div>
             </div>
-            <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.6)', lineHeight: 1.6 }}>
+            <div style={{ fontSize: '0.78rem', color: 'var(--text2)', lineHeight: 1.6 }}>
               {myHours < 5 && "Your studio is quiet. Start studying to light it up."}
               {myHours >= 5 && myHours < 20 && "Your apartment windows are starting to glow. Keep going."}
               {myHours >= 20 && myHours < 50 && "Your mid-rise is rising. The city is noticing."}
@@ -1015,27 +1019,27 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
               {myHours >= 200 && "Skyline Tower. You're the most recognizable building in the city."}
             </div>
             {isStudying && (
-              <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.72rem', color: '#d4a853' }}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#d4a853', display: 'inline-block', animation: 'pulse 1s infinite' }} />
+              <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.72rem', color: 'var(--accent)' }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', display: 'inline-block', animation: 'pulse 1s infinite' }} />
                 Your windows are glowing right now
               </div>
             )}
             <div style={{ marginTop: 12 }}>
-              <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>Next Level</div>
-              <div style={{ width: '100%', height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
-                <div style={{ width: `${Math.min(100, (myHours % 50) * 2)}%`, height: '100%', background: '#d4a853', borderRadius: 2 }} />
+              <div style={{ fontSize: '0.65rem', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>Next Level</div>
+              <div style={{ width: '100%', height: 4, background: 'var(--surface3)', borderRadius: 2, overflow: 'hidden' }}>
+                <div style={{ width: `${Math.min(100, (myHours % 50) * 2)}%`, height: '100%', background: 'var(--accent)', borderRadius: 2 }} />
               </div>
-              <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.35)', marginTop: 4 }}>
+              <div style={{ fontSize: '0.68rem', color: 'var(--text3)', marginTop: 4 }}>
                 {Math.max(0, 50 - (myHours % 50))}h until next upgrade
               </div>
             </div>
           </div>
 
           <div style={{
-            background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
+            background: 'var(--surface)', border: '1px solid var(--border)',
             borderRadius: 14, padding: 16,
           }}>
-            <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>City Leaderboard</div>
+            <div style={{ fontSize: '0.65rem', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>City Leaderboard</div>
             {allResidents
               .sort((a, b) => b.hours - a.hours)
               .slice(0, 5)
@@ -1044,21 +1048,21 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
                 return (
                   <div key={u.id} style={{
                     display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0',
-                    borderBottom: i < 4 ? '1px solid rgba(255,255,255,0.06)' : 'none',
+                    borderBottom: i < 4 ? '1px solid var(--border)' : 'none',
                   }}>
-                    <div style={{ fontWeight: 700, fontSize: '0.8rem', color: i === 0 ? '#d4a853' : i === 1 ? '#aaa' : i === 2 ? '#c9956a' : 'rgba(255,255,255,0.3)', width: 16 }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.8rem', color: i === 0 ? 'var(--accent)' : i === 1 ? 'var(--text2)' : i === 2 ? 'var(--accent2)' : 'var(--text3)', width: 16 }}>
                       {i + 1}
                     </div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: '0.82rem', fontWeight: 500, color: u.isMe ? '#d4a853' : '#fff', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <div style={{ fontSize: '0.82rem', fontWeight: 500, color: u.isMe ? 'var(--accent)' : 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
                         {u.name}
-                        {u.studying && <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#5c8c6e', display: 'inline-block' }} />}
+                        {u.studying && <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--green)', display: 'inline-block' }} />}
                       </div>
                       <div style={{ fontSize: '0.65rem', color: rank.color }}>{rank.label}</div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
                       <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text)' }}>{u.hours}h</div>
-                      <div style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.4)' }}>🔥 {u.streak}d</div>
+                      <div style={{ fontSize: '0.62rem', color: 'var(--text3)' }}>🔥 {u.streak}d</div>
                     </div>
                   </div>
                 )
@@ -1068,35 +1072,35 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
 
         {/* LIVE ACTIVITY */}
         <div style={{
-          background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
+          background: 'var(--surface)', border: '1px solid var(--border)',
           borderRadius: 14, padding: 16, marginBottom: 14,
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Live Activity</div>
-            <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)' }}>Real-time · updates every 10s</div>
+            <div style={{ fontSize: '0.65rem', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Live Activity</div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text3)' }}>Real-time · updates every 10s</div>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {allResidents.filter(u => u.studying).map(u => (
               <div key={u.id} style={{
                 display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px',
-                background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
+                background: 'var(--surface)', border: '1px solid var(--border)',
                 borderRadius: 10, cursor: 'pointer',
               }} onClick={() => setSelectedUser(u)}>
                 <div style={{
                   width: 10, height: 10, borderRadius: 2,
-                  background: u.mode === 'deep' ? 'rgba(80,120,255,0.9)' : u.mode === 'exam' ? 'rgba(220,80,80,0.9)' : 'rgba(255,215,80,0.9)',
-                  boxShadow: u.mode === 'deep' ? '0 0 6px rgba(80,120,255,0.8)' : u.mode === 'exam' ? '0 0 6px rgba(220,80,80,0.8)' : '0 0 6px rgba(255,215,80,0.7)',
+                  background: u.mode === 'deep' ? 'var(--blue)' : u.mode === 'exam' ? 'var(--red)' : 'var(--accent)',
+                  boxShadow: u.mode === 'deep' ? '0 0 6px var(--blue)' : u.mode === 'exam' ? '0 0 6px var(--red)' : '0 0 6px var(--accent)',
                   animation: 'pulse 1.5s ease-in-out infinite',
                   flexShrink: 0,
                 }} />
                 <div>
-                  <div style={{ fontSize: '0.78rem', fontWeight: 500, color: '#fff' }}>{u.name}</div>
-                  <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)' }}>{u.subject || 'Studying'}</div>
+                  <div style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--text)' }}>{u.name}</div>
+                  <div style={{ fontSize: '0.65rem', color: 'var(--text3)' }}>{u.subject || 'Studying'}</div>
                 </div>
               </div>
             ))}
             {allResidents.filter(u => u.studying).length === 0 && (
-              <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.3)', padding: '8px 0' }}>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text3)', padding: '8px 0' }}>
                 Nobody is studying right now. Start a focus session to light up your windows →
               </div>
             )}
@@ -1105,27 +1109,27 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
 
         {/* HOW IT WORKS */}
         <div style={{
-          background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
+          background: 'var(--surface)', border: '1px solid var(--border)',
           borderRadius: 14, padding: 16,
         }}>
-          <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>How Your Building Evolves</div>
+          <div style={{ fontSize: '0.65rem', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>How Your Building Evolves</div>
           <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 4 }}>
             {[
-              { label: 'Studio', hours: '0–5h', color: '#5a5248' },
-              { label: 'Apartment', hours: '5–20h', color: '#7a7468' },
-              { label: 'Mid-Rise', hours: '20–50h', color: '#5c8c6e' },
-              { label: 'High-Rise', hours: '50–100h', color: '#4a7a9b' },
-              { label: 'Penthouse', hours: '100–200h', color: '#c9956a' },
+              { label: 'Studio', hours: '0–5h', color: 'var(--text3)' },
+              { label: 'Apartment', hours: '5–20h', color: 'var(--text3)' },
+              { label: 'Mid-Rise', hours: '20–50h', color: 'var(--green)' },
+              { label: 'High-Rise', hours: '50–100h', color: 'var(--blue)' },
+              { label: 'Penthouse', hours: '100–200h', color: 'var(--accent2)' },
               { label: 'Skyline Tower', hours: '200h+', color: 'var(--accent)' },
             ].map((tier, i) => (
               <div key={tier.label} style={{
                 flex: '0 0 auto', textAlign: 'center', padding: '12px 16px',
-                background: myHours >= [0, 5, 20, 50, 100, 200][i] ? 'rgba(212,168,83,0.08)' : 'rgba(255,255,255,0.03)',
-                border: `1px solid ${myHours >= [0, 5, 20, 50, 100, 200][i] ? tier.color + '50' : 'rgba(255,255,255,0.06)'}`,
+                background: myHours >= [0, 5, 20, 50, 100, 200][i] ? 'var(--accent-soft)' : 'var(--surface)',
+                border: `1px solid ${myHours >= [0, 5, 20, 50, 100, 200][i] ? 'var(--accent)' : 'var(--border)'}`,
                 borderRadius: 10,
               }}>
                 <div style={{ fontWeight: 700, color: tier.color, fontSize: '0.82rem', marginBottom: 2 }}>{tier.label}</div>
-                <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)' }}>{tier.hours}</div>
+                <div style={{ fontSize: '0.65rem', color: 'var(--text3)' }}>{tier.hours}</div>
               </div>
             ))}
           </div>
@@ -1134,16 +1138,16 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
         {/* SQL Toggle */}
         <div style={{ marginTop: 14 }}>
           <button onClick={() => setShowSQL(s => !s)} style={{
-            background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
-            color: 'rgba(255,255,255,0.4)', borderRadius: 8, padding: '6px 12px',
+            background: 'var(--surface)', border: '1px solid var(--border)',
+            color: 'var(--text3)', borderRadius: 8, padding: '6px 12px',
             fontSize: '0.65rem', cursor: 'pointer', fontFamily: "'Anthropic Serif',Georgia,serif",
           }}>
             {showSQL ? 'Hide Supabase Schema' : 'Show Supabase Schema'}
           </button>
           {showSQL && (
             <pre style={{
-              marginTop: 8, background: 'rgba(6,6,20,0.97)', border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: 10, padding: 14, fontSize: '0.62rem', color: '#a5d6a7',
+              marginTop: 8, background: 'var(--bg)', border: '1px solid var(--border)',
+              borderRadius: 10, padding: 14, fontSize: '0.62rem', color: 'var(--green)',
               maxWidth: '100%', maxHeight: 300, overflowY: 'auto', whiteSpace: 'pre-wrap', fontFamily: 'monospace',
             }}>
               {SQL_SCHEMA}
@@ -1160,47 +1164,47 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
           backdropFilter: 'blur(6px)',
         }} onClick={e => e.target === e.currentTarget && setSelectedUser(null)}>
           <div style={{
-            background: 'var(--bg2)', border: '1px solid var(--border)',
+            background: 'var(--bg2)', border: '1px solid var(--border2)',
             borderRadius: 16, padding: 24, width: 360, maxWidth: '90vw',
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text)' }}>{selectedUser.name}</div>
               <button onClick={() => setSelectedUser(null)} style={{
-                background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)',
+                background: 'none', border: 'none', color: 'var(--text3)',
                 fontSize: '1.2rem', cursor: 'pointer',
               }}>✕</button>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
-              <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: 12, textAlign: 'center' }}>
-                <div style={{ fontSize: '1.8rem', fontWeight: 700, color: '#d4a853' }}>{selectedUser.hours}h</div>
-                <div style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Total Study</div>
+              <div style={{ background: 'var(--surface)', borderRadius: 10, padding: 12, textAlign: 'center' }}>
+                <div style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--accent)' }}>{selectedUser.hours}h</div>
+                <div style={{ fontSize: '0.62rem', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Total Study</div>
               </div>
-              <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: 12, textAlign: 'center' }}>
-                <div style={{ fontSize: '1.8rem', fontWeight: 700, color: '#5c8c6e' }}>🔥{selectedUser.streak}d</div>
-                <div style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Streak</div>
+              <div style={{ background: 'var(--surface)', borderRadius: 10, padding: 12, textAlign: 'center' }}>
+                <div style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--green)' }}>🔥{selectedUser.streak}d</div>
+                <div style={{ fontSize: '0.62rem', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Streak</div>
               </div>
             </div>
-            <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: 12, marginBottom: 12 }}>
+            <div style={{ background: 'var(--surface)', borderRadius: 10, padding: 12, marginBottom: 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{
                   width: 12, height: 12, borderRadius: 2,
                   background: selectedUser.studying
-                    ? selectedUser.mode === 'deep' ? 'rgba(80,120,255,0.9)' : 'rgba(255,215,80,0.9)'
-                    : 'rgba(255,255,255,0.08)',
-                  boxShadow: selectedUser.studying ? '0 0 8px rgba(255,215,80,0.7)' : 'none',
+                    ? selectedUser.mode === 'deep' ? 'var(--blue)' : 'var(--accent)'
+                    : 'var(--surface3)',
+                  boxShadow: selectedUser.studying ? '0 0 8px var(--accent-soft)' : 'none',
                   flexShrink: 0,
                 }} />
                 <div>
                   <div style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--text)' }}>
                     {selectedUser.studying ? `Studying ${selectedUser.subject || 'right now'}` : 'Offline'}
                   </div>
-                  <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)' }}>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text3)' }}>
                     {selectedUser.studying ? 'Window is glowing' : 'Window is dark'}
                   </div>
                 </div>
               </div>
             </div>
-            <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.4)', lineHeight: 1.6 }}>
+            <div style={{ fontSize: '0.78rem', color: 'var(--text3)', lineHeight: 1.6 }}>
               {getRankLabel(selectedUser.hours).label} · {selectedUser.hours}h studied
             </div>
           </div>
