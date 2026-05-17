@@ -1036,7 +1036,7 @@ export default function StudyOS({ session }) {
       </div>
     </div>
   )
-}
+
 
 /* ══════════════════════════════
    AUTH VIEW
