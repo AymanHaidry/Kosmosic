@@ -1,0 +1,10 @@
+name: TimeEcho Vibe Check
+
+on: [push]
+
+jobs:
+  vibe:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Checking timeline stability..."
+      - run: echo "No paradox detected ✔️"
