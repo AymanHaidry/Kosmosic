@@ -16,72 +16,19 @@ const QUOTES = [
 ]
 
 const AWARDS = [
-  { id: 'first_session', icon: '🌱', title: 'First Steps', desc: 'Complete your first session', req: s => s.sessions?.length >= 1 },
-  { id: 'streak_3', icon: '🔥', title: 'On Fire', desc: '3-day streak', req: s => s.streak >= 3 },
-  { id: 'streak_7', icon: '⚡', title: 'Weekly Warrior', desc: '7-day streak', req: s => s.streak >= 7 },
-  { id: 'streak_30', icon: '🏆', title: 'Iron Discipline', desc: '30-day streak', req: s => s.streak >= 30 },
-  { id: 'hours_10', icon: '⏰', title: 'Time Investor', desc: '10 hours studied', req: s => (s.totalMinutes || 0) >= 600 },
-  { id: 'hours_50', icon: '📚', title: 'Knowledge Seeker', desc: '50 hours studied', req: s => (s.totalMinutes || 0) >= 3000 },
-  { id: 'hours_100', icon: '💎', title: 'Century Scholar', desc: '100 hours studied', req: s => (s.totalMinutes || 0) >= 6000 },
-  { id: 'days_10', icon: '📅', title: 'Consistent', desc: '10 days studied', req: s => (s.studiedDays || []).length >= 10 },
-  { id: 'days_50', icon: '🌟', title: 'Dedicated', desc: '50 days studied', req: s => (s.studiedDays || []).length >= 50 },
-  { id: 'goal_met', icon: '🎯', title: 'Goal Crusher', desc: 'Hit daily goal once', req: s => (s.todayMinutes || 0) >= (s.dailyGoal || 120) },
+  { id: 'first_session', icon: '🌱', title: 'First Steps', desc: 'Complete your first session', req: s => (s.sessions || []).length >= 1, criteria: '1 session' },
+  { id: 'streak_3', icon: '🔥', title: 'On Fire', desc: '3-day streak', req: s => s.streak >= 3, criteria: '3 day streak' },
+  { id: 'streak_7', icon: '⚡', title: 'Weekly Warrior', desc: '7-day streak', req: s => s.streak >= 7, criteria: '7 day streak' },
+  { id: 'streak_30', icon: '🏆', title: 'Iron Discipline', desc: '30-day streak', req: s => s.streak >= 30, criteria: '30 day streak' },
+  { id: 'hours_10', icon: '⏰', title: 'Time Investor', desc: '10 hours studied', req: s => (s.totalMinutes || 0) >= 600, criteria: '10 hours' },
+  { id: 'hours_50', icon: '📚', title: 'Knowledge Seeker', desc: '50 hours studied', req: s => (s.totalMinutes || 0) >= 3000, criteria: '50 hours' },
+  { id: 'hours_100', icon: '💎', title: 'Century Scholar', desc: '100 hours studied', req: s => (s.totalMinutes || 0) >= 6000, criteria: '100 hours' },
+  { id: 'days_10', icon: '📅', title: 'Consistent', desc: '10 days studied', req: s => (s.studiedDays || []).length >= 10, criteria: '10 study days' },
+  { id: 'days_50', icon: '🌟', title: 'Dedicated', desc: '50 days studied', req: s => (s.studiedDays || []).length >= 50, criteria: '50 study days' },
+  { id: 'goal_met', icon: '🎯', title: 'Goal Crusher', desc: 'Hit daily goal once', req: s => (s.todayMinutes || 0) >= (s.dailyGoal || 120), criteria: 'Hit daily goal' },
 ]
 
 const SUBJECT_COLORS = ['#d4a853','#c9956a','#5c8c6e','#4a7a9b','#8b7a9b','#c0574a','#7a9b4a','#9b4a7a']
-
-const defaultState = () => ({
-  streak: 0, studiedDays: [], missedDays: [], totalMinutes: 0, todayMinutes: 0,
-  events: [], diary: [], marks: [], sessions: [], examGroups: [],
-  subjects: ['Mathematics', 'Science', 'English', 'History', 'Physics'],
-  subjectMinutes: {}, subjectTargets: {},
-  dailyGoal: 120, weeklyGoal: 900, targetPct: 98,
-  did: '', plan: '',
-  timerMode: 'focus', timerTotal: 1500,
-  distractionCount: 0, lastStudiedDate: null,
-  settings: {
-    darkMode: true, sound: true, strictMode: false, autoBreak: false,
-    autoNextSession: false, sessionSounds: true, animatedBg: true,
-    studyReminders: true, breakReminders: true, goalReminder: true, streakNotif: true,
-    detectInactivity: false, warnQuit: true, pauseStreakExams: false,
-    focusSessionMins: 25, breakMins: 5, longBreakMins: 15,
-    burnoutDetection: false, moodCheckins: true, dopamineDetox: false,
-  },
-  aiHistory: [],
-})
-
-function notify(msg) {
-  const el = document.getElementById('kosm-notif')
-  if (!el) return
-  el.querySelector('.notif-msg').textContent = msg
-  el.classList.add('show')
-  setTimeout(() => el.classList.remove('show'), 3500)
-}
-
-function fmtTime(secs) {
-  const m = Math.floor(secs / 60).toString().padStart(2, '0')
-  const s = (secs % 60).toString().padStart(2, '0')
-  return `${m}:${s}`
-}
-
-function todayKey() {
-  return new Date().toISOString().split('T')[0]
-}
-
-// Module-level so loadData can call it without closure issues
-function calcStreakFromDays(days) {
-  if (!days || days.length === 0) return 0
-  const sorted = [...days].sort().reverse()
-  const today = todayKey()
-  let streak = 0
-  let check = new Date(today)
-  for (const d of sorted) {
-    const dt = new Date(d)
-    const diff = Math.round((check - dt) / 86400000)
-    if (diff === 0 || diff === 1) { streak++; check = dt } else break
-  }
-  return streak
-}
 
 const THEMES = [
   { id:'premium-dark',  label:'Premium Dark',   icon:'✦' },
@@ -96,6 +43,76 @@ const THEMES = [
   { id:'vibe-coded',    label:'Vibe Coded',      icon:'🌈' },
 ]
 
+const defaultState = () => ({
+  streak: 0, studiedDays: [], missedDays: [], totalMinutes: 0, todayMinutes: 0,
+  events: [], diary: [], marks: [], sessions: [], examGroups: [],
+  subjects: ['Mathematics', 'Science', 'English', 'History', 'Physics'],
+  subjectMinutes: {}, subjectTargets: {},
+  dailyGoal: 120, weeklyGoal: 900, targetPct: 98,
+  did: '', plan: '',
+  timerMode: 'focus', timerTotal: 1500,
+  distractionCount: 0, lastStudiedDate: null,
+  studyMode: 'focus',
+  settings: {
+    darkMode: true, sound: true, strictMode: false, autoBreak: false,
+    autoNextSession: false, sessionSounds: true, animatedBg: true,
+    studyReminders: true, breakReminders: true, goalReminder: true, streakNotif: true,
+    detectInactivity: false, warnQuit: true, pauseStreakExams: false,
+    focusSessionMins: 25, breakMins: 5, longBreakMins: 15,
+    burnoutDetection: false, moodCheckins: true, dopamineDetox: false,
+    theme: 'premium-dark',
+  },
+  aiHistory: [],
+  activityFeed: [],
+})
+
+function sendBrowserNotif(title, body) {
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification(title, { body, icon: '/favicon.ico' })
+  }
+}
+
+function notify(msg, { browser = false, title = 'Kosmosic' } = {}) {
+  const el = document.getElementById('kosm-notif')
+  if (el) {
+    el.querySelector('.notif-msg').textContent = msg
+    el.classList.add('show')
+    setTimeout(() => el.classList.remove('show'), 3500)
+  }
+  if (browser) sendBrowserNotif(title, msg)
+}
+
+function fmtTime(secs) {
+  const m = Math.floor(secs / 60).toString().padStart(2, '0')
+  const s = (secs % 60).toString().padStart(2, '0')
+  return `${m}:${s}`
+}
+
+function todayKey() {
+  return new Date().toISOString().split('T')[0]
+}
+
+function calcStreakFromDays(days) {
+  if (!days || days.length === 0) return 0
+  const sorted = [...days].sort().reverse()
+  const td = todayKey()
+  let streak = 0
+  let check = new Date(td)
+  for (const d of sorted) {
+    const dt = new Date(d)
+    const diff = Math.round((check - dt) / 86400000)
+    if (diff === 0 || diff === 1) { streak++; check = dt } else break
+  }
+  return streak
+}
+
+function isFocusTimerMode(mode) {
+  return mode === 'focus' || mode === 'custom'
+}
+
+/* ══════════════════════════════
+   JELLYFISH PET
+══════════════════════════════ */
 function JellyfishPet({ daysSinceStudy }) {
   const dead = daysSinceStudy > 2
   const sick = daysSinceStudy === 2
@@ -107,12 +124,9 @@ function JellyfishPet({ daysSinceStudy }) {
     <div style={{ textAlign:'center', padding:'12px 0' }}>
       <div style={{ position:'relative', display:'inline-block', filter:dead?'grayscale(1)':'none', transition:'all 1s', animation: dead ? 'none' : 'jellybob 3s ease-in-out infinite' }}>
         <svg width="70" height="80" viewBox="0 0 70 80" style={{ filter:`drop-shadow(${glow})`, transition:'filter 1s' }}>
-          {/* body */}
           <ellipse cx="35" cy="34" rx="24" ry="22" fill={color} fillOpacity="0.35" />
           <ellipse cx="35" cy="32" rx="24" ry="22" fill={color} fillOpacity="0.6" />
-          {/* shine */}
           <ellipse cx="27" cy="22" rx="7" ry="5" fill="rgba(255,255,255,0.35)" transform="rotate(-15 27 22)" />
-          {/* face */}
           {dead ? (
             <>
               <line x1="25" y1="36" x2="29" y2="40" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" />
@@ -138,7 +152,6 @@ function JellyfishPet({ daysSinceStudy }) {
               <path d="M29 45 Q35 49 41 45" fill="none" stroke="rgba(255,255,255,0.8)" strokeWidth="1.5" strokeLinecap="round" />
             </>
           )}
-          {/* tentacles */}
           {[14,22,30,38,46,54].map((tx, i) => (
             <path key={i} d={`M${tx} 54 Q${tx + (i%2===0?-4:4)} ${62+i*1.5} ${tx} ${70+i}`} fill="none" stroke={color} strokeWidth={i%2===0?2:1.5} strokeOpacity="0.7" strokeLinecap="round" style={{ animation: dead ? 'none' : `tentacle${i%3} 2.5s ease-in-out ${i*0.3}s infinite` }} />
           ))}
@@ -154,6 +167,9 @@ function JellyfishPet({ daysSinceStudy }) {
   )
 }
 
+/* ══════════════════════════════
+   ACTIVITY FEED
+══════════════════════════════ */
 function ActivityFeed({ events }) {
   if (!events || events.length === 0) return (
     <div style={{ color:'var(--text3)', fontSize:'0.78rem', textAlign:'center', padding:'16px 0' }}>No recent activity yet — start your first session!</div>
@@ -173,6 +189,9 @@ function ActivityFeed({ events }) {
   )
 }
 
+/* ══════════════════════════════
+   MAIN STUDY OS
+══════════════════════════════ */
 export default function StudyOS({ session }) {
   const nav = useNavigate()
   const [page, setPage] = useState('dash')
@@ -186,34 +205,37 @@ export default function StudyOS({ session }) {
   const [dataLoaded, setDataLoaded] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
-  // Timer state
+  // ─── CLOUD TIMER STATE ───
   const [timerSecs, setTimerSecs] = useState(1500)
   const [timerRunning, setTimerRunning] = useState(false)
   const [timerMode, setTimerMode] = useState('focus')
   const [timerTotal, setTimerTotal] = useState(1500)
   const [customMins, setCustomMins] = useState(45)
+  const [timerReady, setTimerReady] = useState(false)
   const timerRef = useRef(null)
-  const sessionStartRef = useRef(null)
+  const segmentStartRef = useRef(null)
+  const timerStartRef = useRef(null)
+  const activeSubjectRef = useRef(S.activeSubject || 'General')
+
+  useEffect(() => {
+    activeSubjectRef.current = S.activeSubject || 'General'
+  }, [S.activeSubject])
 
   // Theme
   const [dark, setDark] = useState(true)
   const [theme, setTheme] = useState('premium-dark')
   const [showThemePicker, setShowThemePicker] = useState(false)
 
-  // Quote
   const [quote] = useState(QUOTES[Math.floor(Math.random() * QUOTES.length)])
-
-  // Particles
   const particlesRef = useRef(null)
 
   useEffect(() => {
     if (!particlesRef.current) return
-    const c = particlesRef.current
     for (let i = 0; i < 25; i++) {
       const p = document.createElement('div')
       p.className = 'particle'
       p.style.cssText = `left:${Math.random()*100}%;animation-delay:${Math.random()*15}s;animation-duration:${10+Math.random()*10}s`
-      c.appendChild(p)
+      particlesRef.current.appendChild(p)
     }
   }, [])
 
@@ -221,11 +243,22 @@ export default function StudyOS({ session }) {
     document.documentElement.setAttribute('data-theme', theme)
   }, [theme])
 
-  // Load user data
+  // ─── LOAD USER DATA + CLOUD TIMER ───
   useEffect(() => {
     if (!session) return
     loadData()
+    loadCloudTimer()
   }, [session])
+
+  useEffect(() => {
+    if (!timerRunning && timerMode === 'focus') {
+      const mins = S.settings?.focusSessionMins || 25
+      const secs = mins * 60
+      setTimerTotal(secs)
+      setTimerSecs(secs)
+      saveCloudTimer({ timer_total: secs, timer_secs: secs, timer_mode: 'focus' })
+    }
+  }, [S.settings?.focusSessionMins, timerMode, timerRunning])
 
   const loadData = async () => {
     const { data, error } = await supabase
@@ -233,16 +266,16 @@ export default function StudyOS({ session }) {
       .select('*')
       .eq('user_id', session.user.id)
       .single()
-    if (error && error.code !== 'PGRST116') { setDataLoaded(true); return }
+    if (error && error.code !== 'PGRST116') { console.error(error); setDataLoaded(true); return }
     if (data?.data) {
       const merged = { ...defaultState(), ...data.data }
-      // Always recalculate streak fresh from stored study days
+      const today = todayKey()
+      if (merged.lastStudiedDate && merged.lastStudiedDate !== today) {
+        merged.todayMinutes = 0
+      }
       merged.streak = calcStreakFromDays(merged.studiedDays || [])
-      // Apply saved session lengths to timer
-      if (merged.settings?.focusSessionMins) merged.timerTotal = merged.settings.focusSessionMins * 60
       setS(merged)
       setDark(merged.settings?.darkMode !== false)
-      // Apply theme
       const savedTheme = merged.settings?.theme || 'premium-dark'
       setTheme(savedTheme)
       document.documentElement.setAttribute('data-theme', savedTheme)
@@ -250,6 +283,60 @@ export default function StudyOS({ session }) {
     setDataLoaded(true)
   }
 
+  // ─── CLOUD TIMER: LOAD FROM DB ───
+  const loadCloudTimer = async () => {
+    if (!session?.user?.id) return
+    const { data } = await supabase
+      .from('timer_state')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .single()
+
+    if (data) {
+      const now = Date.now()
+      const startedAt = data.started_at ? new Date(data.started_at).getTime() : 0
+      const wasRunning = data.is_running && startedAt
+
+      let newSecs = data.timer_secs
+      let newTotal = data.timer_total || 1500
+      let newMode = data.timer_mode || 'focus'
+      let newStudyMode = data.study_mode || 'focus'
+
+      if (wasRunning) {
+        const elapsed = Math.floor((now - startedAt) / 1000)
+        if (data.segment_start_secs != null) {
+          newSecs = Math.max(0, data.segment_start_secs - elapsed)
+        } else {
+          newSecs = Math.max(0, data.timer_secs - elapsed)
+        }
+
+        if (newSecs <= 0) {
+          const completedSecs = data.segment_start_secs || data.timer_total || 1500
+          if (isFocusTimerMode(newMode) && completedSecs > 0) {
+            recordFocusSessionDirect(completedSecs, newStudyMode, activeSubjectRef.current)
+          }
+          setTimerRunning(false)
+          segmentStartRef.current = null
+        } else {
+          setTimerRunning(true)
+          segmentStartRef.current = data.segment_start_secs || data.timer_secs
+          timerStartRef.current = Date.now() - elapsed * 1000
+          startLocalTimer()
+        }
+      } else {
+        setTimerRunning(false)
+        segmentStartRef.current = null
+      }
+
+      setTimerSecs(newSecs)
+      setTimerTotal(newTotal)
+      setTimerMode(newMode)
+      updateS(prev => ({ ...prev, studyMode: newStudyMode }))
+    }
+    setTimerReady(true)
+  }
+
+  // ─── SAVE DATA ───
   const saveData = useCallback(async (newS) => {
     if (!session) return
     await supabase.from('user_data').upsert(
@@ -267,99 +354,154 @@ export default function StudyOS({ session }) {
     })
   }, [saveData])
 
-  // Timer logic
-  useEffect(() => {
-    if (timerRunning) {
-      timerRef.current = setInterval(() => {
-        setTimerSecs(prev => {
-          if (prev <= 1) {
-            clearInterval(timerRef.current)
-            setTimerRunning(false)
-            handleTimerComplete()
-            return 0
-          }
-          return prev - 1
-        })
-      }, 1000)
-    } else {
-      clearInterval(timerRef.current)
-    }
-    return () => clearInterval(timerRef.current)
-  }, [timerRunning])
+  // ─── CLOUD TIMER: SAVE TO DB ───
+  const saveCloudTimer = useCallback(async (updates) => {
+    if (!session?.user?.id) return
+    await supabase.from('timer_state').upsert({
+      user_id: session.user.id,
+      timer_secs: updates.timer_secs ?? timerSecs,
+      timer_total: updates.timer_total ?? timerTotal,
+      timer_mode: updates.timer_mode ?? timerMode,
+      is_running: updates.is_running ?? timerRunning,
+      started_at: updates.started_at ?? null,
+      paused_at: updates.paused_at ?? null,
+      segment_start_secs: updates.segment_start_secs ?? segmentStartRef.current,
+      study_mode: updates.study_mode ?? S.studyMode,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id' })
+  }, [session, timerSecs, timerTotal, timerMode, timerRunning, S.studyMode])
 
-  const recordFocusSession = (elapsedSecs) => {
+  // ─── LOCAL TIMER INTERVAL ───
+  const startLocalTimer = () => {
+    clearInterval(timerRef.current)
+    timerStartRef.current = Date.now()
+    const startSecs = timerSecs
+    timerRef.current = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - timerStartRef.current) / 1000)
+      const remaining = Math.max(0, startSecs - elapsed)
+      setTimerSecs(remaining)
+      if (remaining <= 0) {
+        clearInterval(timerRef.current)
+        setTimerRunning(false)
+        handleTimerComplete(segmentStartRef.current || timerTotal)
+      }
+    }, 1000)
+  }
+
+  // ─── TIMER COMPLETION ───
+  const handleTimerComplete = useCallback((elapsedSecs) => {
+    notify(isFocusTimerMode(timerMode) ? '✓ Session complete! Take a break.' : 'Break over. Back to work.')
+    if (isFocusTimerMode(timerMode)) {
+      recordFocusSessionDirect(elapsedSecs, S.studyMode, activeSubjectRef.current)
+    }
+    segmentStartRef.current = null
+    timerStartRef.current = null
+    saveCloudTimer({ is_running: false, started_at: null, timer_secs: 0, segment_start_secs: null })
+  }, [timerMode, S.studyMode])
+
+  // ─── RECORD SESSION (direct, no closure dependencies on timer state) ───
+  const recordFocusSessionDirect = (elapsedSecs, studyMode, subject) => {
     const mins = Math.round(elapsedSecs / 60)
     if (mins < 1) return
     const today = todayKey()
+    const activeSub = subject || 'General'
     const timeStr = new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' })
+
     updateS(prev => {
-      const sessions = [...(prev.sessions || []), { date: today, mins, mode: 'focus', ts: Date.now() }]
+      const sessions = [...(prev.sessions || []), { date: today, mins, mode: studyMode || 'focus', ts: Date.now(), subject: activeSub }]
       const totalMinutes = (prev.totalMinutes || 0) + mins
       const todayMinutes = (prev.todayMinutes || 0) + mins
       const studiedDays = prev.studiedDays?.includes(today) ? prev.studiedDays : [...(prev.studiedDays || []), today]
-      const streak = calcStreak(studiedDays)
+      const missedDays = (prev.missedDays || []).filter(d => d !== today)
+      const streak = calcStreakFromDays(studiedDays)
       const isNewStreak = streak > (prev.streak || 0)
-      // Build activity feed events
+      const subjectMinutes = { ...prev.subjectMinutes, [activeSub]: (prev.subjectMinutes?.[activeSub] || 0) + mins }
+
       const feedEvents = [
-        { icon:'⏱', text:`Completed ${mins}min ${prev.activeSubject ? `(${prev.activeSubject})` : 'focus'} session`, time: timeStr },
+        { icon:'⏱', text:`Completed ${mins}min ${activeSub !== 'General' ? `(${activeSub})` : 'focus'} session`, time: timeStr },
         ...(isNewStreak && streak > 0 ? [{ icon:'🔥', text:`Now on a ${streak}-day streak!`, time: timeStr }] : []),
         ...(totalMinutes >= 600 && (prev.totalMinutes||0) < 600 ? [{ icon:'⏰', text:'Hit 10 hours total study!', time: timeStr }] : []),
         ...(totalMinutes >= 3000 && (prev.totalMinutes||0) < 3000 ? [{ icon:'📚', text:'Hit 50 hours total study!', time: timeStr }] : []),
         ...(totalMinutes >= 6000 && (prev.totalMinutes||0) < 6000 ? [{ icon:'💎', text:'Hit 100 hours! Century Scholar!', time: timeStr }] : []),
       ]
       const activityFeed = [...feedEvents, ...(prev.activityFeed || [])].slice(0, 20)
-      return { ...prev, sessions, totalMinutes, todayMinutes, studiedDays, streak, lastStudiedDate: today, activityFeed }
+
+      return { ...prev, sessions, totalMinutes, todayMinutes, studiedDays, missedDays, streak, lastStudiedDate: today, subjectMinutes, activityFeed }
     })
   }
 
-  const handleTimerComplete = () => {
-    notify(timerMode === 'focus' ? '✓ Session complete! Take a break.' : 'Break over. Back to work.')
-    if (timerMode === 'focus') {
-      // Use timerTotal as elapsed — the full session ran to completion
-      recordFocusSession(timerTotal)
-    }
-    sessionStartRef.current = null
-  }
-
-  const startTimer = () => {
-    if (timerMode === 'focus') sessionStartRef.current = timerSecs
+  // ─── TIMER CONTROLS ───
+  const startTimer = async () => {
+    if (timerSecs <= 0) return
+    const now = new Date().toISOString()
+    segmentStartRef.current = timerSecs
+    timerStartRef.current = Date.now()
     setTimerRunning(true)
+    await saveCloudTimer({ is_running: true, started_at: now, segment_start_secs: timerSecs, timer_secs: timerSecs })
+    startLocalTimer()
   }
 
-  const pauseTimer = () => {
+  const pauseTimer = async () => {
+    clearInterval(timerRef.current)
     setTimerRunning(false)
-    // Record elapsed time so far (difference between secs at start vs now)
-    if (timerMode === 'focus' && sessionStartRef.current !== null) {
-      const elapsedSecs = sessionStartRef.current - timerSecs
-      recordFocusSession(elapsedSecs)
-      sessionStartRef.current = null
+    let remaining = timerSecs
+    if (isFocusTimerMode(timerMode) && segmentStartRef.current !== null && timerStartRef.current) {
+      const realElapsed = Math.floor((Date.now() - timerStartRef.current) / 1000)
+      const elapsedSecs = Math.min(segmentStartRef.current, realElapsed)
+      remaining = Math.max(0, segmentStartRef.current - elapsedSecs)
+      setTimerSecs(remaining)
+      if (elapsedSecs > 0) {
+        recordFocusSessionDirect(elapsedSecs, S.studyMode, activeSubjectRef.current)
+      }
+      segmentStartRef.current = null
+      timerStartRef.current = null
     }
+    await saveCloudTimer({ is_running: false, paused_at: new Date().toISOString(), timer_secs: remaining, segment_start_secs: null })
   }
 
-  const resetTimer = () => {
-    // If running, record elapsed first
-    if (timerRunning && timerMode === 'focus' && sessionStartRef.current !== null) {
-      const elapsedSecs = sessionStartRef.current - timerSecs
-      recordFocusSession(elapsedSecs)
+  const resetTimer = async () => {
+    clearInterval(timerRef.current)
+    if (isFocusTimerMode(timerMode) && segmentStartRef.current !== null && timerRunning && timerStartRef.current) {
+      const realElapsed = Math.floor((Date.now() - timerStartRef.current) / 1000)
+      const elapsedSecs = Math.min(segmentStartRef.current, realElapsed)
+      if (elapsedSecs > 0) {
+        recordFocusSessionDirect(elapsedSecs, S.studyMode, activeSubjectRef.current)
+      }
     }
     setTimerRunning(false)
     setTimerSecs(timerTotal)
-    sessionStartRef.current = null
+    segmentStartRef.current = null
+    timerStartRef.current = null
+    await saveCloudTimer({ is_running: false, timer_secs: timerTotal, started_at: null, segment_start_secs: null })
   }
 
-  const setMode = (mode, mins) => {
+  const setMode = async (mode, mins) => {
+    clearInterval(timerRef.current)
+    if (isFocusTimerMode(timerMode) && segmentStartRef.current !== null && timerRunning && timerStartRef.current) {
+      const realElapsed = Math.floor((Date.now() - timerStartRef.current) / 1000)
+      const elapsedSecs = Math.min(segmentStartRef.current, realElapsed)
+      if (elapsedSecs > 0) {
+        recordFocusSessionDirect(elapsedSecs, S.studyMode, activeSubjectRef.current)
+      }
+    }
     setTimerRunning(false)
     setTimerMode(mode)
     const secs = mins * 60
     setTimerTotal(secs)
     setTimerSecs(secs)
+    segmentStartRef.current = null
+    timerStartRef.current = null
+    await saveCloudTimer({ timer_mode: mode, timer_total: secs, timer_secs: secs, is_running: false, started_at: null, segment_start_secs: null })
   }
 
-  const calcStreak = (days) => calcStreakFromDays(days)
+  const toggleTimer = () => {
+    if (timerRunning) pauseTimer()
+    else startTimer()
+  }
 
+  const timerProgress = timerTotal > 0 ? (timerTotal - timerSecs) / timerTotal : 0
   const circumference = 628
-  // Ring depletes as time runs down (starts full, empties to zero)
-  const dashoffset = timerTotal > 0 ? circumference * (timerSecs / timerTotal) : 0
+  const dashoffset = circumference * (1 - timerProgress)
 
   const signOut = async () => {
     await supabase.auth.signOut()
@@ -403,7 +545,7 @@ export default function StudyOS({ session }) {
 
   if (!session) return <AuthView authMode={authMode} setAuthMode={setAuthMode} authEmail={authEmail} setAuthEmail={setAuthEmail} authPass={authPass} setAuthPass={setAuthPass} authName={authName} setAuthName={setAuthName} authErr={authErr} authLoading={authLoading} handleAuth={handleAuth} signInGoogle={signInGoogle} nav={nav} />
 
-  if (!dataLoaded) return (
+  if (!dataLoaded || !timerReady) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 2 }}>
       <div style={{ fontFamily: "'Anthropic Serif',Georgia,serif", color: 'var(--accent)' }}>Loading your data...</div>
     </div>
@@ -415,13 +557,11 @@ export default function StudyOS({ session }) {
     <div>
       <div className="particles" ref={particlesRef} />
 
-      {/* NOTIFICATION */}
       <div className="notif" id="kosm-notif">
         <div className="notif-dot" />
         <span className="notif-msg" />
       </div>
 
-      {/* MOBILE NAV OVERLAY */}
       <div className={`mobile-nav-overlay ${mobileOpen ? 'open' : ''}`}>
         {['city','room','dash','timer','music','cal','marks','diary','awards','ai','profile','settings'].map(p => (
           <a key={p} href="#" className={page === p ? 'active' : ''} onClick={e => { e.preventDefault(); setPage(p); setMobileOpen(false); setShowThemePicker(false) }}>
@@ -430,7 +570,6 @@ export default function StudyOS({ session }) {
         ))}
       </div>
 
-      {/* NAV */}
       <nav className="nav">
         <div className="nav-logo" style={{ cursor: 'pointer' }} onClick={() => nav('/')}>
           <div className="nav-logo-mark">K</div>
@@ -462,7 +601,6 @@ export default function StudyOS({ session }) {
         </div>
       </nav>
 
-      {/* TICKER — only show outside city page */}
       {page !== 'city' && (
         <div className="ticker">
           <div className="ticker-track">
@@ -474,14 +612,12 @@ export default function StudyOS({ session }) {
         </div>
       )}
 
-      {/* ══ CITY ══ */}
       {page === 'city' && (
-        <CityPage S={S} session={session} isStudying={timerRunning && timerMode === 'focus'} studyMode={timerMode} />
+        <CityPage S={S} session={session} isStudying={timerRunning && isFocusTimerMode(timerMode)} studyMode={S.studyMode || 'focus'} />
       )}
 
-      {/* ══ STUDY ROOMS ══ */}
       {page === 'room' && (
-        <StudyRoom S={S} session={session} isStudying={timerRunning && timerMode === 'focus'} timerSecs={timerSecs} timerMode={timerMode} />
+        <StudyRoom S={S} session={session} isStudying={timerRunning && isFocusTimerMode(timerMode)} timerSecs={timerSecs} timerMode={timerMode} />
       )}
 
       {/* ══ DASHBOARD ══ */}
@@ -489,24 +625,15 @@ export default function StudyOS({ session }) {
         <div className="grid2" style={{ marginBottom: 14 }}>
           <div className="card card-premium" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems:'center' }}>
             <div className="sec-label" style={{width:'100%'}}>Current Streak</div>
-            {/* SVG streak ring */}
-            <div style={{ position:'relative', width:110, height:110, margin:'6px auto 4px' }}>
-              <svg width="110" height="110" viewBox="0 0 110 110" style={{ transform:'rotate(-90deg)' }}>
-                <circle cx="55" cy="55" r="48" fill="none" stroke="var(--surface3)" strokeWidth="5" />
-                <circle cx="55" cy="55" r="48" fill="none" stroke="var(--accent)" strokeWidth="5"
-                  strokeLinecap="round" strokeDasharray="301"
-                  strokeDashoffset={Math.max(0, 301 - (301 * Math.min((S.streak||0), 30) / 30))}
-                  style={{ transition:'stroke-dashoffset 0.8s cubic-bezier(0.4,0,0.2,1)', filter:'drop-shadow(0 0 6px rgba(212,168,83,0.5))' }} />
-              </svg>
-              <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center' }}>
-                <div style={{ fontFamily:"'Anthropic Serif',Georgia,serif", fontSize:'2.4rem', fontWeight:900, color:'var(--accent)', lineHeight:1 }}>{S.streak||0}</div>
-                <div style={{ fontSize:'0.58rem', color:'var(--text3)', letterSpacing:'0.1em', textTransform:'uppercase', fontFamily:"'Anthropic Serif',Georgia,serif" }}>days</div>
+            <div className="streak-wrap" style={{ padding: '10px 0' }}>
+              <div className="streak-ring">
+                <div className="streak-num">{S.streak || 0}</div>
+                <div className="streak-label">days</div>
+              </div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text3)', marginTop: 8, textAlign: 'center' }}>
+                {(S.streak || 0) > 0 ? '🔥 Keep going' : 'Start today!'}
               </div>
             </div>
-            <div style={{ fontSize:'0.75rem', color:'var(--text3)', textAlign:'center', marginBottom:4 }}>
-              {(S.streak||0)>=30?'🏆 30 day legend!':(S.streak||0)>=7?'⚡ Weekly warrior':(S.streak||0)>0?'🔥 Keep going':'Start today!'}
-            </div>
-            {/* Jellyfish pet */}
             {(() => {
               const lastStudied = (S.studiedDays||[]).sort().at(-1)
               const daysSince = lastStudied ? Math.floor((Date.now() - new Date(lastStudied))/86400000) : 999
@@ -558,6 +685,9 @@ export default function StudyOS({ session }) {
         </div>
 
         <div className="grid2" style={{ marginBottom: 14 }}>
+          <div className=" I need to continue from where the code was cut off. Let me continue with the rest of the StudyOS component and all the sub-components. I was in the middle of the Dashboard page's "What I Did Today" / "Plan for Tomorrow" section.
+
+Let me continue from that point and complete the entire file.  ```jsx
           <div className="card">
             <div className="sec-label">What I Did Today</div>
             <textarea placeholder="Write what you accomplished..." value={S.did || ''} style={{ minHeight: 72 }}
@@ -584,7 +714,7 @@ export default function StudyOS({ session }) {
           </div>
         </div>
 
-        <div className="card">
+        <div className="card" style={{ marginBottom: 14 }}>
           <div className="sec-label">Subject Breakdown</div>
           {(S.subjects || []).map((sub, i) => {
             const mins = (S.subjectMinutes || {})[sub] || 0
@@ -602,7 +732,6 @@ export default function StudyOS({ session }) {
           })}
         </div>
 
-        {/* Activity Feed */}
         <div className="card" style={{ marginBottom: 14 }}>
           <div className="sec-label">Activity Feed</div>
           <ActivityFeed events={S.activityFeed || []} />
@@ -616,22 +745,23 @@ export default function StudyOS({ session }) {
           const email = session?.user?.email || ''
           const totalHours = Math.floor((S.totalMinutes||0)/60)
           const totalMins = (S.totalMinutes||0) % 60
-          const allMarks = (S.marks||[])
+          const examGroups = S.examGroups || []
+          const allSubjects = S.subjects || []
           const subjectScores = {}
-          allMarks.forEach(m => {
-            if (!subjectScores[m.subject]) subjectScores[m.subject] = []
-            subjectScores[m.subject].push(m.score)
+          examGroups.forEach(ex => {
+            ex.marks?.forEach(m => {
+              if (!subjectScores[m.subject]) subjectScores[m.subject] = []
+              subjectScores[m.subject].push(m.score / m.total * 100)
+            })
           })
           const subjectAvgs = Object.entries(subjectScores).map(([sub, scores]) => ({ sub, avg: Math.round(scores.reduce((a,b)=>a+b,0)/scores.length) }))
           const strongestSubject = subjectAvgs.sort((a,b)=>b.avg-a.avg)[0]
           const lastStudied = (S.studiedDays||[]).sort().at(-1)
           const daysSince = lastStudied ? Math.floor((Date.now()-new Date(lastStudied))/86400000) : 999
-          const comingBack = (S.studiedDays||[]).length > 0 && (S.streak||0) === 0
           const unlockedAwards = AWARDS.filter(a => a.req(S))
-          const studyingNow = timerRunning && timerMode === 'focus'
+          const studyingNow = timerRunning && isFocusTimerMode(timerMode)
           return (
             <>
-              {/* Hero banner */}
               <div className="card card-premium" style={{ marginBottom:14, textAlign:'center', padding:'32px 20px', background:'linear-gradient(135deg,rgba(212,168,83,0.15),rgba(201,149,106,0.08))' }}>
                 <div style={{ width:80, height:80, borderRadius:'50%', background:'linear-gradient(135deg,var(--accent),var(--accent2))', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'2rem', fontWeight:700, color:'#fff', margin:'0 auto 14px', boxShadow:'0 0 30px rgba(212,168,83,0.3)', fontFamily:"'Anthropic Serif',Georgia,serif" }}>
                   {displayName[0]?.toUpperCase()}
@@ -645,7 +775,6 @@ export default function StudyOS({ session }) {
                 </div>
               </div>
 
-              {/* Stats grid */}
               <div className="grid4" style={{ marginBottom:14 }}>
                 {[
                   { n:`${totalHours}h ${totalMins}m`, l:'Total Study', c:'var(--accent)' },
@@ -661,13 +790,12 @@ export default function StudyOS({ session }) {
               </div>
 
               <div className="grid2" style={{ marginBottom:14 }}>
-                {/* Identity card */}
                 <div className="card">
                   <div className="sec-label">Study Identity</div>
                   <div style={{ display:'flex', flexDirection:'column', gap:10, marginTop:4 }}>
                     {[
                       { label:'Strongest Subject', val: strongestSubject ? `${strongestSubject.sub} (${strongestSubject.avg}%)` : 'No marks yet', icon:'📚' },
-                      { label:'Favorite Mode', val: (S.sessions||[]).length > 0 ? 'Focus' : 'Not set', icon:'🎯' },
+                      { label:'Favorite Mode', val: (S.sessions||[]).length > 0 ? (S.studyMode === 'deep' ? 'Deep Work' : S.studyMode === 'exam' ? 'Exam Mode' : 'Focus') : 'Not set', icon:'🎯' },
                       { label:'Daily Goal', val: `${S.dailyGoal||120} min/day`, icon:'📅' },
                       { label:'City Zone', val: (() => { const h=totalHours; if(h>=100)return'Metro'; if(h>=30)return'Forest/Mountain'; if(h>=10)return'Beach'; return'Starting Village' })(), icon:'🏙' },
                       { label:'Pet Status', val: daysSince > 2 ? '💀 Lumina died' : daysSince === 2 ? '😰 Lumina is sick' : '💙 Lumina is thriving', icon:'🪼' },
@@ -683,7 +811,6 @@ export default function StudyOS({ session }) {
                   </div>
                 </div>
 
-                {/* Awards earned */}
                 <div className="card">
                   <div className="sec-label">Earned Awards ({unlockedAwards.length}/{AWARDS.length})</div>
                   <div className="gift-grid" style={{ marginTop:8 }}>
@@ -700,7 +827,6 @@ export default function StudyOS({ session }) {
                 </div>
               </div>
 
-              {/* Subject breakdown */}
               {subjectAvgs.length > 0 && (
                 <div className="card" style={{ marginBottom:14 }}>
                   <div className="sec-label">Subject Breakdown</div>
@@ -714,15 +840,19 @@ export default function StudyOS({ session }) {
                 </div>
               )}
 
-              {/* Edit profile */}
               <div className="card">
                 <div className="sec-label">Edit Profile</div>
                 <div className="form-group">
                   <label className="form-label">Display Name</label>
-                  <input type="text" defaultValue={displayName} placeholder="Your name" onBlur={e => {/* would update via Supabase auth metadata */}} />
+                  <input type="text" defaultValue={displayName} placeholder="Your name" onBlur={e => {
+                    if (e.target.value.trim()) {
+                      supabase.auth.updateUser({ data: { full_name: e.target.value.trim() } })
+                      notify('Profile updated!')
+                    }
+                  }} />
                 </div>
                 <div style={{ display:'flex', gap:10 }}>
-                  <button className="btn btn-primary" onClick={() => { notify('Profile updated!') }}>Save Changes</button>
+                  <button className="btn btn-primary" onClick={() => notify('Profile updated!')}>Save Changes</button>
                   <button className="btn btn-ghost" onClick={() => setPage('settings')}>Settings →</button>
                 </div>
               </div>
@@ -731,7 +861,7 @@ export default function StudyOS({ session }) {
         })()}
       </div>
 
-      {/* ══ TIMER ══ */}
+      {/* ══ TIMER (OLD LOOK + NEW LOGIC) ══ */}
       <div className={`page ${page === 'timer' ? 'active' : ''}`}>
         <div className="card" style={{ marginBottom: 14 }}>
           <div className="sec-label" style={{ textAlign: 'center' }}>Focus Timer</div>
@@ -748,7 +878,7 @@ export default function StudyOS({ session }) {
               </div>
             </div>
             <div className="chip-group">
-              {[['focus', '25m Focus', 25], ['short', '5m Break', 5], ['long', '15m Break', 15]].map(([m, label, mins]) => (
+              {[['focus', `${S.settings?.focusSessionMins || 25}m Focus`, S.settings?.focusSessionMins || 25], ['short', '5m Break', 5], ['long', '15m Break', 15]].map(([m, label, mins]) => (
                 <button key={m} className={`chip ${timerMode === m ? 'active' : ''}`} onClick={() => setMode(m, mins)}>{label}</button>
               ))}
               <button className={`chip ${timerMode === 'custom' ? 'active' : ''}`} onClick={() => setMode('custom', customMins)}>Custom</button>
@@ -760,18 +890,44 @@ export default function StudyOS({ session }) {
                   onChange={e => { setCustomMins(+e.target.value); setMode('custom', +e.target.value) }} />
               </div>
             )}
-            <div className="btn-row" style={{ justifyContent: 'center' }}>
-              <button className="btn btn-primary" onClick={startTimer} disabled={timerRunning}>▶ Start</button>
-              <button className="btn btn-ghost" onClick={pauseTimer} disabled={!timerRunning}>⏸ Pause</button>
-              <button className="btn btn-ghost" onClick={resetTimer}>↺ Reset</button>
+
+            {/* Session Type Toggles */}
+            <div style={{ marginTop: 14, marginBottom: 10 }}>
+              <div className="sec-label" style={{ textAlign: 'center', fontSize: '0.72rem', marginBottom: 8 }}>Session Type</div>
+              <div className="chip-group" style={{ justifyContent: 'center' }}>
+                {[
+                  ['focus', '⚡ Focus'],
+                  ['deep', '🧠 Deep Work'],
+                  ['exam', '📝 Exam Mode']
+                ].map(([m, label]) => (
+                  <button key={m} className={`chip ${S.studyMode === m ? 'active' : ''}`}
+                    onClick={() => updateS(prev => ({ ...prev, studyMode: m }))}>
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
+
+            <div className="btn-row" style={{ justifyContent: 'center' }}>
+              <button className="btn btn-primary" onClick={toggleTimer}>
+                {timerRunning ? '⏸ Pause' : '▶ Start'}
+              </button>
+              {(!timerRunning && timerSecs !== timerTotal) && (
+                <button className="btn btn-ghost" onClick={resetTimer}>↺ Reset</button>
+              )}
+            </div>
+            {timerRunning && (
+              <div style={{ textAlign: 'center', marginTop: 8, fontSize: '0.72rem', color: 'var(--green)' }}>
+                ☁ Synced across devices · {S.studyMode === 'deep' ? 'Deep Work' : S.studyMode === 'exam' ? 'Exam Mode' : 'Focus'}
+              </div>
+            )}
           </div>
         </div>
 
         <div className="card" style={{ marginBottom: 14 }}>
           <div className="sec-label">Subject for This Session</div>
           <div className="chip-group" style={{ justifyContent: 'flex-start' }}>
-            {(S.subjects || []).map((sub, i) => (
+            {(S.subjects || []).map((sub) => (
               <button key={sub} className={`chip ${S.activeSubject === sub ? 'active' : ''}`}
                 onClick={() => updateS(prev => ({ ...prev, activeSubject: sub }))}>
                 {sub}
@@ -789,8 +945,8 @@ export default function StudyOS({ session }) {
               <div key={i} className="event-row">
                 <div className="event-dot" style={{ background: 'var(--accent)' }} />
                 <div className="event-info">
-                  <div className="event-title">{sess.mode === 'focus' ? 'Focus Session' : 'Break'} — {sess.mins} min</div>
-                  <div className="event-note">{sess.date}</div>
+                  <div className="event-title">{sess.mode === 'focus' ? 'Focus Session' : sess.mode === 'deep' ? 'Deep Work' : sess.mode === 'exam' ? 'Exam Mode' : 'Break'} — {sess.mins} min</div>
+                  <div className="event-note">{sess.date} {sess.subject && `· ${sess.subject}`}</div>
                 </div>
               </div>
             ))
@@ -830,8 +986,13 @@ export default function StudyOS({ session }) {
             return (
               <div key={a.id} className={`gift-card ${unlocked ? 'unlocked' : ''}`} title={a.desc}>
                 <div className="gift-icon" style={{ filter: unlocked ? 'none' : 'grayscale(1) opacity(0.4)' }}>{a.icon}</div>
-                <div style={{ fontSize: '0.6rem', textAlign: 'center', lineHeight: 1.3 }}>{a.title}</div>
-                {!unlocked && <div style={{ fontSize: '0.55rem', color: 'var(--text3)' }}>Locked</div>}
+                <div style={{ fontSize: '0.7rem', textAlign: 'center', lineHeight: 1.3, fontWeight: 600 }}>{a.title}</div>
+                <div style={{ fontSize: '0.6rem', color: 'var(--text3)', textAlign: 'center', marginTop: 4 }}>
+                  {a.criteria}
+                </div>
+                <div style={{ fontSize: '0.55rem', color: unlocked ? 'var(--green)' : 'var(--text3)', textAlign: 'center', marginTop: 2 }}>
+                  {unlocked ? '✓ Unlocked' : 'Locked'}
+                </div>
               </div>
             )
           })}
@@ -919,7 +1080,7 @@ function AuthView({ authMode, setAuthMode, authEmail, setAuthEmail, authPass, se
 }
 
 /* ══════════════════════════════
-   MUSIC PAGE (YouTube embed)
+   MUSIC PAGE
 ══════════════════════════════ */
 function MusicPage() {
   const [search, setSearch] = useState('')
@@ -1005,30 +1166,21 @@ function CalendarPage({ S, updateS, notify }) {
 
   const markStudied = (dateKey) => {
     updateS(prev => {
-      const studied = prev.studiedDays || []
-      const missed = prev.missedDays || []
-      if (studied.includes(dateKey)) {
-        return { ...prev, studiedDays: studied.filter(d => d !== dateKey), missedDays: [...missed, dateKey] }
-      } else if (missed.includes(dateKey)) {
-        return { ...prev, missedDays: missed.filter(d => d !== dateKey) }
-      } else {
-        const newStudied = [...studied, dateKey]
-        return { ...prev, studiedDays: newStudied, streak: calcStreak(newStudied) }
-      }
-    })
-  }
+      let studied = [...(prev.studiedDays || [])]
+      let missed = [...(prev.missedDays || [])]
 
-  const calcStreak = (days) => {
-    if (!days || days.length === 0) return 0
-    const sorted = [...days].sort().reverse()
-    const td = todayKey()
-    let streak = 0; let check = new Date(td)
-    for (const d of sorted) {
-      const dt = new Date(d)
-      const diff = Math.round((check - dt) / 86400000)
-      if (diff === 0 || diff === 1) { streak++; check = dt } else break
-    }
-    return streak
+      if (studied.includes(dateKey)) {
+        studied = studied.filter(d => d !== dateKey)
+        if (!missed.includes(dateKey)) missed.push(dateKey)
+      } else if (missed.includes(dateKey)) {
+        missed = missed.filter(d => d !== dateKey)
+      } else {
+        if (!studied.includes(dateKey)) studied.push(dateKey)
+        missed = missed.filter(d => d !== dateKey)
+      }
+
+      return { ...prev, studiedDays: studied, missedDays: missed, streak: calcStreakFromDays(studied) }
+    })
   }
 
   return (
@@ -1059,7 +1211,7 @@ function CalendarPage({ S, updateS, notify }) {
             const hasEvent = (S.events || []).some(e => e.date === dateKey)
             return (
               <div key={day} className={`cal-cell ${isToday ? 'today' : ''} ${studied ? 'studied' : ''} ${missed ? 'missed' : ''}`}
-                onClick={() => markStudied(dateKey)} title="Click to toggle studied/missed">
+                onClick={() => markStudied(dateKey)} title="Click to toggle studied → missed → clear">
                 {day}
                 {hasEvent && <div style={{ position: 'absolute', bottom: 4, width: 4, height: 4, borderRadius: '50%', background: 'var(--accent)' }} />}
               </div>
@@ -1150,12 +1302,13 @@ function MarksPage({ S, updateS, notify }) {
     if (!sub || !score) { notify('Fill subject and score.'); return }
     if (!selectedExam) { notify('Select or create an exam first.'); return }
     const mark = { id: Date.now(), subject: sub, score: +score, total: +total || 100, date: todayKey() }
+    const examLabel = examGroups.find(e => String(e.id) === selectedExam)?.name || ''
     updateS(prev => ({
       ...prev,
       examGroups: prev.examGroups.map(ex =>
         String(ex.id) === selectedExam ? { ...ex, marks: [...ex.marks, mark] } : ex
       ),
-      marks: [...(prev.marks || []), { ...mark, label: examGroups.find(e => String(e.id) === selectedExam)?.name || '' }]
+      marks: [...(prev.marks || []), { ...mark, label: examLabel }]
     }))
     setSub(''); setScore(''); setTotal('100')
     notify('Mark added.')
@@ -1167,7 +1320,6 @@ function MarksPage({ S, updateS, notify }) {
     if (selectedExam === String(id)) setSelectedExam('')
   }
 
-  // Bar chart — marks across exams per subject
   useEffect(() => {
     if (!barRef.current || chartTab !== 'bar') return
     if (barInstance.current) barInstance.current.destroy()
@@ -1207,7 +1359,6 @@ function MarksPage({ S, updateS, notify }) {
     return () => barInstance.current?.destroy()
   }, [examGroups, chartTab, allSubjects])
 
-  // Radar chart — target vs achieved per subject
   useEffect(() => {
     if (!radarRef.current || chartTab !== 'radar') return
     if (radarInstance.current) radarInstance.current.destroy()
@@ -1268,7 +1419,6 @@ function MarksPage({ S, updateS, notify }) {
         <div style={{ color: 'var(--text3)', fontSize: '0.85rem' }}>Track grades by exam. Visualize trends. Hit targets.</div>
       </div>
 
-      {/* Exam selector */}
       <div className="card" style={{ marginBottom: 14 }}>
         <div className="sec-label">Exam</div>
         <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
@@ -1297,7 +1447,6 @@ function MarksPage({ S, updateS, notify }) {
         )}
       </div>
 
-      {/* Add mark */}
       {selectedExam && (
         <div className="card" style={{ marginBottom: 14 }}>
           <div className="sec-label">Add Mark to {currentExam?.name}</div>
@@ -1343,7 +1492,6 @@ function MarksPage({ S, updateS, notify }) {
         </div>
       )}
 
-      {/* Charts */}
       {examGroups.length > 0 && (
         <div className="card" style={{ marginBottom: 14 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
@@ -1355,28 +1503,19 @@ function MarksPage({ S, updateS, notify }) {
           </div>
           {chartTab === 'bar' && (
             <>
-              <div style={{ fontSize: '0.72rem', color: 'var(--text3)', marginBottom: 10 }}>
-                Score (%) by subject across all exams
-              </div>
-              <div style={{ height: 280, position: 'relative' }}>
-                <canvas ref={barRef} />
-              </div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text3)', marginBottom: 10 }}>Score (%) by subject across all exams</div>
+              <div style={{ height: 280, position: 'relative' }}><canvas ref={barRef} /></div>
             </>
           )}
           {chartTab === 'radar' && (
             <>
-              <div style={{ fontSize: '0.72rem', color: 'var(--text3)', marginBottom: 10 }}>
-                Target vs achieved average per subject
-              </div>
-              <div style={{ height: 320, position: 'relative' }}>
-                <canvas ref={radarRef} />
-              </div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text3)', marginBottom: 10 }}>Target vs achieved average per subject</div>
+              <div style={{ height: 320, position: 'relative' }}><canvas ref={radarRef} /></div>
             </>
           )}
         </div>
       )}
 
-      {/* Subject targets for radar */}
       {examGroups.length > 0 && (
         <div className="card">
           <div className="sec-label">Subject Targets (%)</div>
