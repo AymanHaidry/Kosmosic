@@ -129,10 +129,15 @@ function JellyfishPet({ daysSinceStudy }) {
   return (
     <div style={{ textAlign:'center', padding:'12px 0' }}>
       <div style={{ position:'relative', display:'inline-block', filter:dead?'grayscale(1)':'none', transition:'all 1s', animation: dead ? 'none' : 'jellybob 3s ease-in-out infinite' }}>
-        <svg width="70" height="80" viewBox="0 0 70 80" style={{ filter:`drop-shadow(${glow})`, transition:'filter 1s' }}>
+        <svg width="70" height="90" viewBox="0 0 70 90" style={{ filter:`drop-shadow(${glow})`, transition:'filter 1s' }}>
+          {/* Bell layers */}
           <ellipse cx="35" cy="34" rx="24" ry="22" fill={color} fillOpacity="0.35" />
           <ellipse cx="35" cy="32" rx="24" ry="22" fill={color} fillOpacity="0.6" />
+          
+          {/* Highlight */}
           <ellipse cx="27" cy="22" rx="7" ry="5" fill="rgba(255,255,255,0.35)" transform="rotate(-15 27 22)" />
+          
+          {/* Eyes & Mouth */}
           {dead ? (
             <>
               <line x1="25" y1="36" x2="29" y2="40" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" />
@@ -158,19 +163,23 @@ function JellyfishPet({ daysSinceStudy }) {
               <path d="M29 45 Q35 49 41 45" fill="none" stroke="rgba(255,255,255,0.8)" strokeWidth="1.5" strokeLinecap="round" />
             </>
           )}
+          
+          {/* Tentacles — anchored at rim (y=56) */}
           {[18,26,34,42,50].map((tx, i) => (
-  <path key={i} 
-    d={`M${tx} 56 Q${tx + (i%2===0?-6:6)} ${68+i*2} ${tx} ${78+i*3}`} 
-    fill="none" 
-    stroke={color} 
-    strokeWidth={2.2 - i*0.15} 
-    strokeOpacity="0.7" 
-    strokeLinecap="round" 
-    style={{ animation: dead ? 'none' : `tentacle${i%3} 2.5s ease-in-out ${i*0.3}s infinite` }} 
-  />
-))}
+            <path key={i} 
+              d={`M${tx} 56 Q${tx + (i%2===0?-6:6)} ${68+i*2} ${tx} ${78+i*3}`} 
+              fill="none" 
+              stroke={color} 
+              strokeWidth={2.2 - i*0.15} 
+              strokeOpacity="0.7" 
+              strokeLinecap="round" 
+              style={{ animation: dead ? 'none' : `tentacle${i%3} 2.5s ease-in-out ${i*0.3}s infinite` }} 
+            />
+          ))}
         </svg>
       </div>
+      
+      {/* Status text */}
       <div style={{ fontSize:'0.68rem', color:'var(--text3)', marginTop:4, fontFamily:"'Anthropic Serif',Georgia,serif" }}>
         {dead ? '💀 Your jellyfish died! Study now to revive.' : sick ? `😰 Lumina is unwell (${daysSinceStudy}d absent)` : `💙 Lumina is happy${health===100?' & thriving':''}`}
       </div>
