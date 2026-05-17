@@ -1,4 +1,4 @@
- import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from './supabase.js'
 import CityPage from './CityPage.jsx'
@@ -290,7 +290,7 @@ export default function StudyOS({ session }) {
     }
     setDataLoaded(true)
   }
-  
+
   // ─── CLOUD TIMER: LOAD FROM DB ───
   const loadCloudTimer = async () => {
     if (!session?.user?.id) return
@@ -589,24 +589,6 @@ export default function StudyOS({ session }) {
             <button key={p} className={`tab ${page === p ? 'active' : ''}`} onClick={() => setPage(p)}>{label}</button>
           ))}
         </div>
-      <div className={`mobile-nav-overlay ${mobileOpen ? 'open' : ''}`}>
-  {['dash','timer','city','room','music','cal','marks','diary','awards','ai','profile','settings'].map(p => (
-    <a key={p} href="#" className={page === p ? 'active' : ''} onClick={e => { e.preventDefault(); setPage(p); setMobileOpen(false); setShowThemePicker(false) }}>
-      {{ city:'City', room:'Study Rooms', dash:'Home', timer:'Focus', music:'Music', cal:'Calendar', marks:'Marks', diary:'Diary', awards:'Awards', ai:'AI Coach', profile:'Profile', settings:'Settings' }[p]}
-    </a>
-  ))}
-</div>
-
-      <nav className="nav">
-        <div className="nav-logo" style={{ cursor: 'pointer' }} onClick={() => nav('/')}>
-          <div className="nav-logo-mark">K</div>
-          Kosmosic
-        </div>
-        <div className="nav-tabs">
-  {[['dash','Home'],['timer','Focus'],['city','City'],['room','Rooms'],['music','Music'],['cal','Calendar'],['marks','Marks'],['diary','Diary'],['awards','Awards'],['ai','AI'],['settings','Settings']].map(([p, label]) => (
-    <button key={p} className={`tab ${page === p ? 'active' : ''}`} onClick={() => setPage(p)}>{label}</button>
-  ))}
-</div>
         <div className="nav-right" style={{ position:'relative' }}>
           <button className="icon-btn" onClick={() => setShowThemePicker(p => !p)} title="Change theme" style={{ fontSize:'0.8rem' }}>🎨</button>
           {showThemePicker && (
