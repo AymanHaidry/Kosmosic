@@ -60,12 +60,12 @@ const getBuildingSpec = (hours, streak, userId = '') => {
 }
 
 const getRankLabel = (hours) => {
-  if (hours >= 200) return { label: 'Skyline Tower', color: '#d4a853' }
-  if (hours >= 100) return { label: 'Penthouse', color: '#c9956a' }
-  if (hours >= 50)  return { label: 'High-Rise', color: '#4a7a9b' }
-  if (hours >= 20)  return { label: 'Mid-Rise', color: '#5c8c6e' }
-  if (hours >= 5)   return { label: 'Apartment', color: '#7a7468' }
-  return { label: 'Studio', color: '#5a5248' }
+  if (hours >= 200) return { label: 'Skyline Tower', color: 'var(--accent)' }
+  if (hours >= 100) return { label: 'Penthouse', color: 'var(--accent2)' }
+  if (hours >= 50)  return { label: 'High-Rise', color: 'var(--blue)' }
+  if (hours >= 20)  return { label: 'Mid-Rise', color: 'var(--green)' }
+  if (hours >= 5)   return { label: 'Apartment', color: 'var(--text3)' }
+  return { label: 'Studio', color: 'var(--text3)' }
 }
 
 const getTier = (hours) => {
@@ -351,8 +351,8 @@ function Building({ user, spec, x, isMe, onClick, studying, mode, animOffset, we
       {isMe && (
         <div style={{
           position: 'absolute', top: -30, left: '50%', transform: 'translateX(-50%)',
-          background: '#d4a853', borderRadius: 4, padding: '2px 6px',
-          fontSize: '0.55rem', fontWeight: 700, color: '#000', whiteSpace: 'nowrap',
+          background: 'var(--accent)', borderRadius: 4, padding: '2px 6px',
+          fontSize: '0.55rem', fontWeight: 700, color: 'var(--bg)', whiteSpace: 'nowrap',
           fontFamily: "'Anthropic Serif',Georgia,serif",
           zIndex: 20,
         }}>YOU</div>
@@ -629,11 +629,11 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
       <div style={{ padding: '80px 24px 0', maxWidth: 920, margin: '0 auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
           <div>
-            <div style={{ fontSize: '1.6rem', fontWeight: 700, color: '#fff', marginBottom: 4 }}>Study City</div>
-            <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.82rem' }}>
+            <div style={{ fontSize: '1.6rem', fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>Study City</div>
+            <div style={{ color: 'var(--text2)', fontSize: '0.82rem' }}>
               {liveCount} studying live right now
               <span style={{ marginLeft: 8, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#5c8c6e', display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--green)', display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
                 <span style={{ color: '#5c8c6e' }}>Live</span>
               </span>
             </div>
@@ -641,7 +641,7 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
           <div style={{ textAlign: 'right' }}>
             <div style={{
               display: 'inline-flex', alignItems: 'center', gap: 8,
-              background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
+              background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.08)',
               borderRadius: 10, padding: '6px 12px', marginBottom: 6,
             }}>
               <span style={{ fontSize: '0.85rem' }}>
@@ -994,10 +994,10 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
         {/* YOUR CARD + LEADERBOARD */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
           <div style={{
-            background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
+            background: 'var(--surface)', border: '1px solid var(--border)',
             borderRadius: 14, padding: 16,
           }}>
-            <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>Your Building</div>
+            <div style={{ fontSize: '0.65rem', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>Your Building</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 12 }}>
               <div>
                 <div style={{ fontSize: '1.3rem', fontWeight: 700, color: myRank.color, marginBottom: 2 }}>
@@ -1057,7 +1057,7 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
                       <div style={{ fontSize: '0.65rem', color: rank.color }}>{rank.label}</div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#fff' }}>{u.hours}h</div>
+                      <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text)' }}>{u.hours}h</div>
                       <div style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.4)' }}>🔥 {u.streak}d</div>
                     </div>
                   </div>
@@ -1116,7 +1116,7 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
               { label: 'Mid-Rise', hours: '20–50h', color: '#5c8c6e' },
               { label: 'High-Rise', hours: '50–100h', color: '#4a7a9b' },
               { label: 'Penthouse', hours: '100–200h', color: '#c9956a' },
-              { label: 'Skyline Tower', hours: '200h+', color: '#d4a853' },
+              { label: 'Skyline Tower', hours: '200h+', color: 'var(--accent)' },
             ].map((tier, i) => (
               <div key={tier.label} style={{
                 flex: '0 0 auto', textAlign: 'center', padding: '12px 16px',
@@ -1160,11 +1160,11 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
           backdropFilter: 'blur(6px)',
         }} onClick={e => e.target === e.currentTarget && setSelectedUser(null)}>
           <div style={{
-            background: '#0c0b18', border: '1px solid rgba(255,255,255,0.08)',
+            background: 'var(--bg2)', border: '1px solid var(--border)',
             borderRadius: 16, padding: 24, width: 360, maxWidth: '90vw',
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff' }}>{selectedUser.name}</div>
+              <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text)' }}>{selectedUser.name}</div>
               <button onClick={() => setSelectedUser(null)} style={{
                 background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)',
                 fontSize: '1.2rem', cursor: 'pointer',
@@ -1191,7 +1191,7 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
                   flexShrink: 0,
                 }} />
                 <div>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 500, color: '#fff' }}>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--text)' }}>
                     {selectedUser.studying ? `Studying ${selectedUser.subject || 'right now'}` : 'Offline'}
                   </div>
                   <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)' }}>
