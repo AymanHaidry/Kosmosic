@@ -173,7 +173,10 @@ function JellyfishPet({ daysSinceStudy }) {
               strokeWidth={2.2 - i*0.15} 
               strokeOpacity="0.7" 
               strokeLinecap="round" 
-              style={{ animation: dead ? 'none' : `tentacle${i%3} 2.5s ease-in-out ${i*0.3}s infinite` }} 
+              style={{ 
+                transformOrigin: `${tx}px 56px`,
+                animation: dead ? 'none' : `tentacle${i%3} 2.5s ease-in-out ${i*0.3}s infinite` 
+              }} 
             />
           ))}
         </svg>
