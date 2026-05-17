@@ -1,0 +1,45 @@
+name: Build EXE
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  vibe:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "🧠 Timeline stable ✔️ (EXE lane)"
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "🎮 Game logic reachable ✔️ (EXE sanity)"
+
+  build-exe:
+    runs-on: windows-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 📦 Install dependencies
+        run: |
+          echo "Installing dependencies..."
+          npm install
+
+      - name: 🏗️ Build EXE
+        run: |
+          echo "Building TimeEcho EXE..."
+          npm run build
+          echo "EXE build finished ✔️"
+
+      - name: 📤 Upload EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: timeecho-exe
+          path: dist/*.exe

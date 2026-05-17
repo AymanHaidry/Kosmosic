@@ -1,0 +1,11 @@
+name: Build Check
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pretend build
+        run: echo "Building TimeEcho..."

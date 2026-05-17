@@ -1,0 +1,64 @@
+name: Greetings
+
+on: [pull_request_target, issues]
+
+jobs:
+  greeting:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+    - uses: actions/first-interaction@v1
+      with:
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        issue-message: |
+          # 👋 Welcome to Time Echo Platformer!
+          
+          Thanks for opening your first issue! We're excited to have you here.
+          
+          **Before diving in, a few quick things:**
+          
+          ✅ **Check the [FAQ](https://github.com/AymanHaidry/Kosmosic-TimeEcho-Platformer/discussions)** — your question might already be answered  
+          ✅ **Review [existing issues](https://github.com/AymanHaidry/Kosmosic-TimeEcho-Platformer/issues)** — avoid duplicates  
+          ✅ **Be specific** — steps to reproduce, screenshots, browser/OS info help us a ton  
+          
+          **Need help?**
+          - 🎮 **Gameplay question?** Check the FAQ or ask in [Discussions](https://github.com/AymanHaidry/Kosmosic-TimeEcho-Platformer/discussions)
+          - 🐛 **Found a bug?** Great! Include console errors (F12 → Console tab)
+          - 💡 **Feature request?** Tell us your use case — we love hearing ideas
+          - 🔧 **Tech issue?** Let us know your setup (browser, OS, game mode: guest/account)
+          
+          See you on the leaderboards! ⏳✨
+        pr-message: |
+          # 👋 Welcome, contributor!
+          
+          Thanks for your first pull request! We appreciate the effort.
+          
+          **Before we merge, remember:**
+          
+          📖 **Our License** — Time Echo is [**fully closed**](https://github.com/AymanHaidry/Kosmosic-TimeEcho-Platformer/LICENSE.md)  
+          - ✅ Mod mercilessly (for personal use)  
+          - ❌ Can't distribute modified versions without permission  
+          - 🤝 We're open to discussing permission requests  
+          
+          **PR Guidelines:**
+          - 🎯 **Focus**: One feature/fix per PR (smaller = faster review)
+          - 📝 **Description**: Explain what & why, not just how
+          - 🧪 **Testing**: Did you test locally? Works on mobile?
+          - 🎨 **Code style**: Keep it readable, match existing patterns
+          - 💬 **Discuss first**: For major changes, open an issue/discussion first
+          
+          **What we're looking for:**
+          - Bug fixes with test cases
+          - Performance improvements
+          - Accessibility enhancements
+          - Documentation updates
+          
+          **What we can't accept:**
+          - License violations or auth bypasses
+          - Changes that break offline play
+          - Circumventing the closed distribution model
+          
+          Questions? Drop a comment below, or chat in [Discussions](https://github.com/AymanHaidry/Kosmosic-TimeEcho-Platformer/discussions). We're friendly! 🎮✨
+
