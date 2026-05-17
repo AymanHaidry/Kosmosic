@@ -92,9 +92,15 @@ function todayKey() {
   return new Date().toISOString().split('T')[0]
 }
 
+function cleanStudiedDays(days) {
+  if (!days || !Array.isArray(days)) return []
+  return days.filter(d => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d))
+}
+
 function calcStreakFromDays(days) {
-  if (!days || days.length === 0) return 0
-  const sorted = [...days].sort().reverse()
+  const clean = cleanStudiedDays(days)
+  if (clean.length === 0) return 0
+  const sorted = [...clean].sort().reverse()
   const td = todayKey()
   let streak = 0
   let check = new Date(td)
@@ -273,7 +279,9 @@ export default function StudyOS({ session }) {
       if (merged.lastStudiedDate && merged.lastStudiedDate !== today) {
         merged.todayMinutes = 0
       }
-      merged.streak = calcStreakFromDays(merged.studiedDays || [])
+      // FIX: Clean corrupted studiedDays and recalculate streak from Supabase data
+      merged.studiedDays = cleanStudiedDays(merged.studiedDays || [])
+      merged.streak = calcStreakFromDays(merged.studiedDays)
       setS(merged)
       setDark(merged.settings?.darkMode !== false)
       const savedTheme = merged.settings?.theme || 'premium-dark'
@@ -281,6 +289,7 @@ export default function StudyOS({ session }) {
       document.documentElement.setAttribute('data-theme', savedTheme)
     }
     setDataLoaded(true)
+  }
   }
 
   // ─── CLOUD TIMER: LOAD FROM DB ───
@@ -399,7 +408,7 @@ export default function StudyOS({ session }) {
     saveCloudTimer({ is_running: false, started_at: null, timer_secs: 0, segment_start_secs: null })
   }, [timerMode, S.studyMode])
 
-  // ─── RECORD SESSION (direct, no closure dependencies on timer state) ───
+   // ─── RECORD SESSION (direct, no closure dependencies on timer state) ───
   const recordFocusSessionDirect = (elapsedSecs, studyMode, subject) => {
     const mins = Math.round(elapsedSecs / 60)
     if (mins < 1) return
@@ -411,7 +420,9 @@ export default function StudyOS({ session }) {
       const sessions = [...(prev.sessions || []), { date: today, mins, mode: studyMode || 'focus', ts: Date.now(), subject: activeSub }]
       const totalMinutes = (prev.totalMinutes || 0) + mins
       const todayMinutes = (prev.todayMinutes || 0) + mins
-      const studiedDays = prev.studiedDays?.includes(today) ? prev.studiedDays : [...(prev.studiedDays || []), today]
+      // FIX: Clean studiedDays before adding today, dedupe, then recalculate streak
+      const cleanDays = cleanStudiedDays(prev.studiedDays || [])
+      const studiedDays = cleanDays.includes(today) ? cleanDays : [...cleanDays, today]
       const missedDays = (prev.missedDays || []).filter(d => d !== today)
       const streak = calcStreakFromDays(studiedDays)
       const isNewStreak = streak > (prev.streak || 0)
