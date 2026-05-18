@@ -39,7 +39,7 @@ const THEMES = [
   { id:'minecraft',     label:'Minecraft',       icon:'🟩' },
   { id:'garden',        label:'Garden',          icon:'🌿' },
   { id:'skylines',      label:'Skylines',        icon:'🌃' },
-  { id:'tame-impala',   label:'Tame Impala',     icon:'🔮' },
+  { id:'tame-impala',   label:'Fire Impala',     icon:'🔮' },
   { id:'vibe-coded',    label:'Vibe Coded',      icon:'🌈' },
 ]
 
