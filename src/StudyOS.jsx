@@ -1808,41 +1808,37 @@ function SettingsPage({ S, updateS, dark, setDark, signOut, session, notify }) {
     <div className="settings-section-title">Appearance</div>
 
     <div style={{ marginBottom: 16 }}>
-      <label className="form-label">Theme</label>
+  <label className="form-label">Theme</label>
 
-      <div style={{
-        display: 'flex',
-        gap: 8,
-        flexWrap: 'wrap'
-      }}>
-        {THEMES.map(theme => (
-          <button
-            key={theme.id}
-            className={`chip ${(S.settings?.theme || 'premium-dark') === theme.id ? 'active' : ''}`}
-            onClick={() => {
-              set('theme', theme.id)
+  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+    {THEMES.map(theme => (
+      <button
+        key={theme.id}
+        className={`chip ${(S.settings?.theme || 'premium-dark') === theme.id ? 'active' : ''}`}
+        onClick={() => {
+          set('theme', theme.id)
 
-              const darkThemes = [
-                'premium-dark',
-                'pure-dark',
-                'neon',
-                'minecraft',
-                'skylines',
-                'tame-impala',
-                'vibe-coded'
-              ]
+          const darkThemes = [
+            'premium-dark',
+            'pure-dark',
+            'neon',
+            'minecraft',
+            'skylines',
+            'tame-impala',
+            'vibe-coded'
+          ]
 
-              const isDark = darkThemes.includes(theme.id)
+          const isDark = darkThemes.includes(theme.id)
 
-              setDark(isDark)
-              set('darkMode', isDark)
-            }}
-          >
-            {theme.icon} {theme.label}
-          </button>
-        ))}
-      </div>
-    </div>
+          setDark(isDark)
+          set('darkMode', isDark)
+        }}
+      >
+        {theme.icon} {theme.label}
+      </button>
+    ))}
+  </div>
+</div>
 
     <div className="divider" />
 
