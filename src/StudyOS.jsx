@@ -39,7 +39,7 @@ const THEMES = [
   { id:'minecraft',     label:'Minecraft',       icon:'🟩' },
   { id:'garden',        label:'Garden',          icon:'🌿' },
   { id:'skylines',      label:'Skylines',        icon:'🌃' },
-  { id:'tame-impala',   label:'Tame Impala',     icon:'🔮' },
+  { id:'tame-impala',   label:'Fire Impala',     icon:'🔮' },
   { id:'vibe-coded',    label:'Vibe Coded',      icon:'🌈' },
 ]
 
@@ -605,7 +605,7 @@ export default function StudyOS({ session }) {
           Kosmosic
         </div>
         <div className="nav-tabs">
-          {[['dash','Home'],['timer','Focus'],['city','City'],['room','Rooms'],['music','Music'],['cal','Calendar'],['marks','Marks'],['diary','Diary'],['awards','Awards'],['ai','AI'],['settings','Settings']].map(([p, label]) => (
+          {[['dash','Home'],['timer','Focus'],['city','City'],['room','Rooms'],['music','Music'],['cal','Calendar'],['marks','Marks'],['diary','Diary'],['awards','Awards'],['ai','AI'],['profile','Profile'],['settings','Settings']].map(([p, label]) => (
             <button key={p} className={`tab ${page === p ? 'active' : ''}`} onClick={() => setPage(p)}>{label}</button>
           ))}
         </div>
@@ -1804,23 +1804,61 @@ function SettingsPage({ S, updateS, dark, setDark, signOut, session, notify }) {
 
       {/* ── APPEARANCE ── */}
       {activeSection === 'appearance' && (
-        <div className="card settings-section">
-          <div className="settings-section-title">Appearance</div>
-          <div style={{ marginBottom: 16 }}>
-            <label className="form-label">Theme</label>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {[['dark', 'Dark'], ['light', 'Light'], ['system', 'System']].map(([val, label]) => (
-                <button key={val} className={`chip ${(S.settings?.theme || 'dark') === val ? 'active' : ''}`}
-                  onClick={() => {
-                    set('theme', val)
-                    if (val !== 'system') { const isDark = val === 'dark'; setDark(isDark); set('darkMode', isDark) }
-                    else { const sys = window.matchMedia('(prefers-color-scheme: dark)').matches; setDark(sys); set('darkMode', sys) }
-                  }}>
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
+  <div className="card settings-section">
+    <div className="settings-section-title">Appearance</div>
+
+    <div style={{ marginBottom: 16 }}>
+      <label className="form-label">Theme</label>
+
+      <div style={{
+        display: 'flex',
+        gap: 8,
+        flexWrap: 'wrap'
+      }}>
+        {THEMES.map(theme => (
+          <button
+            key={theme.id}
+            className={`chip ${(S.settings?.theme || 'premium-dark') === theme.id ? 'active' : ''}`}
+            onClick={() => {
+              set('theme', theme.id)
+
+              const darkThemes = [
+                'premium-dark',
+                'pure-dark',
+                'neon',
+                'minecraft',
+                'skylines',
+                'tame-impala',
+                'vibe-coded'
+              ]
+
+              const isDark = darkThemes.includes(theme.id)
+
+              setDark(isDark)
+              set('darkMode', isDark)
+            }}
+          >
+            {theme.icon} {theme.label}
+          </button>
+        ))}
+      </div>
+    </div>
+
+    <div className="divider" />
+
+    <Toggle
+      skey="animatedBg"
+      label="Animated Background"
+      sub="Floating particles and gradient pulses"
+    />
+
+    <Toggle
+      skey="dopamineDetox"
+      label="Dopamine Detox Mode"
+      sub="Minimal UI — removes color accents and animations"
+    />
+  </div>
+)}
           <div className="divider" />
           <Toggle skey="animatedBg" label="Animated Background" sub="Floating particles and gradient pulses" />
           <Toggle skey="dopamineDetox" label="Dopamine Detox Mode" sub="Minimal UI — removes color accents and animations" />
