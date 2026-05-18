@@ -1855,11 +1855,7 @@ function SettingsPage({ S, updateS, dark, setDark, signOut, session, notify }) {
     />
   </div>
 )}
-          <div className="divider" />
-          <Toggle skey="animatedBg" label="Animated Background" sub="Floating particles and gradient pulses" />
-          <Toggle skey="dopamineDetox" label="Dopamine Detox Mode" sub="Minimal UI — removes color accents and animations" />
-        </div>
-      )}
+        
 
       {/* ── NOTIFICATIONS ── */}
       {activeSection === 'notifications' && (
