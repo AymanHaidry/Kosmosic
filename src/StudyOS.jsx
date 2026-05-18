@@ -39,7 +39,7 @@ const THEMES = [
   { id:'minecraft',     label:'Minecraft',       icon:'🟩' },
   { id:'garden',        label:'Garden',          icon:'🌿' },
   { id:'skylines',      label:'Skylines',        icon:'🌃' },
-  { id:'tame-impala',   label:'Fire Impala',     icon:'🔮' },
+  { id:'tame-impala',   label:'Tame Impala',     icon:'🔮' },
   { id:'vibe-coded',    label:'Vibe Coded',      icon:'🌈' },
 ]
 
@@ -605,7 +605,7 @@ export default function StudyOS({ session }) {
           Kosmosic
         </div>
         <div className="nav-tabs">
-          {[['dash','Home'],['timer','Focus'],['city','City'],['room','Rooms'],['music','Music'],['cal','Calendar'],['marks','Marks'],['diary','Diary'],['awards','Awards'],['ai','AI'],['profile','Profile'],['settings','Settings']].map(([p, label]) => (
+          {[['dash','Home'],['timer','Focus'],['city','City'],['room','Rooms'],['music','Music'],['cal','Calendar'],['marks','Marks'],['diary','Diary'],['awards','Awards'],['ai','AI'],['profile','Profile']['settings','Settings']].map(([p, label]) => (
             <button key={p} className={`tab ${page === p ? 'active' : ''}`} onClick={() => setPage(p)}>{label}</button>
           ))}
         </div>
@@ -631,14 +631,32 @@ export default function StudyOS({ session }) {
       </nav>
 
       {page !== 'city' && (
-        <div className="ticker">
-          <div className="ticker-track">
-            {['BEAT MEDIOCRITY','◆','98% IS THE FLOOR','◆','FAANG OR NOTHING','◆','STAY HUNGRY STAY FOOLISH','◆','BUILD THE FUTURE','◆','FLY HIGH ✈','◆','NO DAYS OFF','◆',
-              'BEAT MEDIOCRITY','◆','98% IS THE FLOOR','◆','FAANG OR NOTHING','◆','STAY HUNGRY STAY FOOLISH','◆','BUILD THE FUTURE','◆','FLY HIGH ✈','◆','NO DAYS OFF','◆'].map((t, i) => (
-              <span key={i} className={t === '◆' ? 'accent' : ''}>{t}</span>
-            ))}
-          </div>
-        </div>
+       <div className="ticker">
+  <div className="ticker-track">
+    {[
+      'BEAT MEDIOCRITY', '◆', '98% IS THE FLOOR', '◆', 'FAANG OR NOTHING', '◆', 'STAY HUNGRY STAY FOOLISH', '◆', 'BUILD THE FUTURE', '◆', 'FLY HIGH ✈', '◆', 'NO DAYS OFF', '◆',
+      'OUTWORK YOUR EXCUSES', '◆', 'DISCIPLINE OVER MOTIVATION', '◆', 'TOP 1% MINDSET', '◆', 'SLEEP LESS DREAM MORE', '◆', 'CREATE. ITERATE. DOMINATE.', '◆', 'ORDINARY IS OVERRATED', '◆',
+      'CODE. BUILD. SCALE.', '◆', 'MISSION > MOOD', '◆', 'THE GRIND SHOWS', '◆', 'FUTURE CEO ENERGY', '◆', 'STUDY LIKE YOUR LIFE DEPENDS ON IT', '◆', 'LEGENDS ARE BUILT AT NIGHT', '◆',
+      'WIN IN SILENCE', '◆', 'ENGINEER YOUR DESTINY', '◆', 'FROM INDIA TO THE WORLD', '◆', 'THINK LIKE A FOUNDER', '◆', 'AIRBUS TODAY. CAPTAIN TOMORROW.', '◆', 'DOHA DREAM LOADING...', '◆',
+      'MAKE STEVE JOBS PROUD', '◆', 'YOUR COMPETITION IS ASLEEP', '◆', 'NEVER PEAK. KEEP ASCENDING.', '◆', 'BUILD WHAT PEOPLE DOUBT', '◆', 'THE SKY IS NOT THE LIMIT', '◆', 'FOCUS IS A SUPERPOWER', '◆',
+      'EVERY HOUR COUNTS', '◆', 'NO AUTOPILOT MODE', '◆', 'WORK UNTIL YOUR IDOLS KNOW YOU', '◆', 'HARD MODE CREATES MONSTERS', '◆', 'TURN PRESSURE INTO POWER', '◆', 'DESTINY FAVORS THE OBSESSED', '◆',
+      'LEARN FAST. MOVE FASTER.', '◆', 'MAKE THE FUTURE FEEL JEALOUS', '◆', 'TURBULENCE CREATES PILOTS ✈', '◆', 'AMBITION WITH ALTITUDE', '◆', 'WAKE UP AND EXECUTE', '◆', 'GOOD IS THE ENEMY OF GREAT', '◆',
+      'THE NEXT VERSION OF YOU IS WATCHING', '◆', 'YOU WEREN’T MADE FOR AVERAGE', '◆', 'BUILD EMPIRES, NOT EXCUSES', '◆', 'ALL GAS NO BRAKES', '◆',
+      
+      // Duplicate set for seamless infinite loop scrolling
+      'BEAT MEDIOCRITY', '◆', '98% IS THE FLOOR', '◆', 'FAANG OR NOTHING', '◆', 'STAY HUNGRY STAY FOOLISH', '◆', 'BUILD THE FUTURE', '◆', 'FLY HIGH ✈', '◆', 'NO DAYS OFF', '◆',
+      'OUTWORK YOUR EXCUSES', '◆', 'DISCIPLINE OVER MOTIVATION', '◆', 'TOP 1% MINDSET', '◆', 'SLEEP LESS DREAM MORE', '◆', 'CREATE. ITERATE. DOMINATE.', '◆', 'ORDINARY IS OVERRATED', '◆',
+      'CODE. BUILD. SCALE.', '◆', 'MISSION > MOOD', '◆', 'THE GRIND SHOWS', '◆', 'FUTURE CEO ENERGY', '◆', 'STUDY LIKE YOUR LIFE DEPENDS ON IT', '◆', 'LEGENDS ARE BUILT AT NIGHT', '◆',
+      'WIN IN SILENCE', '◆', 'ENGINEER YOUR DESTINY', '◆', 'FROM INDIA TO THE WORLD', '◆', 'THINK LIKE A FOUNDER', '◆', 'AIRBUS TODAY. CAPTAIN TOMORROW.', '◆', 'DOHA DREAM LOADING...', '◆',
+      'MAKE STEVE JOBS PROUD', '◆', 'YOUR COMPETITION IS ASLEEP', '◆', 'NEVER PEAK. KEEP ASCENDING.', '◆', 'BUILD WHAT PEOPLE DOUBT', '◆', 'THE SKY IS NOT THE LIMIT', '◆', 'FOCUS IS A SUPERPOWER', '◆',
+      'EVERY HOUR COUNTS', '◆', 'NO AUTOPILOT MODE', '◆', 'WORK UNTIL YOUR IDOLS KNOW YOU', '◆', 'HARD MODE CREATES MONSTERS', '◆', 'TURN PRESSURE INTO POWER', '◆', 'DESTINY FAVORS THE OBSESSED', '◆',
+      'LEARN FAST. MOVE FASTER.', '◆', 'MAKE THE FUTURE FEEL JEALOUS', '◆', 'TURBULENCE CREATES PILOTS ✈', '◆', 'AMBITION WITH ALTITUDE', '◆', 'WAKE UP AND EXECUTE', '◆', 'GOOD IS THE ENEMY OF GREAT', '◆',
+      'THE NEXT VERSION OF YOU IS WATCHING', '◆', 'YOU WEREN’T MADE FOR AVERAGE', '◆', 'BUILD EMPIRES, NOT EXCUSES', '◆', 'ALL GAS NO BRAKES', '◆'
+    ].map((t, i) => (
+      <span key={i} className={t === '◆' ? 'accent' : ''}>{t}</span>
+    ))}
+  </div>
+</div>
       )}
 
       {page === 'city' && (
@@ -1804,58 +1822,28 @@ function SettingsPage({ S, updateS, dark, setDark, signOut, session, notify }) {
 
       {/* ── APPEARANCE ── */}
       {activeSection === 'appearance' && (
-  <div className="card settings-section">
-    <div className="settings-section-title">Appearance</div>
-
-    <div style={{ marginBottom: 16 }}>
-  <label className="form-label">Theme</label>
-
-  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-    {THEMES.map(theme => (
-      <button
-        key={theme.id}
-        className={`chip ${(S.settings?.theme || 'premium-dark') === theme.id ? 'active' : ''}`}
-        onClick={() => {
-          set('theme', theme.id)
-
-          const darkThemes = [
-            'premium-dark',
-            'pure-dark',
-            'neon',
-            'minecraft',
-            'skylines',
-            'tame-impala',
-            'vibe-coded'
-          ]
-
-          const isDark = darkThemes.includes(theme.id)
-
-          setDark(isDark)
-          set('darkMode', isDark)
-        }}
-      >
-        {theme.icon} {theme.label}
-      </button>
-    ))}
-  </div>
-</div>
-
-    <div className="divider" />
-
-    <Toggle
-      skey="animatedBg"
-      label="Animated Background"
-      sub="Floating particles and gradient pulses"
-    />
-
-    <Toggle
-      skey="dopamineDetox"
-      label="Dopamine Detox Mode"
-      sub="Minimal UI — removes color accents and animations"
-    />
-  </div>
-)}
-        
+        <div className="card settings-section">
+          <div className="settings-section-title">Appearance</div>
+          <div style={{ marginBottom: 16 }}>
+            <label className="form-label">Theme</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {[['dark', 'Dark'], ['light', 'Light'], ['system', 'System']].map(([val, label]) => (
+                <button key={val} className={`chip ${(S.settings?.theme || 'dark') === val ? 'active' : ''}`}
+                  onClick={() => {
+                    set('theme', val)
+                    if (val !== 'system') { const isDark = val === 'dark'; setDark(isDark); set('darkMode', isDark) }
+                    else { const sys = window.matchMedia('(prefers-color-scheme: dark)').matches; setDark(sys); set('darkMode', sys) }
+                  }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="divider" />
+          <Toggle skey="animatedBg" label="Animated Background" sub="Floating particles and gradient pulses" />
+          <Toggle skey="dopamineDetox" label="Dopamine Detox Mode" sub="Minimal UI — removes color accents and animations" />
+        </div>
+      )}
 
       {/* ── NOTIFICATIONS ── */}
       {activeSection === 'notifications' && (
