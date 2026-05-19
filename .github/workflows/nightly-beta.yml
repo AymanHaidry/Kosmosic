@@ -1,0 +1,50 @@
+name: Kosmosic Nightly Beta
+
+on:
+  schedule:
+    # Runs every day at 2:30 AM UTC
+    - cron: "30 2 * * *"
+
+  workflow_dispatch:
+
+jobs:
+  nightly-beta:
+    runs-on: windows-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: 📦 Install dependencies
+        run: npm install
+
+      - name: 🧪 Inject nightly version tag
+        shell: pwsh
+        run: |
+          $date = Get-Date -Format "yyyy.MM.dd"
+          echo "KOSMOSIC_NIGHTLY=$date" >> $env:GITHUB_ENV
+
+      - name: 🏗️ Build Kosmosic Nightly
+        run: |
+          echo "Building Kosmosic Nightly Beta..."
+          npm run build
+
+      - name: 📂 Verify output
+        run: dir dist
+
+      - name: 📤 Upload Nightly Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kosmosic-nightly-${{ env.KOSMOSIC_NIGHTLY }}
+          path: |
+            dist/*.exe
+            dist/**/*.exe
+
+      - name: 🌌 Nightly Complete
+        run: echo "Kosmosic Nightly Beta shipped ✔️"
