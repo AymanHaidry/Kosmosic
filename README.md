@@ -47,7 +47,7 @@ Bug reports and feature requests may be submitted via [GitHub Issues](https://gi
 
 ## Support
 
-For support inquiries, contact: [your-email@example.com]
+For support inquiries, contact: [aymanhaidry2022@outlook.com]
 
 ---
 
