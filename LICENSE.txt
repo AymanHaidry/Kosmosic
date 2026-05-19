@@ -1,0 +1,142 @@
+KOSMOSIC PROPRIETARY LICENSE
+Version 1.0 — Effective Date: 2026-05-19
+
+Copyright (c) 2026 Ayman Haidry. All Rights Reserved.
+
+================================================================================
+1. DEFINITIONS
+================================================================================
+
+"Software" refers to the Kosmosic application, including but not limited to all
+compiled binaries, minified code, assets, documentation, and any other materials
+contained in this repository or distributed by the Licensor.
+
+"Source Code" refers to the human-readable programming instructions, scripts,
+configuration files, and build tools used to create the Software, which are
+NOT included in this repository and are NOT licensed hereunder.
+
+"You" or "Licensee" refers to any individual or entity accessing, downloading,
+or using the Software.
+
+================================================================================
+2. OWNERSHIP
+================================================================================
+
+The Software and all associated intellectual property rights are and shall
+remain the exclusive property of Ayman Haidry. This License does not constitute
+a sale of the Software or any portion thereof. No title or ownership interest
+in the Software is transferred to You under this License.
+
+================================================================================
+3. GRANT OF LICENSE
+================================================================================
+
+Subject to strict compliance with all terms herein, the Licensor grants You a
+limited, non-exclusive, non-transferable, revocable license to:
+
+  (a) Download and install the compiled Software for personal, non-commercial
+      use on devices owned or controlled by You.
+
+  (b) Use the Software solely in accordance with its intended purpose as a
+      study focus and productivity application.
+
+================================================================================
+4. RESTRICTIONS
+================================================================================
+
+You expressly agree NOT to, and shall not permit any third party to:
+
+  (a) Access, request, or attempt to obtain the Source Code by any means,
+      including but not limited to reverse engineering, decompilation,
+      disassembly, debugging, or network traffic analysis.
+
+  (b) Modify, adapt, translate, or create derivative works based upon the
+      Software, in whole or in part.
+
+  (c) Copy, reproduce, distribute, publish, display, perform, transmit, sell,
+      rent, lease, sublicense, loan, or otherwise transfer the Software or any
+      rights granted hereunder to any third party.
+
+  (d) Remove, alter, or obscure any proprietary notices, labels, or marks on
+      the Software or its documentation.
+
+  (e) Use the Software for any commercial purpose, including but not limited to
+      offering it as a service, integrating it into a commercial product, or
+      using it in a business environment, without prior written agreement.
+
+  (f) Use the Software for any unlawful purpose or in any manner that could
+      damage, disable, overburden, or impair any Licensor server or network.
+
+  (g) Circumvent, disable, or interfere with any security-related features of
+      the Software or features that prevent or restrict use or copying.
+
+  (h) Benchmark, test, or evaluate the Software for the purpose of developing
+      a competing product or service.
+
+================================================================================
+5. NO SOURCE CODE ACCESS
+================================================================================
+
+The Source Code is a trade secret and confidential information of the Licensor.
+You acknowledge that You have no right, title, or interest in the Source Code.
+The Licensor explicitly denies any obligation to provide, disclose, or license
+the Source Code to You under any circumstances.
+
+================================================================================
+6. TERMINATION
+================================================================================
+
+This License is effective until terminated. The Licensor may terminate this
+License immediately and without notice if You fail to comply with any term
+herein. Upon termination, You must cease all use of the Software and destroy
+all copies in Your possession. Sections 2, 4, 5, 7, 8, and 9 shall survive
+termination.
+
+================================================================================
+7. DISCLAIMER OF WARRANTY
+================================================================================
+
+THE SOFTWARE IS PROVIDED "AS IS" AND "AS AVAILABLE," WITHOUT WARRANTY OF ANY
+KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, NON-INFRINGEMENT, OR THAT
+THE SOFTWARE WILL BE ERROR-FREE, SECURE, OR UNINTERRUPTED. YOU ASSUME ALL RISK
+ASSOCIATED WITH THE USE OF THE SOFTWARE.
+
+================================================================================
+8. LIMITATION OF LIABILITY
+================================================================================
+
+IN NO EVENT SHALL THE LICENSOR BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL,
+CONSEQUENTIAL, OR PUNITIVE DAMAGES, INCLUDING BUT NOT LIMITED TO LOSS OF
+PROFITS, DATA, OR GOODWILL, ARISING OUT OF OR IN CONNECTION WITH THIS LICENSE
+OR THE USE OF THE SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+THE LICENSOR'S TOTAL LIABILITY SHALL NOT EXCEED THE AMOUNT YOU PAID FOR THE
+SOFTWARE (IF ANY) OR ONE HUNDRED UNITED STATES DOLLARS (US$100.00), WHICHEVER
+IS LESS.
+
+================================================================================
+9. GOVERNING LAW
+================================================================================
+
+This License shall be governed by and construed in accordance with the laws of
+[Your Jurisdiction], without regard to its conflict of law principles. Any
+dispute arising under this License shall be resolved exclusively in the courts
+located in Bengaluru, IN.
+
+================================================================================
+10. ENTIRE AGREEMENT
+================================================================================
+
+This License constitutes the entire agreement between You and the Licensor
+regarding the Software and supersedes all prior or contemporaneous agreements,
+understandings, and communications, whether written or oral.
+
+================================================================================
+
+BY DOWNLOADING, INSTALLING, OR USING THE SOFTWARE, YOU ACKNOWLEDGE THAT YOU
+HAVE READ, UNDERSTOOD, AND AGREE TO BE BOUND BY THE TERMS OF THIS LICENSE.
+IF YOU DO NOT AGREE, DO NOT DOWNLOAD, INSTALL, OR USE THE SOFTWARE.
+
+================================================================================
+
+For licensing inquiries, contact: [aymanhaidry2022@outlook.com]
