@@ -1,10 +1,20 @@
-name: Game Test
+name: Kosmosic Live Test
 
-on: [push]
+on:
+  push:
+    branches: ["main"]
 
 jobs:
-  test:
+  kosmosic-check:
     runs-on: ubuntu-latest
+
     steps:
-      - run: echo "Checking if game loads..."
-      - run: curl -I https://echotime.vercel.app
+      - name: 🌌 Ping Kosmosic
+        run: echo "Checking if Kosmosic is online..."
+
+      - name: 📡 Test deployment
+        run: |
+          curl -I https://kosmosic.vercel.app
+
+      - name: ✅ Status
+        run: echo "Kosmosic deployment reachable ✔️"
