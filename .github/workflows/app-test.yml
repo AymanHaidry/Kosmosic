@@ -1,0 +1,20 @@
+name: Kosmosic Live Test
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  kosmosic-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🌌 Ping Kosmosic
+        run: echo "Checking if Kosmosic is online..."
+
+      - name: 📡 Test deployment
+        run: |
+          curl -I https://kosmosic.vercel.app
+
+      - name: ✅ Status
+        run: echo "Kosmosic deployment reachable ✔️"

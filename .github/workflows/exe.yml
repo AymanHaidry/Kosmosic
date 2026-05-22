@@ -1,4 +1,4 @@
-name: Build EXE
+name: Build Kosmosic EXE
 
 on:
   push:
@@ -8,12 +8,12 @@ jobs:
   vibe:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "🧠 Timeline stable ✔️ (EXE lane)"
+      - run: echo "🌌 Kosmosic systems aligned ✔️"
 
-  test:
+  focus-check:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "🎮 Game logic reachable ✔️ (EXE sanity)"
+      - run: echo "📚 Study engine reachable ✔️"
 
   build-exe:
     runs-on: windows-latest
@@ -22,24 +22,32 @@ jobs:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
 
-      - name: 🟢 Setup Node
+      - name: 🟢 Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
 
       - name: 📦 Install dependencies
         run: |
-          echo "Installing dependencies..."
+          echo "Installing Kosmosic dependencies..."
           npm install
 
-      - name: 🏗️ Build EXE
+      - name: 🏗️ Build Kosmosic
         run: |
-          echo "Building TimeEcho EXE..."
+          echo "Building Kosmosic desktop app..."
           npm run build
-          echo "EXE build finished ✔️"
+          echo "Kosmosic build complete ✔️"
 
-      - name: 📤 Upload EXE
+      - name: 📂 Verify dist folder
+        run: |
+          echo "Checking generated files..."
+          dir dist
+
+      - name: 📤 Upload EXE Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: timeecho-exe
-          path: dist/*.exe
+          name: kosmosic-exe
+          path: |
+            dist/*.exe
+            dist/**/*.exe

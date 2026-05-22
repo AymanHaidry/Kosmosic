@@ -8,4 +8,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Pretend build
-        run: echo "Building TimeEcho..."
+        run: echo "Building Kosmosic..."
