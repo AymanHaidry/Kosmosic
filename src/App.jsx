@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Routes, Route, useNavigate } from 'react-router-dom'
+import { Analytics } from '@vercel/analytics/react'
 import { supabase } from './supabase.js'
 import Launcher from './Launcher.jsx'
 import StudyOS from './StudyOS.jsx'
@@ -37,11 +38,14 @@ export default function App() {
   )
 
   return (
-    <Routes>
-      <Route path="/" element={<Launcher session={session} />} />
-      <Route path="/launcher" element={<Launcher session={session} />} />
-      <Route path="/app" element={<StudyOS session={session} />} />
-      <Route path="/app/*" element={<StudyOS session={session} />} />
-    </Routes>
+    <>
+      <Routes>
+        <Route path="/" element={<Launcher session={session} />} />
+        <Route path="/launcher" element={<Launcher session={session} />} />
+        <Route path="/app" element={<StudyOS session={session} />} />
+        <Route path="/app/*" element={<StudyOS session={session} />} />
+      </Routes>
+      <Analytics />
+    </>
   )
 }
