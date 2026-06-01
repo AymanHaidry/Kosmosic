@@ -60,12 +60,12 @@ const getBuildingSpec = (hours, streak, userId = '') => {
 }
 
 const getRankLabel = (hours) => {
-  if (hours >= 200) return { label: 'Skyline Tower', color: '#d4a853' }
-  if (hours >= 100) return { label: 'Penthouse', color: '#c9956a' }
-  if (hours >= 50)  return { label: 'High-Rise', color: '#4a7a9b' }
-  if (hours >= 20)  return { label: 'Mid-Rise', color: '#5c8c6e' }
-  if (hours >= 5)   return { label: 'Apartment', color: '#7a7468' }
-  return { label: 'Studio', color: '#5a5248' }
+  if (hours >= 200) return { label: 'Skyline Tower', color: '#e5c07b' }
+  if (hours >= 100) return { label: 'Penthouse', color: '#d19a66' }
+  if (hours >= 50)  return { label: 'High-Rise', color: '#61afef' }
+  if (hours >= 20)  return { label: 'Mid-Rise', color: '#98c379' }
+  if (hours >= 5)   return { label: 'Apartment', color: '#abb2bf' }
+  return { label: 'Studio', color: '#5c6370' }
 }
 
 const getTier = (hours) => {
@@ -93,27 +93,27 @@ function getPhase(now, sunrise, sunset) {
 function getSkyGradient(phase, weather) {
   const w = weather
   if (w.snow) {
-    if (phase === PHASES.NIGHT)   return 'linear-gradient(180deg, #060a10 0%, #0c1218 60%, #111820 100%)'
-    if (phase === PHASES.DAWN)    return 'linear-gradient(180deg, #1a2028 0%, #2a3540 50%, #3a4858 100%)'
-    if (phase === PHASES.EVENING) return 'linear-gradient(180deg, #1e2830 0%, #2a3845 50%, #3a4a5a 100%)'
-    return 'linear-gradient(180deg, #8aa0b0 0%, #a0b8c8 40%, #c0d8e8 100%)'
+    if (phase === PHASES.NIGHT)   return 'linear-gradient(180deg, #04080f 0%, #0a111a 40%, #15202b 100%)'
+    if (phase === PHASES.DAWN)    return 'linear-gradient(180deg, #151b24 0%, #25303d 50%, #3d4f61 100%)'
+    if (phase === PHASES.EVENING) return 'linear-gradient(180deg, #18222b 0%, #253342 50%, #3d5066 100%)'
+    return 'linear-gradient(180deg, #6c869e 0%, #8ca6bd 40%, #bed4e6 100%)'
   }
   if (w.rain || w.heavyRain) {
-    if (phase === PHASES.NIGHT)   return 'linear-gradient(180deg, #050810 0%, #0a1018 60%, #0e1620 100%)'
-    if (phase === PHASES.DAWN)    return 'linear-gradient(180deg, #1a1e28 0%, #252a38 60%, #303848 100%)'
-    if (phase === PHASES.EVENING) return 'linear-gradient(180deg, #1a1a28 0%, #252038 50%, #302848 100%)'
-    return 'linear-gradient(180deg, #4a5568 0%, #5a6a80 40%, #6a8098 100%)'
+    if (phase === PHASES.NIGHT)   return 'linear-gradient(180deg, #03050a 0%, #080c14 50%, #101721 100%)'
+    if (phase === PHASES.DAWN)    return 'linear-gradient(180deg, #12151e 0%, #1d2230 50%, #2a3245 100%)'
+    if (phase === PHASES.EVENING) return 'linear-gradient(180deg, #141421 0%, #1d1b30 50%, #2b2545 100%)'
+    return 'linear-gradient(180deg, #384254 0%, #4a566e 40%, #62728f 100%)'
   }
   if (w.cloudy) {
-    if (phase === PHASES.NIGHT)   return 'linear-gradient(180deg, #080c14 0%, #0e1420 60%, #121a28 100%)'
-    if (phase === PHASES.DAWN)    return 'linear-gradient(180deg, #2a2030 0%, #3a3048 50%, #4a4060 100%)'
-    if (phase === PHASES.EVENING) return 'linear-gradient(180deg, #2a1e28 0%, #3a2838 50%, #4a3848 100%)'
-    return 'linear-gradient(180deg, #5a6880 0%, #6a8098 40%, #8aa0b8 100%)'
+    if (phase === PHASES.NIGHT)   return 'linear-gradient(180deg, #050810 0%, #0d121c 60%, #151d2b 100%)'
+    if (phase === PHASES.DAWN)    return 'linear-gradient(180deg, #211926 0%, #322840 50%, #463c5c 100%)'
+    if (phase === PHASES.EVENING) return 'linear-gradient(180deg, #211720 0%, #322130 50%, #463143 100%)'
+    return 'linear-gradient(180deg, #4b5a73 0%, #61748f 40%, #859bb5 100%)'
   }
-  if (phase === PHASES.NIGHT)   return 'linear-gradient(180deg, #02010a 0%, #080618 40%, #0c0b18 100%)'
-  if (phase === PHASES.DAWN)    return 'linear-gradient(180deg, #1a0c2e 0%, #3a1e48 40%, #6a3a58 100%)'
-  if (phase === PHASES.EVENING) return 'linear-gradient(180deg, #1e0a28 0%, #4a1e38 30%, #8a3a28 70%, #c45a18 100%)'
-  return 'linear-gradient(180deg, #0c4a8e 0%, #1e6ab0 30%, #4a9ad8 70%, #8ac8f0 100%)'
+  if (phase === PHASES.NIGHT)   return 'linear-gradient(180deg, #010005 0%, #050312 40%, #0a091a 80%, #131230 100%)'
+  if (phase === PHASES.DAWN)    return 'linear-gradient(180deg, #0f051c 0%, #2b133b 40%, #592949 80%, #ff8a66 100%)'
+  if (phase === PHASES.EVENING) return 'linear-gradient(180deg, #150521 0%, #381230 30%, #782626 60%, #e05e1b 100%)'
+  return 'linear-gradient(180deg, #094080 0%, #155ba1 30%, #3f8ed4 70%, #8cd2ff 100%)'
 }
 
 function getWeatherCondition(data) {
@@ -175,7 +175,7 @@ create policy "Users manage own profile" on city_profiles for all using (auth.ui
 /* ─── constants ─── */
 const ROAD_H = 52
 const SIDEWALK_H = 12
-const GROUND_Y = ROAD_H + SIDEWALK_H // 64
+const GROUND_Y = ROAD_H + SIDEWALK_H
 
 /* ─── single building component ─── */
 function Building({ user, spec, x, isMe, onClick, studying, mode, animOffset, weather }) {
@@ -184,25 +184,25 @@ function Building({ user, spec, x, isMe, onClick, studying, mode, animOffset, we
   const isDark = weather.phase === PHASES.NIGHT || weather.phase === PHASES.EVENING
 
   const getBuildingBg = () => {
-    if (style === 'cyberpunk') return 'linear-gradient(180deg, #0a0818 0%, #12102a 100%)'
-    if (style === 'glass')     return 'linear-gradient(180deg, #0d1a1f 0%, #111820 100%)'
-    if (style === 'modern')    return 'linear-gradient(180deg, #141414 0%, #1a1a1a 100%)'
-    return 'linear-gradient(180deg, #111 0%, #1a1915 100%)'
+    if (style === 'cyberpunk') return 'linear-gradient(180deg, rgba(16,14,34,0.95) 0%, rgba(24,20,50,0.9) 100%)'
+    if (style === 'glass')     return 'linear-gradient(180deg, rgba(18,28,36,0.9) 0%, rgba(12,18,24,0.95) 100%)'
+    if (style === 'modern')    return 'linear-gradient(180deg, rgba(28,28,30,0.95) 0%, rgba(20,20,22,0.95) 100%)'
+    return 'linear-gradient(180deg, rgba(22,22,24,0.98) 0%, rgba(14,14,16,0.98) 100%)'
   }
 
   const getBorderColor = () => {
-    if (isMe) return 'rgba(212,168,83,0.8)'
-    if (style === 'cyberpunk') return 'rgba(100,80,255,0.4)'
-    if (style === 'glass')     return 'rgba(80,160,200,0.3)'
-    return 'rgba(255,251,240,0.12)'
+    if (isMe) return 'rgba(229,192,123,0.9)'
+    if (style === 'cyberpunk') return 'rgba(198,120,221,0.5)'
+    if (style === 'glass')     return 'rgba(97,175,239,0.4)'
+    return 'rgba(255,255,255,0.1)'
   }
 
   const getGlow = () => {
-    if (isMe && studying) return '0 0 30px rgba(212,168,83,0.4), 0 0 60px rgba(212,168,83,0.15)'
-    if (isMe) return '0 0 20px rgba(212,168,83,0.2)'
-    if (studying && mode === 'deep') return '0 0 20px rgba(80,120,255,0.25)'
-    if (studying) return '0 0 16px rgba(255,220,80,0.2)'
-    return 'none'
+    if (isMe && studying) return '0 0 35px rgba(229,192,123,0.5), inset 0 0 20px rgba(229,192,123,0.1)'
+    if (isMe) return '0 0 25px rgba(229,192,123,0.25)'
+    if (studying && mode === 'deep') return '0 0 25px rgba(97,175,239,0.3)'
+    if (studying) return '0 0 20px rgba(229,192,123,0.25)'
+    return '0 8px 32px rgba(0,0,0,0.4)'
   }
 
   const bColor = getBorderColor()
@@ -212,21 +212,21 @@ function Building({ user, spec, x, isMe, onClick, studying, mode, animOffset, we
     if (roof === 'peak') {
       return (
         <div style={{
-          position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)',
+          position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)',
           width: 0, height: 0,
-          borderLeft: `${width * 0.2}px solid transparent`,
-          borderRight: `${width * 0.2}px solid transparent`,
-          borderBottom: `10px solid ${bColor}`,
-          opacity: 0.6,
+          borderLeft: `${width * 0.25}px solid transparent`,
+          borderRight: `${width * 0.25}px solid transparent`,
+          borderBottom: `12px solid ${bColor}`,
+          opacity: 0.7,
         }} />
       )
     }
     if (roof === 'dome') {
       return (
         <div style={{
-          position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)',
-          width: width * 0.55, height: 10,
-          background: bColor, opacity: 0.5,
+          position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)',
+          width: width * 0.6, height: 12,
+          background: `linear-gradient(180deg, ${bColor} 0%, transparent 100%)`,
           borderRadius: '50% 50% 0 0',
         }} />
       )
@@ -234,28 +234,28 @@ function Building({ user, spec, x, isMe, onClick, studying, mode, animOffset, we
     if (roof === 'slant') {
       return (
         <div style={{
-          position: 'absolute', top: -6, left: '50%', transform: 'translateX(-50%) skewX(-12deg)',
-          width: width * 0.55, height: 6,
-          background: bColor, opacity: 0.5,
+          position: 'absolute', top: -8, left: '50%', transform: 'translateX(-50%) skewX(-15deg)',
+          width: width * 0.6, height: 8,
+          background: bColor, opacity: 0.6,
         }} />
       )
     }
     if (roof === 'spire') {
       return (
         <div style={{
-          position: 'absolute', top: -22, left: '50%', transform: 'translateX(-50%)',
-          width: 2, height: 22,
-          background: isMe ? '#d4a853' : style === 'cyberpunk' ? 'rgba(100,80,255,0.8)' : 'rgba(255,251,240,0.3)',
-          boxShadow: isMe ? '0 0 8px rgba(212,168,83,0.6)' : 'none',
+          position: 'absolute', top: -28, left: '50%', transform: 'translateX(-50%)',
+          width: 2, height: 28,
+          background: isMe ? '#e5c07b' : style === 'cyberpunk' ? '#c678dd' : 'rgba(255,255,255,0.4)',
+          boxShadow: isMe ? '0 0 12px rgba(229,192,123,0.8)' : 'none',
         }} />
       )
     }
     if (roof === 'setback') {
       return (
         <div style={{
-          position: 'absolute', top: -6, left: '10%',
-          width: '80%', height: 6,
-          background: bColor, opacity: 0.35,
+          position: 'absolute', top: -8, left: '10%',
+          width: '80%', height: 8,
+          background: bColor, opacity: 0.4,
           borderRadius: '2px 2px 0 0',
         }} />
       )
@@ -272,65 +272,70 @@ function Building({ user, spec, x, isMe, onClick, studying, mode, animOffset, we
         background: getBuildingBg(),
         border: `1px solid ${bColor}`,
         borderBottom: 'none',
-        borderRadius: '3px 3px 0 0',
+        borderRadius: '4px 4px 0 0',
         boxShadow: getGlow(),
         cursor: 'pointer',
-        transition: 'box-shadow 0.5s ease',
+        transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
         overflow: 'visible',
         zIndex: isMe ? 10 : 5,
+        backdropFilter: 'blur(4px)', // Modern glassmorphism touch
       }}
+      className="building-hover"
     >
+      {/* Structural Mullions (Glass/Cyberpunk) */}
+      {(style === 'cyberpunk' || style === 'glass') && (
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', justifyContent: 'space-evenly', pointerEvents: 'none', opacity: 0.2 }}>
+           {Array.from({ length: 3 }).map((_, i) => (
+             <div key={i} style={{ width: 1, height: '100%', background: '#fff' }} />
+           ))}
+        </div>
+      )}
+
       {/* Roof snow cap */}
       {weather.snow && roof !== 'none' && (
         <div style={{
           position: 'absolute',
-          top: roof === 'peak' ? -12 : roof === 'dome' ? -12 : -6,
-          left: -2, right: -2, height: 5,
-          background: 'rgba(240,248,255,0.95)',
+          top: roof === 'peak' ? -14 : roof === 'dome' ? -14 : -8,
+          left: -2, right: -2, height: 6,
+          background: 'linear-gradient(180deg, #fff 0%, #e2e8f0 100%)',
           borderRadius: roof === 'dome' ? '50% 50% 0 0' : '3px 3px 0 0',
+          boxShadow: '0 2px 6px rgba(255,255,255,0.4)',
           zIndex: 2,
         }} />
       )}
 
-      {style === 'cyberpunk' && (
-        <>
-          <div style={{ position: 'absolute', top: 0, left: '30%', width: 1, height: '100%', background: 'rgba(100,80,255,0.15)' }} />
-          <div style={{ position: 'absolute', top: 0, left: '60%', width: 1, height: '100%', background: 'rgba(100,80,255,0.1)' }} />
-        </>
-      )}
-      {style === 'glass' && (
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, transparent 0%, rgba(80,160,200,0.05) 50%, transparent 100%)' }} />
-      )}
-
       {renderRoof()}
 
-      {/* Windows */}
-      <div style={{ padding: '6px 4px', display: 'flex', flexDirection: 'column', gap: 3, height: '100%' }}>
+      {/* Windows Layer */}
+      <div style={{ padding: '6px 5px', display: 'flex', flexDirection: 'column', gap: 4, height: '100%', position: 'relative', zIndex: 2 }}>
         {Array.from({ length: floors }, (_, f) => (
-          <div key={f} style={{ display: 'flex', gap: 3, justifyContent: 'center', flex: 1, alignItems: 'center' }}>
+          <div key={f} style={{ display: 'flex', gap: 4, justifyContent: 'center', flex: 1, alignItems: 'center' }}>
             {Array.from({ length: windowsPerFloor }, (_, w) => {
               const noise = Math.sin(f * 7 + w * 13 + animOffset + seed)
               const isStudyLit = studying && noise > 0.1
-              const isAmbientLit = !studying && isDark && noise > 0.35 // city ambient glow at night
+              const isAmbientLit = !studying && isDark && noise > 0.45 
+              
               const color = isStudyLit
-                ? mode === 'deep'  ? 'rgba(80,120,255,0.9)'
-                : mode === 'exam'  ? 'rgba(220,80,80,0.9)'
-                : 'rgba(255,215,80,0.9)'
+                ? mode === 'deep'  ? '#61afef'
+                : mode === 'exam'  ? '#e06c75'
+                : '#e5c07b'
                 : isAmbientLit
-                ? 'rgba(255,160,60,0.45)'
-                : 'rgba(255,255,255,0.04)'
+                ? 'rgba(229, 192, 123, 0.3)'
+                : 'rgba(255,255,255,0.02)'
+                
               const glow = isStudyLit
-                ? mode === 'deep'  ? '0 0 6px rgba(80,120,255,0.8)'
-                : mode === 'exam'  ? '0 0 6px rgba(220,80,80,0.8)'
-                : '0 0 6px rgba(255,215,80,0.7)'
+                ? mode === 'deep'  ? '0 0 10px rgba(97,175,239,0.8)'
+                : mode === 'exam'  ? '0 0 10px rgba(224,108,117,0.8)'
+                : '0 0 10px rgba(229,192,123,0.8)'
                 : isAmbientLit
-                ? '0 0 4px rgba(255,140,40,0.4)'
-                : 'none'
+                ? '0 0 5px rgba(229, 192, 123, 0.2)'
+                : 'inset 0 0 2px rgba(0,0,0,0.5)'
+
               return (
                 <div key={w} style={{
-                  width: 6, height: 7, background: color,
+                  width: 6, height: Math.max(6, (pxH / floors) * 0.4), background: color,
                   borderRadius: 1, boxShadow: glow,
-                  transition: 'background 1.2s ease, box-shadow 1.2s ease',
+                  transition: 'background 0.8s ease, box-shadow 0.8s ease',
                 }} />
               )
             })}
@@ -341,39 +346,48 @@ function Building({ user, spec, x, isMe, onClick, studying, mode, animOffset, we
       {/* Antenna / mast for tall buildings */}
       {height >= 12 && roof !== 'spire' && (
         <div style={{
-          position: 'absolute', top: -16, left: '50%', transform: 'translateX(-50%)',
-          width: 2, height: 16,
-          background: isMe ? '#d4a853' : style === 'cyberpunk' ? 'rgba(100,80,255,0.8)' : 'rgba(255,251,240,0.2)',
-          boxShadow: isMe ? '0 0 8px rgba(212,168,83,0.6)' : 'none',
-        }} />
+          position: 'absolute', top: -20, left: '50%', transform: 'translateX(-50%)',
+          width: 2, height: 20,
+          background: isMe ? '#e5c07b' : style === 'cyberpunk' ? '#c678dd' : 'rgba(255,255,255,0.3)',
+          boxShadow: isMe ? '0 0 10px rgba(229,192,123,0.8)' : 'none',
+        }}>
+           {/* Blinking aviation light */}
+           <div style={{
+             position: 'absolute', top: 0, left: -1, width: 4, height: 4, borderRadius: '50%',
+             background: '#e06c75', animation: 'blink 2s infinite'
+           }} />
+        </div>
       )}
 
       {isMe && (
         <div style={{
-          position: 'absolute', top: -30, left: '50%', transform: 'translateX(-50%)',
-          background: '#d4a853', borderRadius: 4, padding: '2px 6px',
-          fontSize: '0.55rem', fontWeight: 700, color: '#000', whiteSpace: 'nowrap',
-          fontFamily: "'Anthropic Serif',Georgia,serif",
+          position: 'absolute', top: -38, left: '50%', transform: 'translateX(-50%)',
+          background: 'linear-gradient(135deg, #e5c07b 0%, #d19a66 100%)', 
+          borderRadius: 6, padding: '3px 8px',
+          fontSize: '0.6rem', fontWeight: 800, color: '#111', whiteSpace: 'nowrap',
+          boxShadow: '0 4px 12px rgba(229,192,123,0.4)',
+          letterSpacing: '0.05em',
           zIndex: 20,
         }}>YOU</div>
       )}
 
+      {/* Internal Study Glow Gradient */}
       {studying && (
         <div style={{
           position: 'absolute', inset: 0,
           background: mode === 'deep'
-            ? 'linear-gradient(0deg, rgba(80,120,255,0.04) 0%, transparent 60%)'
-            : 'linear-gradient(0deg, rgba(255,215,80,0.04) 0%, transparent 60%)',
-          pointerEvents: 'none',
+            ? 'linear-gradient(0deg, rgba(97,175,239,0.08) 0%, transparent 80%)'
+            : 'linear-gradient(0deg, rgba(229,192,123,0.08) 0%, transparent 80%)',
+          pointerEvents: 'none', borderRadius: '3px 3px 0 0'
         }} />
       )}
 
       {/* Wet foundation during rain */}
       {weather.rain && (
         <div style={{
-          position: 'absolute', bottom: -10, left: -4, right: -4, height: 10,
-          background: 'linear-gradient(180deg, rgba(80,120,160,0.2) 0%, transparent 100%)',
-          filter: 'blur(4px)',
+          position: 'absolute', bottom: -12, left: -6, right: -6, height: 12,
+          background: 'linear-gradient(180deg, rgba(97,175,239,0.2) 0%, transparent 100%)',
+          filter: 'blur(5px)',
           pointerEvents: 'none',
         }} />
       )}
@@ -568,7 +582,7 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
     layoutItems.push({ type: 'building', user, spec, x: xCursor })
     xCursor += spec.width
     if (idx < displayOrder.length - 1) {
-      const gap = 16
+      const gap = 20 // slightly wider gap for a better feel
       const lampH = Math.min(100, Math.max(60, spec.height * 8))
       layoutItems.push({ type: 'lamp', x: xCursor + gap / 2 - 2, h: lampH })
       xCursor += gap
@@ -579,14 +593,14 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
   /* 7. animated cars & pedestrians (rAF, no state churn) */
   useEffect(() => {
     const W = Math.max(totalWidth, 1200)
-    carData.current = Array.from({ length: 7 }, (_, i) => ({
+    carData.current = Array.from({ length: 9 }, (_, i) => ({
       x: Math.random() * W,
-      speed: (0.6 + Math.random() * 1.2) * (i % 2 === 0 ? 1 : -1),
-      y: 6 + Math.random() * 32,
-      width: 22 + Math.random() * 14,
-      color: ['#c0392b','#2980b9','#27ae60','#f39c12','#8e44ad','#2c3e50','#d35400'][i],
+      speed: (1.2 + Math.random() * 2) * (i % 2 === 0 ? 1 : -1), // Faster, sleeker movement
+      y: 8 + Math.random() * 28,
+      width: 30 + Math.random() * 20,
+      color: ['#e06c75','#61afef','#98c379','#e5c07b','#c678dd','#56b6c2','#d19a66'][i % 7],
     }))
-    pedData.current = Array.from({ length: 5 }, (_, i) => ({
+    pedData.current = Array.from({ length: 7 }, (_, i) => ({
       x: Math.random() * W,
       speed: (0.15 + Math.random() * 0.25) * (i % 2 === 0 ? 1 : -1),
       y: 4 + Math.random() * 4,
@@ -597,8 +611,8 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
         const el = carRefs.current[i]
         if (!el) return
         car.x += car.speed
-        if (car.x > W + 60) car.x = -60
-        if (car.x < -60) car.x = W + 60
+        if (car.x > W + 80) car.x = -80
+        if (car.x < -80) car.x = W + 80
         el.style.transform = `translateX(${car.x}px)`
       })
       pedData.current.forEach((ped, i) => {
@@ -624,43 +638,53 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
   const isNightish = weather.phase === PHASES.NIGHT || weather.phase === PHASES.EVENING || weather.phase === PHASES.DAWN
 
   return (
-    <div style={{ position: 'relative', zIndex: 2, fontFamily: "'Anthropic Serif',Georgia,serif" }}>
-      {/* HEADER */}
-      <div style={{ padding: '80px 24px 0', maxWidth: 920, margin: '0 auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+    <div className="city-container" style={{ position: 'relative', zIndex: 2, fontFamily: "'Inter', system-ui, sans-serif", background: '#090a0f', minHeight: '100vh', overflowX: 'hidden' }}>
+      
+      {/* HEADER OVERLAY */}
+      <div style={{ position: 'relative', zIndex: 30, padding: '60px 24px 20px', maxWidth: 1040, margin: '0 auto' }}>
+        <div style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+          background: 'rgba(20, 24, 32, 0.4)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+          border: '1px solid rgba(255,255,255,0.05)', borderRadius: 20, padding: 24,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
+        }}>
           <div>
-            <div style={{ fontSize: '1.6rem', fontWeight: 700, color: '#fff', marginBottom: 4 }}>Study City</div>
-            <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.82rem' }}>
-              {liveCount} studying live right now
-              <span style={{ marginLeft: 8, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#5c8c6e', display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
-                <span style={{ color: '#5c8c6e' }}>Live</span>
-              </span>
+            <h1 style={{ fontSize: '2rem', fontWeight: 800, color: '#fff', margin: '0 0 8px 0', letterSpacing: '-0.02em' }}>
+              Study Skyline
+            </h1>
+            <div style={{ color: '#8b949e', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(152, 195, 121, 0.1)', padding: '4px 10px', borderRadius: 12, border: '1px solid rgba(152, 195, 121, 0.2)' }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#98c379', display: 'inline-block', animation: 'pulse 2s infinite' }} />
+                <span style={{ color: '#98c379', fontWeight: 600 }}>{liveCount} Live</span>
+              </div>
+              <span>building the city right now.</span>
             </div>
           </div>
-          <div style={{ textAlign: 'right' }}>
+
+          <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 8,
-              background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: 10, padding: '6px 12px', marginBottom: 6,
+              display: 'inline-flex', alignItems: 'center', gap: 10, alignSelf: 'flex-end',
+              background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: 14, padding: '8px 16px',
             }}>
-              <span style={{ fontSize: '0.85rem' }}>
+              <span style={{ fontSize: '1.2rem', filter: 'drop-shadow(0 0 4px rgba(255,255,255,0.4))' }}>
                 {weather.condition.snow ? '❄️' : weather.condition.heavyRain ? '⛈️' : weather.condition.rain ? '🌧️' : weather.condition.cloudy ? '☁️' : '☀️'}
               </span>
-              <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)' }}>
-                {weather.temp !== null ? `${Math.round(weather.temp)}°C` : '--'} · {weather.condition.label} · {weather.phase}
+              <span style={{ fontSize: '0.85rem', color: '#c9d1d9', fontWeight: 500 }}>
+                {weather.temp !== null ? `${Math.round(weather.temp)}°C` : '--'} · {weather.condition.label}
               </span>
             </div>
-            <div style={{ display: 'flex', gap: 16, fontSize: '0.72rem', justifyContent: 'flex-end' }}>
+            
+            <div style={{ display: 'flex', gap: 16, fontSize: '0.75rem', justifyContent: 'flex-end' }}>
               {[
-                { c: 'rgba(255,215,80,0.9)', g: '0 0 6px rgba(255,215,80,0.7)', l: 'Focus' },
-                { c: 'rgba(80,120,255,0.9)', g: '0 0 6px rgba(80,120,255,0.8)', l: 'Deep Work' },
-                { c: 'rgba(220,80,80,0.9)',  g: '0 0 6px rgba(220,80,80,0.8)', l: 'Exam' },
-                { c: 'rgba(255,255,255,0.06)', g: 'none', l: 'Offline' },
+                { c: '#e5c07b', g: '0 0 8px rgba(229,192,123,0.8)', l: 'Focus' },
+                { c: '#61afef', g: '0 0 8px rgba(97,175,239,0.8)', l: 'Deep Work' },
+                { c: '#e06c75',  g: '0 0 8px rgba(224,108,117,0.8)', l: 'Exam' },
+                { c: 'rgba(255,255,255,0.1)', g: 'none', l: 'Offline' },
               ].map(item => (
-                <div key={item.l} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: 1, background: item.c, boxShadow: item.g }} />
-                  <span style={{ color: 'rgba(255,255,255,0.5)' }}>{item.l}</span>
+                <div key={item.l} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ width: 10, height: 10, borderRadius: 2, background: item.c, boxShadow: item.g }} />
+                  <span style={{ color: '#8b949e', fontWeight: 500 }}>{item.l}</span>
                 </div>
               ))}
             </div>
@@ -670,24 +694,36 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
 
       {/* CITY VIEWPORT */}
       <div style={{
-        width: '100%', height: 460,
+        width: '100%', height: 520,
         background: skyColor,
         position: 'relative', overflow: 'hidden',
-        borderTop: '1px solid rgba(255,255,255,0.05)',
-        borderBottom: '1px solid rgba(255,255,255,0.05)',
-        transition: 'background 2s ease',
+        borderTop: '1px solid rgba(255,255,255,0.02)',
+        borderBottom: '1px solid rgba(255,255,255,0.02)',
+        transition: 'background 3s ease',
+        boxShadow: 'inset 0 20px 60px rgba(0,0,0,0.5)',
+        marginTop: -60, // Overlap under header slightly
       }}>
+        
+        {/* Distant Parallax Skyline Silhouette */}
+        <div style={{
+          position: 'absolute', bottom: ROAD_H + SIDEWALK_H - 10, left: 0, right: 0, height: 200,
+          background: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'400\' height=\'200\'%3E%3Cpath d=\'M0,200 L0,150 L20,150 L20,120 L40,120 L40,90 L60,90 L60,110 L80,110 L80,60 L120,60 L120,140 L150,140 L150,80 L180,80 L180,130 L210,130 L210,40 L250,40 L250,100 L280,100 L280,160 L320,160 L320,70 L350,70 L350,120 L380,120 L380,170 L400,170 L400,200 Z\' fill=\'rgba(0,0,0,0.15)\'/%3E%3C/svg%3E") repeat-x bottom',
+          zIndex: 1, pointerEvents: 'none',
+          opacity: isNightish ? 0.8 : 0.4
+        }} />
+
         {/* Stars */}
-        {showStars && Array.from({ length: 70 }, (_, i) => (
+        {showStars && Array.from({ length: 100 }, (_, i) => (
           <div key={i} style={{
             position: 'absolute',
             left: `${(i * 37) % 100}%`,
-            top: `${(i * 23) % 45}%`,
-            width: i % 5 === 0 ? 2 : 1,
-            height: i % 5 === 0 ? 2 : 1,
+            top: `${(i * 23) % 55}%`,
+            width: i % 4 === 0 ? 3 : 1.5,
+            height: i % 4 === 0 ? 3 : 1.5,
             background: '#fff',
             borderRadius: '50%',
-            opacity: 0.25 + (i % 7) * 0.1,
+            opacity: 0.1 + (i % 7) * 0.1,
+            boxShadow: i % 4 === 0 ? '0 0 6px rgba(255,255,255,0.8)' : 'none',
             animation: `twinkle ${2 + (i % 5)}s ease-in-out infinite`,
             animationDelay: `${(i % 7) * 0.5}s`,
           }} />
@@ -697,24 +733,25 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
         {weather.condition.cloudy && !weather.condition.rain && (
           <div style={{
             position: 'absolute', inset: 0,
-            background: 'radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.06) 0%, transparent 60%), radial-gradient(ellipse at 70% 40%, rgba(255,255,255,0.04) 0%, transparent 50%)',
+            background: 'radial-gradient(ellipse at 20% 30%, rgba(255,255,255,0.08) 0%, transparent 50%), radial-gradient(ellipse at 80% 20%, rgba(255,255,255,0.06) 0%, transparent 60%)',
             pointerEvents: 'none',
-            animation: 'drift 60s linear infinite',
+            animation: 'drift 80s linear infinite',
+            zIndex: 3,
           }} />
         )}
 
         {/* Rain */}
         {weather.condition.rain && (
           <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 25 }}>
-            {Array.from({ length: weather.condition.heavyRain ? 90 : 45 }, (_, i) => (
+            {Array.from({ length: weather.condition.heavyRain ? 120 : 60 }, (_, i) => (
               <div key={i} style={{
                 position: 'absolute',
-                left: `${(i * 13) % 100}%`,
-                top: -10,
-                width: 1, height: weather.condition.heavyRain ? 16 : 12,
-                background: 'rgba(160,180,200,0.45)',
+                left: `${(i * 11) % 100}%`,
+                top: -20,
+                width: 1.5, height: weather.condition.heavyRain ? 25 : 18,
+                background: 'linear-gradient(180deg, rgba(160,180,200,0) 0%, rgba(160,180,200,0.6) 100%)',
                 borderRadius: 1,
-                animation: `rainfall ${0.5 + (i % 5) * 0.12}s linear infinite`,
+                animation: `rainfall ${0.4 + (i % 5) * 0.1}s linear infinite`,
                 animationDelay: `${(i % 8) * 0.1}s`,
               }} />
             ))}
@@ -724,28 +761,29 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
         {/* Snow */}
         {weather.condition.snow && (
           <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 25 }}>
-            {Array.from({ length: 55 }, (_, i) => (
+            {Array.from({ length: 80 }, (_, i) => (
               <div key={i} style={{
                 position: 'absolute',
-                left: `${(i * 19) % 100}%`,
-                top: -6,
-                width: 3 + (i % 3), height: 3 + (i % 3),
-                background: 'rgba(230,240,255,0.8)',
+                left: `${(i * 17) % 100}%`,
+                top: -10,
+                width: 4 + (i % 4), height: 4 + (i % 4),
+                background: 'rgba(255,255,255,0.85)',
                 borderRadius: '50%',
-                animation: `snowfall ${2 + (i % 4)}s linear infinite`,
-                animationDelay: `${(i % 6) * 0.3}s`,
+                boxShadow: '0 0 6px rgba(255,255,255,0.4)',
+                animation: `snowfall ${2.5 + (i % 4)}s linear infinite`,
+                animationDelay: `${(i % 6) * 0.4}s`,
               }} />
             ))}
           </div>
         )}
 
         {/* Lightning */}
-        {weather.condition.heavyRain && Math.random() > 0.97 && (
+        {weather.condition.heavyRain && Math.random() > 0.96 && (
           <div style={{
             position: 'absolute', inset: 0,
-            background: 'rgba(255,255,255,0.1)',
+            background: 'rgba(255,255,255,0.15)',
             pointerEvents: 'none',
-            animation: 'flash 0.2s ease-out',
+            animation: 'flash 0.25s ease-out',
             zIndex: 24,
           }} />
         )}
@@ -757,21 +795,13 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
             left: `${sunPos.x}%`,
             top: `${sunPos.y}%`,
             transform: 'translate(-50%, -50%)',
-            width: 44, height: 44,
+            width: 60, height: 60,
             borderRadius: '50%',
-            background: 'radial-gradient(circle at 30% 30%, #fffce6 10%, #ffd700 50%, #ff8c00 100%)',
-            boxShadow: '0 0 50px rgba(255,200,50,0.5), 0 0 100px rgba(255,140,0,0.25)',
-            zIndex: 4,
+            background: 'radial-gradient(circle at 40% 40%, #ffffff 0%, #fff2a8 30%, #ffb347 70%, #ff7b00 100%)',
+            boxShadow: '0 0 80px rgba(255,210,100,0.8), 0 0 160px rgba(255,140,0,0.4)',
+            zIndex: 2,
             transition: 'left 2s linear, top 2s linear',
-          }}>
-            {/* Sun rays */}
-            <div style={{
-              position: 'absolute', inset: -10,
-              borderRadius: '50%',
-              background: 'conic-gradient(from 0deg, transparent 0deg, rgba(255,220,100,0.08) 10deg, transparent 20deg, transparent 40deg, rgba(255,220,100,0.06) 50deg, transparent 60deg, transparent 80deg, rgba(255,220,100,0.08) 90deg, transparent 100deg, transparent 120deg, rgba(255,220,100,0.05) 130deg, transparent 140deg, transparent 160deg, rgba(255,220,100,0.06) 170deg, transparent 180deg, transparent 200deg, rgba(255,220,100,0.05) 210deg, transparent 220deg, transparent 240deg, rgba(255,220,100,0.08) 250deg, transparent 260deg, transparent 280deg, rgba(255,220,100,0.06) 290deg, transparent 300deg, transparent 320deg, rgba(255,220,100,0.05) 330deg, transparent 340deg, transparent 360deg)',
-              animation: 'spin 20s linear infinite',
-            }} />
-          </div>
+          }} />
         )}
 
         {/* Moon */}
@@ -781,153 +811,176 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
             left: `${moonPos.x}%`,
             top: `${moonPos.y}%`,
             transform: 'translate(-50%, -50%)',
-            width: 32, height: 32,
+            width: 48, height: 48,
             borderRadius: '50%',
-            background: 'radial-gradient(circle at 35% 35%, #f0e6d2, #c4b896)',
-            boxShadow: 'inset -3px -3px 6px rgba(0,0,0,0.25), inset 2px 2px 4px rgba(255,255,255,0.15), 0 0 18px rgba(200,200,220,0.15)',
-            zIndex: 4,
+            background: 'radial-gradient(circle at 30% 30%, #fdfbf7, #d3d1c8)',
+            boxShadow: 'inset -6px -6px 12px rgba(0,0,0,0.4), inset 2px 2px 8px rgba(255,255,255,0.6), 0 0 30px rgba(220,230,255,0.3)',
+            zIndex: 2,
             transition: 'left 3s linear, top 3s linear',
           }}>
-            {/* Craters */}
-            <div style={{ position: 'absolute', top: '22%', left: '28%', width: '18%', height: '18%', borderRadius: '50%', background: 'rgba(0,0,0,0.07)', boxShadow: 'inset 1px 1px 2px rgba(0,0,0,0.2)' }} />
-            <div style={{ position: 'absolute', top: '52%', left: '48%', width: '14%', height: '14%', borderRadius: '50%', background: 'rgba(0,0,0,0.06)', boxShadow: 'inset 1px 1px 2px rgba(0,0,0,0.2)' }} />
-            <div style={{ position: 'absolute', top: '38%', left: '62%', width: '10%', height: '10%', borderRadius: '50%', background: 'rgba(0,0,0,0.08)', boxShadow: 'inset 1px 1px 2px rgba(0,0,0,0.2)' }} />
-            <div style={{ position: 'absolute', top: '65%', left: '25%', width: '12%', height: '12%', borderRadius: '50%', background: 'rgba(0,0,0,0.05)', boxShadow: 'inset 1px 1px 2px rgba(0,0,0,0.15)' }} />
+            {/* Detailed Craters */}
+            <div style={{ position: 'absolute', top: '20%', left: '25%', width: '22%', height: '22%', borderRadius: '50%', background: 'rgba(0,0,0,0.08)', boxShadow: 'inset 2px 2px 4px rgba(0,0,0,0.3), 1px 1px 2px rgba(255,255,255,0.2)' }} />
+            <div style={{ position: 'absolute', top: '55%', left: '45%', width: '18%', height: '18%', borderRadius: '50%', background: 'rgba(0,0,0,0.07)', boxShadow: 'inset 2px 2px 4px rgba(0,0,0,0.3)' }} />
+            <div style={{ position: 'absolute', top: '40%', left: '65%', width: '14%', height: '14%', borderRadius: '50%', background: 'rgba(0,0,0,0.09)', boxShadow: 'inset 2px 2px 4px rgba(0,0,0,0.3)' }} />
+            <div style={{ position: 'absolute', top: '70%', left: '25%', width: '12%', height: '12%', borderRadius: '50%', background: 'rgba(0,0,0,0.06)', boxShadow: 'inset 1px 1px 3px rgba(0,0,0,0.2)' }} />
           </div>
         )}
 
-        {/* Fog */}
+        {/* Atmospheric Fog */}
         <div style={{
-          position: 'absolute', bottom: 0, left: 0, right: 0, height: 100,
+          position: 'absolute', bottom: 0, left: 0, right: 0, height: 180,
           background: weather.condition.rain
-            ? 'linear-gradient(0deg, rgba(12,11,9,0.95) 0%, transparent 100%)'
-            : 'linear-gradient(0deg, rgba(12,11,9,0.85) 0%, transparent 100%)',
-          zIndex: 20, pointerEvents: 'none',
+            ? 'linear-gradient(0deg, rgba(8,10,15,0.98) 0%, rgba(8,10,15,0.4) 40%, transparent 100%)'
+            : 'linear-gradient(0deg, rgba(12,14,20,0.95) 0%, rgba(12,14,20,0.2) 60%, transparent 100%)',
+          zIndex: 4, pointerEvents: 'none',
         }} />
 
-        {/* Scrollable city */}
+        {/* Scrollable city container */}
         <div style={{
           position: 'absolute', bottom: 0, left: 0,
           width: '100%', height: '100%',
           overflowX: 'auto', overflowY: 'hidden',
+          scrollbarWidth: 'none', // hide scrollbar for cleaner look
         }}>
-          <div style={{ position: 'relative', width: Math.max(totalWidth, 900), height: '100%', minWidth: '100%' }}>
+          <div style={{ position: 'relative', width: Math.max(totalWidth, 1000), height: '100%', minWidth: '100%' }}>
             
             {/* Sidewalk */}
             <div style={{
               position: 'absolute', bottom: ROAD_H, left: 0, right: 0, height: SIDEWALK_H,
-              background: 'linear-gradient(0deg, #2a2a2a 0%, #333 100%)',
-              borderTop: '2px solid #3d3d3d',
+              background: 'linear-gradient(180deg, #303642 0%, #1c212b 100%)',
+              borderTop: '2px solid rgba(255,255,255,0.1)',
+              boxShadow: '0 -2px 10px rgba(0,0,0,0.5)',
               zIndex: 15,
             }} />
 
-            {/* Road */}
+            {/* Road (Wet/Reflective) */}
             <div style={{
               position: 'absolute', bottom: 0, left: 0, right: 0, height: ROAD_H,
               background: weather.condition.rain
-                ? 'linear-gradient(0deg, #0c0e12 0%, #14161c 100%)'
-                : 'linear-gradient(0deg, #0e0f12 0%, #181a1f 100%)',
+                ? 'linear-gradient(0deg, #07090e 0%, #11151e 100%)'
+                : 'linear-gradient(0deg, #0a0c12 0%, #161a24 100%)',
               zIndex: 14,
+              overflow: 'hidden'
             }}>
+              {/* Rain puddles/reflections */}
+              {weather.condition.rain && (
+                <div style={{
+                   position: 'absolute', inset: 0, 
+                   background: 'radial-gradient(ellipse at 50% 50%, rgba(97,175,239,0.1) 0%, transparent 60%)',
+                   backgroundSize: '200px 50px',
+                   opacity: 0.5
+                }}/>
+              )}
+
               {/* Lane markings */}
-              {Array.from({ length: Math.ceil(Math.max(totalWidth, 900) / 80) }, (_, i) => (
+              {Array.from({ length: Math.ceil(Math.max(totalWidth, 1000) / 100) }, (_, i) => (
                 <div key={i} style={{
-                  position: 'absolute', top: '50%', left: `${i * 80 + 20}px`,
-                  width: 40, height: 2,
+                  position: 'absolute', top: '50%', left: `${i * 100 + 30}px`,
+                  width: 50, height: 3,
                   background: 'rgba(255,255,255,0.15)',
+                  borderRadius: 2,
                   transform: 'translateY(-50%)',
+                  boxShadow: '0 0 4px rgba(255,255,255,0.1)',
                 }} />
               ))}
-              {/* Curb */}
-              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'rgba(255,255,255,0.08)' }} />
+              {/* Curb edge glow */}
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, background: 'rgba(255,255,255,0.1)' }} />
             </div>
 
-            {/* Street Lamps */}
+            {/* Street Lamps (Modern) */}
             {layoutItems.filter(it => it.type === 'lamp').map((lamp, i) => (
               <div key={`lamp-${i}`} style={{ position: 'absolute', bottom: GROUND_Y, left: lamp.x, zIndex: 6, pointerEvents: 'none' }}>
-                {/* Post */}
-                <div style={{ width: 3, height: lamp.h, background: '#1f1f1f', margin: '0 auto', borderRadius: 1 }} />
-                {/* Lamp head */}
+                {/* Sleek Post */}
+                <div style={{ width: 4, height: lamp.h, background: 'linear-gradient(90deg, #2a303c 0%, #1c212b 100%)', margin: '0 auto', borderRadius: '2px 2px 0 0' }} />
+                {/* Modern Lamp head */}
                 <div style={{
-                  position: 'absolute', top: -8, left: '50%', transform: 'translateX(-50%)',
-                  width: 12, height: 8,
-                  background: isNightish ? '#ffeb3b' : '#3a3a3a',
-                  borderRadius: '50% 50% 0 0',
-                  boxShadow: isNightish ? '0 0 18px rgba(255,235,59,0.7), 0 0 40px rgba(255,235,59,0.25)' : 'none',
-                  transition: 'all 1.5s ease',
+                  position: 'absolute', top: -4, left: '50%', transform: 'translateX(-50%)',
+                  width: 18, height: 6,
+                  background: isNightish ? '#e5c07b' : '#303642',
+                  borderRadius: '10px',
+                  boxShadow: isNightish ? '0 0 20px rgba(229,192,123,0.8), 0 0 40px rgba(229,192,123,0.3)' : 'none',
+                  transition: 'all 2s ease',
                 }} />
                 {/* Light cone on ground */}
                 {isNightish && (
                   <div style={{
                     position: 'absolute', bottom: -GROUND_Y, left: '50%', transform: 'translateX(-50%)',
-                    width: 70, height: GROUND_Y,
-                    background: 'radial-gradient(ellipse at center top, rgba(255,235,59,0.12) 0%, transparent 65%)',
+                    width: 100, height: GROUND_Y,
+                    background: 'radial-gradient(ellipse at center top, rgba(229,192,123,0.15) 0%, transparent 70%)',
                     pointerEvents: 'none',
                   }} />
                 )}
-                {/* Light cone upward */}
+                {/* Light aura upward */}
                 {isNightish && (
                   <div style={{
-                    position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
-                    width: 50, height: lamp.h,
-                    background: 'radial-gradient(ellipse at center bottom, rgba(255,235,59,0.06) 0%, transparent 70%)',
+                    position: 'absolute', top: -20, left: '50%', transform: 'translateX(-50%)',
+                    width: 80, height: 80,
+                    background: 'radial-gradient(circle at center, rgba(229,192,123,0.1) 0%, transparent 60%)',
                     pointerEvents: 'none',
                   }} />
                 )}
               </div>
             ))}
 
-            {/* Cars */}
+            {/* Neon Cars (Light Streaks) */}
             {carData.current.map((_, i) => (
               <div key={`car-${i}`} ref={el => carRefs.current[i] = el} style={{
                 position: 'absolute', bottom: carData.current[i]?.y || 8, left: 0,
                 zIndex: 16, pointerEvents: 'none',
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                  {/* Headlights (facing right) */}
-                  {carData.current[i]?.speed > 0 && (
-                    <div style={{
-                      position: 'absolute', right: -30, top: '50%', transform: 'translateY(-50%)',
-                      width: 30, height: 10,
-                      background: 'linear-gradient(90deg, rgba(255,250,200,0.35) 0%, transparent 100%)',
-                      borderRadius: '0 50% 50% 0',
-                      filter: 'blur(2px)',
-                    }} />
-                  )}
-                  {/* Taillights (facing left) */}
-                  {carData.current[i]?.speed < 0 && (
-                    <div style={{
-                      position: 'absolute', left: -12, top: '50%', transform: 'translateY(-50%)',
-                      width: 12, height: 8,
-                      background: 'rgba(220,60,60,0.6)',
-                      borderRadius: '50% 0 0 50%',
-                      filter: 'blur(2px)',
-                      boxShadow: '0 0 6px rgba(220,60,60,0.5)',
-                    }} />
-                  )}
-                  {/* Car body */}
+                  {/* Cyberpunk car body */}
                   <div style={{
-                    width: carData.current[i]?.width || 28, height: 10,
-                    background: carData.current[i]?.color || '#555',
-                    borderRadius: '3px 3px 1px 1px',
+                    width: carData.current[i]?.width || 30, height: 6,
+                    background: '#111',
+                    borderRadius: '4px',
                     position: 'relative',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
+                    boxShadow: `0 0 8px ${carData.current[i]?.color}60`,
+                    borderBottom: `2px solid ${carData.current[i]?.color}`,
                   }}>
-                    {/* Windows */}
-                    <div style={{
-                      position: 'absolute', top: -4, left: 3, right: 3, height: 4,
-                      background: 'rgba(180,220,255,0.25)',
-                      borderRadius: '2px 2px 0 0',
-                    }} />
+                    {/* Headlight beam */}
+                    {carData.current[i]?.speed > 0 && (
+                      <div style={{
+                        position: 'absolute', right: -40, top: '50%', transform: 'translateY(-50%)',
+                        width: 40, height: 12,
+                        background: 'linear-gradient(90deg, rgba(255,255,255,0.6) 0%, transparent 100%)',
+                        borderRadius: '0 50% 50% 0',
+                        filter: 'blur(3px)',
+                      }} />
+                    )}
+                    {/* Taillight trail */}
+                    {carData.current[i]?.speed > 0 && (
+                      <div style={{
+                        position: 'absolute', left: -20, top: '50%', transform: 'translateY(-50%)',
+                        width: 20, height: 4,
+                        background: 'linear-gradient(-90deg, #e06c75 0%, transparent 100%)',
+                        filter: 'blur(1px)',
+                      }} />
+                    )}
+                    {/* Reverse direction */}
+                    {carData.current[i]?.speed < 0 && (
+                      <>
+                        <div style={{
+                          position: 'absolute', left: -40, top: '50%', transform: 'translateY(-50%)',
+                          width: 40, height: 12,
+                          background: 'linear-gradient(-90deg, rgba(255,255,255,0.6) 0%, transparent 100%)',
+                          borderRadius: '50% 0 0 50%',
+                          filter: 'blur(3px)',
+                        }} />
+                        <div style={{
+                          position: 'absolute', right: -20, top: '50%', transform: 'translateY(-50%)',
+                          width: 20, height: 4,
+                          background: 'linear-gradient(90deg, #e06c75 0%, transparent 100%)',
+                          filter: 'blur(1px)',
+                        }} />
+                      </>
+                    )}
                   </div>
-                  {/* Wheels */}
-                  <div style={{ position: 'absolute', bottom: -2, left: 4, width: 5, height: 5, background: '#0a0a0a', borderRadius: '50%' }} />
-                  <div style={{ position: 'absolute', bottom: -2, right: 4, width: 5, height: 5, background: '#0a0a0a', borderRadius: '50%' }} />
                 </div>
               </div>
             ))}
 
-            {/* Pedestrians */}
+            {/* Pedestrians (Glowing Silhouettes) */}
             {pedData.current.map((_, i) => (
               <div key={`ped-${i}`} ref={el => pedRefs.current[i] = el} style={{
                 position: 'absolute', bottom: GROUND_Y + (pedData.current[i]?.y || 2), left: 0,
@@ -935,17 +988,16 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
               }}>
                 <div style={{
                   display: 'flex', flexDirection: 'column', alignItems: 'center',
-                  animation: `walkBob 0.8s ease-in-out infinite`,
-                  animationDelay: `${i * 0.2}s`,
+                  animation: `walkBob 0.6s ease-in-out infinite`,
+                  animationDelay: `${i * 0.15}s`,
+                  opacity: 0.7,
+                  filter: 'drop-shadow(0 0 4px rgba(255,255,255,0.3))'
                 }}>
-                  {/* Head */}
-                  <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#c4b9a8', marginBottom: 1 }} />
-                  {/* Body */}
-                  <div style={{ width: 5, height: 7, background: `hsl(${(i * 60) % 360}, 40%, 55%)`, borderRadius: 1 }} />
-                  {/* Legs */}
+                  <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#c9d1d9', marginBottom: 1 }} />
+                  <div style={{ width: 5, height: 8, background: '#8b949e', borderRadius: 2 }} />
                   <div style={{ display: 'flex', gap: 1, marginTop: 1 }}>
-                    <div style={{ width: 2, height: 5, background: '#3a3a3a', borderRadius: 1, animation: `legMove 0.8s ease-in-out infinite`, animationDelay: '0s' }} />
-                    <div style={{ width: 2, height: 5, background: '#3a3a3a', borderRadius: 1, animation: `legMove 0.8s ease-in-out infinite`, animationDelay: '0.4s' }} />
+                    <div style={{ width: 2, height: 5, background: '#5c6370', borderRadius: 1, animation: `legMove 0.6s ease-in-out infinite`, animationDelay: '0s' }} />
+                    <div style={{ width: 2, height: 5, background: '#5c6370', borderRadius: 1, animation: `legMove 0.6s ease-in-out infinite`, animationDelay: '0.3s' }} />
                   </div>
                 </div>
               </div>
@@ -970,134 +1022,165 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
             {layoutItems.length === 0 && !loading && (
               <div style={{
                 position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: 'rgba(255,255,255,0.3)', fontSize: '0.9rem', zIndex: 30,
+                color: '#8b949e', fontSize: '1rem', fontWeight: 500, zIndex: 30, letterSpacing: '0.05em'
               }}>
-                No residents yet. Start studying to found the city.
+                The grid is empty. Begin a session to found the city.
               </div>
             )}
 
             {loading && (
               <div style={{
                 position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: '#d4a853', fontSize: '0.9rem', zIndex: 30,
+                color: '#e5c07b', fontSize: '1rem', fontWeight: 600, zIndex: 30, letterSpacing: '0.1em'
               }}>
-                Loading city…
+                <span style={{ animation: 'pulse 1.5s infinite' }}>INITIALIZING SECTOR...</span>
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* BELOW CITY */}
-      <div style={{ padding: '16px 24px 40px', maxWidth: 920, margin: '0 auto' }}>
+      {/* BELOW CITY DASHBOARD */}
+      <div style={{ padding: '32px 24px 60px', maxWidth: 1040, margin: '0 auto', position: 'relative', zIndex: 30 }}>
 
-        {/* YOUR CARD + LEADERBOARD */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+        {/* TOP ROW: YOUR CARD + LEADERBOARD */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20, marginBottom: 20 }}>
+          
+          {/* USER CARD */}
           <div style={{
-            background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
-            borderRadius: 14, padding: 16,
+            background: 'rgba(20, 24, 32, 0.6)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+            border: '1px solid rgba(255,255,255,0.05)', borderRadius: 20, padding: 24,
+            boxShadow: '0 10px 30px rgba(0,0,0,0.2)'
           }}>
-            <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>Your Building</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 12 }}>
-              <div>
-                <div style={{ fontSize: '1.3rem', fontWeight: 700, color: myRank.color, marginBottom: 2 }}>
-                  {myRank.label}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ fontSize: '0.75rem', color: '#8b949e', textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>Your Architecture</div>
+              {isStudying && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.75rem', color: '#e5c07b', fontWeight: 600, background: 'rgba(229,192,123,0.1)', padding: '4px 10px', borderRadius: 12 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#e5c07b', animation: 'pulse 1s infinite' }} />
+                  Illuminated
                 </div>
-                <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)' }}>{myHours}h studied · {S?.streak || 0} day streak</div>
+              )}
+            </div>
+            
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: myRank.color, marginBottom: 4, letterSpacing: '-0.02em' }}>
+                {myRank.label}
+              </div>
+              <div style={{ fontSize: '0.9rem', color: '#c9d1d9', fontWeight: 500 }}>
+                {myHours} hours total <span style={{ margin: '0 8px', color: '#444' }}>|</span> {S?.streak || 0} day streak 🔥
               </div>
             </div>
-            <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.6)', lineHeight: 1.6 }}>
-              {myHours < 5 && "Your studio is quiet. Start studying to light it up."}
-              {myHours >= 5 && myHours < 20 && "Your apartment windows are starting to glow. Keep going."}
-              {myHours >= 20 && myHours < 50 && "Your mid-rise is rising. The city is noticing."}
-              {myHours >= 50 && myHours < 100 && "Your high-rise towers above most. Neighbors look up."}
-              {myHours >= 100 && myHours < 200 && "Penthouse life. You're becoming a local legend."}
-              {myHours >= 200 && "Skyline Tower. You're the most recognizable building in the city."}
+            
+            <div style={{ fontSize: '0.85rem', color: '#8b949e', lineHeight: 1.6, marginBottom: 24, background: 'rgba(0,0,0,0.2)', padding: '12px 16px', borderRadius: 12 }}>
+              {myHours < 5 && "Your studio is quiet. Start studying to cast your light into the grid."}
+              {myHours >= 5 && myHours < 20 && "Your apartment windows are starting to glow. The foundation is set."}
+              {myHours >= 20 && myHours < 50 && "Your mid-rise is elevating the local skyline. Keep pushing."}
+              {myHours >= 50 && myHours < 100 && "A striking high-rise. Your dedication is highly visible."}
+              {myHours >= 100 && myHours < 200 && "Penthouse tier. You are a cornerstone of this metropolis."}
+              {myHours >= 200 && "Skyline Tower. An architectural monolith of pure focus."}
             </div>
-            {isStudying && (
-              <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.72rem', color: '#d4a853' }}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#d4a853', display: 'inline-block', animation: 'pulse 1s infinite' }} />
-                Your windows are glowing right now
+            
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#8b949e', marginBottom: 8, fontWeight: 500 }}>
+                <span>Progress to Next Tier</span>
+                <span style={{ color: '#e5c07b' }}>{Math.max(0, 50 - (myHours % 50))}h remaining</span>
               </div>
-            )}
-            <div style={{ marginTop: 12 }}>
-              <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>Next Level</div>
-              <div style={{ width: '100%', height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
-                <div style={{ width: `${Math.min(100, (myHours % 50) * 2)}%`, height: '100%', background: '#d4a853', borderRadius: 2 }} />
-              </div>
-              <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.35)', marginTop: 4 }}>
-                {Math.max(0, 50 - (myHours % 50))}h until next upgrade
+              <div style={{ width: '100%', height: 6, background: 'rgba(0,0,0,0.4)', borderRadius: 3, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <div style={{ width: `${Math.min(100, (myHours % 50) * 2)}%`, height: '100%', background: 'linear-gradient(90deg, #d19a66 0%, #e5c07b 100%)', borderRadius: 3, boxShadow: '0 0 10px rgba(229,192,123,0.5)' }} />
               </div>
             </div>
           </div>
 
+          {/* LEADERBOARD CARD */}
           <div style={{
-            background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
-            borderRadius: 14, padding: 16,
+            background: 'rgba(20, 24, 32, 0.6)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+            border: '1px solid rgba(255,255,255,0.05)', borderRadius: 20, padding: 24,
+            boxShadow: '0 10px 30px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column'
           }}>
-            <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>City Leaderboard</div>
-            {allResidents
-              .sort((a, b) => b.hours - a.hours)
-              .slice(0, 5)
-              .map((u, i) => {
-                const rank = getRankLabel(u.hours)
-                return (
-                  <div key={u.id} style={{
-                    display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0',
-                    borderBottom: i < 4 ? '1px solid rgba(255,255,255,0.06)' : 'none',
-                  }}>
-                    <div style={{ fontWeight: 700, fontSize: '0.8rem', color: i === 0 ? '#d4a853' : i === 1 ? '#aaa' : i === 2 ? '#c9956a' : 'rgba(255,255,255,0.3)', width: 16 }}>
-                      {i + 1}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: '0.82rem', fontWeight: 500, color: u.isMe ? '#d4a853' : '#fff', display: 'flex', alignItems: 'center', gap: 6 }}>
-                        {u.name}
-                        {u.studying && <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#5c8c6e', display: 'inline-block' }} />}
+            <div style={{ fontSize: '0.75rem', color: '#8b949e', textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600, marginBottom: 16 }}>City Grid Leaders</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1 }}>
+              {allResidents
+                .sort((a, b) => b.hours - a.hours)
+                .slice(0, 5)
+                .map((u, i) => {
+                  const rank = getRankLabel(u.hours)
+                  return (
+                    <div key={u.id} style={{
+                      display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px',
+                      background: u.isMe ? 'rgba(229,192,123,0.05)' : 'rgba(0,0,0,0.2)',
+                      border: `1px solid ${u.isMe ? 'rgba(229,192,123,0.2)' : 'rgba(255,255,255,0.03)'}`,
+                      borderRadius: 12, transition: 'transform 0.2s ease',
+                      cursor: 'pointer'
+                    }} onClick={() => setSelectedUser(u)} className="hover-scale">
+                      <div style={{ 
+                        width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: i === 0 ? 'linear-gradient(135deg, #e5c07b 0%, #d19a66 100%)' : i === 1 ? 'linear-gradient(135deg, #c9d1d9 0%, #8b949e 100%)' : i === 2 ? 'linear-gradient(135deg, #d19a66 0%, #a87b51 100%)' : 'rgba(255,255,255,0.05)',
+                        color: i < 3 ? '#111' : '#8b949e', fontWeight: 800, fontSize: '0.8rem'
+                      }}>
+                        {i + 1}
                       </div>
-                      <div style={{ fontSize: '0.65rem', color: rank.color }}>{rank.label}</div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '0.9rem', fontWeight: 600, color: u.isMe ? '#e5c07b' : '#c9d1d9', display: 'flex', alignItems: 'center', gap: 8 }}>
+                          {u.name}
+                          {u.studying && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#98c379', boxShadow: '0 0 8px rgba(152,195,121,0.8)' }} />}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: rank.color, marginTop: 2 }}>{rank.label}</div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '1rem', fontWeight: 800, color: '#fff' }}>{u.hours}<span style={{fontSize:'0.7rem', color:'#8b949e', fontWeight:500}}>h</span></div>
+                        <div style={{ fontSize: '0.75rem', color: '#d19a66', fontWeight: 600 }}>{u.streak}d 🔥</div>
+                      </div>
                     </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#fff' }}>{u.hours}h</div>
-                      <div style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.4)' }}>🔥 {u.streak}d</div>
-                    </div>
-                  </div>
-                )
-              })}
+                  )
+                })}
+            </div>
           </div>
         </div>
 
         {/* LIVE ACTIVITY */}
         <div style={{
-          background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
-          borderRadius: 14, padding: 16, marginBottom: 14,
+          background: 'rgba(20, 24, 32, 0.6)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+          border: '1px solid rgba(255,255,255,0.05)', borderRadius: 20, padding: 24, marginBottom: 20,
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Live Activity</div>
-            <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)' }}>Real-time · updates every 10s</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <div style={{ fontSize: '0.75rem', color: '#8b949e', textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>Active Protocols</div>
+            <div style={{ fontSize: '0.75rem', color: '#5c6370', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#5c6370', animation: 'blink 2s infinite' }} />
+              Live Sync
+            </div>
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
             {allResidents.filter(u => u.studying).map(u => (
               <div key={u.id} style={{
-                display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px',
-                background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
-                borderRadius: 10, cursor: 'pointer',
-              }} onClick={() => setSelectedUser(u)}>
-                <div style={{
-                  width: 10, height: 10, borderRadius: 2,
-                  background: u.mode === 'deep' ? 'rgba(80,120,255,0.9)' : u.mode === 'exam' ? 'rgba(220,80,80,0.9)' : 'rgba(255,215,80,0.9)',
-                  boxShadow: u.mode === 'deep' ? '0 0 6px rgba(80,120,255,0.8)' : u.mode === 'exam' ? '0 0 6px rgba(220,80,80,0.8)' : '0 0 6px rgba(255,215,80,0.7)',
-                  animation: 'pulse 1.5s ease-in-out infinite',
-                  flexShrink: 0,
-                }} />
+                display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px',
+                background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.05)',
+                borderRadius: 14, cursor: 'pointer', transition: 'all 0.2s ease'
+              }} onClick={() => setSelectedUser(u)} className="hover-highlight">
+                <div style={{ position: 'relative', width: 12, height: 12 }}>
+                  <div style={{
+                    position: 'absolute', inset: 0, borderRadius: 3,
+                    background: u.mode === 'deep' ? '#61afef' : u.mode === 'exam' ? '#e06c75' : '#e5c07b',
+                    boxShadow: u.mode === 'deep' ? '0 0 10px rgba(97,175,239,0.8)' : u.mode === 'exam' ? '0 0 10px rgba(224,108,117,0.8)' : '0 0 10px rgba(229,192,123,0.8)',
+                    zIndex: 2
+                  }} />
+                  <div style={{
+                    position: 'absolute', inset: -4, borderRadius: 6,
+                    background: u.mode === 'deep' ? 'rgba(97,175,239,0.4)' : u.mode === 'exam' ? 'rgba(224,108,117,0.4)' : 'rgba(229,192,123,0.4)',
+                    animation: 'pulse 1.5s ease-in-out infinite',
+                    zIndex: 1
+                  }} />
+                </div>
                 <div>
-                  <div style={{ fontSize: '0.78rem', fontWeight: 500, color: '#fff' }}>{u.name}</div>
-                  <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)' }}>{u.subject || 'Studying'}</div>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#c9d1d9' }}>{u.name}</div>
+                  <div style={{ fontSize: '0.7rem', color: '#8b949e', marginTop: 2 }}>{u.subject || 'Studying'}</div>
                 </div>
               </div>
             ))}
+            
             {allResidents.filter(u => u.studying).length === 0 && (
-              <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.3)', padding: '8px 0' }}>
-                Nobody is studying right now. Start a focus session to light up your windows →
+              <div style={{ fontSize: '0.85rem', color: '#5c6370', padding: '12px 16px', background: 'rgba(0,0,0,0.2)', borderRadius: 12, width: '100%', textAlign: 'center', fontStyle: 'italic' }}>
+                Grid is currently silent. Initiate a focus session to illuminate your sector.
               </div>
             )}
           </div>
@@ -1105,46 +1188,50 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
 
         {/* HOW IT WORKS */}
         <div style={{
-          background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
-          borderRadius: 14, padding: 16,
+          background: 'rgba(20, 24, 32, 0.6)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+          border: '1px solid rgba(255,255,255,0.05)', borderRadius: 20, padding: 24,
         }}>
-          <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>How Your Building Evolves</div>
-          <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 4 }}>
+          <div style={{ fontSize: '0.75rem', color: '#8b949e', textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600, marginBottom: 16 }}>Evolution Roadmap</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
             {[
-              { label: 'Studio', hours: '0–5h', color: '#5a5248' },
-              { label: 'Apartment', hours: '5–20h', color: '#7a7468' },
-              { label: 'Mid-Rise', hours: '20–50h', color: '#5c8c6e' },
-              { label: 'High-Rise', hours: '50–100h', color: '#4a7a9b' },
-              { label: 'Penthouse', hours: '100–200h', color: '#c9956a' },
-              { label: 'Skyline Tower', hours: '200h+', color: '#d4a853' },
+              { label: 'Studio', hours: '0–5h', color: '#5c6370' },
+              { label: 'Apartment', hours: '5–20h', color: '#abb2bf' },
+              { label: 'Mid-Rise', hours: '20–50h', color: '#98c379' },
+              { label: 'High-Rise', hours: '50–100h', color: '#61afef' },
+              { label: 'Penthouse', hours: '100–200h', color: '#d19a66' },
+              { label: 'Skyline Tower', hours: '200h+', color: '#e5c07b' },
             ].map((tier, i) => (
               <div key={tier.label} style={{
-                flex: '0 0 auto', textAlign: 'center', padding: '12px 16px',
-                background: myHours >= [0, 5, 20, 50, 100, 200][i] ? 'rgba(212,168,83,0.08)' : 'rgba(255,255,255,0.03)',
-                border: `1px solid ${myHours >= [0, 5, 20, 50, 100, 200][i] ? tier.color + '50' : 'rgba(255,255,255,0.06)'}`,
-                borderRadius: 10,
+                textAlign: 'center', padding: '16px',
+                background: myHours >= [0, 5, 20, 50, 100, 200][i] ? `${tier.color}15` : 'rgba(0,0,0,0.2)',
+                border: `1px solid ${myHours >= [0, 5, 20, 50, 100, 200][i] ? `${tier.color}40` : 'rgba(255,255,255,0.03)'}`,
+                borderRadius: 14, transition: 'all 0.3s ease'
               }}>
-                <div style={{ fontWeight: 700, color: tier.color, fontSize: '0.82rem', marginBottom: 2 }}>{tier.label}</div>
-                <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)' }}>{tier.hours}</div>
+                <div style={{ width: 32, height: 32, borderRadius: '50%', background: myHours >= [0, 5, 20, 50, 100, 200][i] ? tier.color : '#303642', margin: '0 auto 10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#111', fontWeight: 800, fontSize: '0.8rem', boxShadow: myHours >= [0, 5, 20, 50, 100, 200][i] ? `0 0 12px ${tier.color}80` : 'none' }}>
+                  {i + 1}
+                </div>
+                <div style={{ fontWeight: 700, color: myHours >= [0, 5, 20, 50, 100, 200][i] ? tier.color : '#8b949e', fontSize: '0.9rem', marginBottom: 4 }}>{tier.label}</div>
+                <div style={{ fontSize: '0.75rem', color: '#5c6370', fontWeight: 500 }}>{tier.hours}</div>
               </div>
             ))}
           </div>
         </div>
 
         {/* SQL Toggle */}
-        <div style={{ marginTop: 14 }}>
+        <div style={{ marginTop: 24, textAlign: 'center' }}>
           <button onClick={() => setShowSQL(s => !s)} style={{
-            background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
-            color: 'rgba(255,255,255,0.4)', borderRadius: 8, padding: '6px 12px',
-            fontSize: '0.65rem', cursor: 'pointer', fontFamily: "'Anthropic Serif',Georgia,serif",
-          }}>
-            {showSQL ? 'Hide Supabase Schema' : 'Show Supabase Schema'}
+            background: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
+            color: '#8b949e', borderRadius: 20, padding: '8px 20px',
+            fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s',
+          }} className="hover-button">
+            {showSQL ? 'Close Schematic' : 'View Database Schematic'}
           </button>
           {showSQL && (
             <pre style={{
-              marginTop: 8, background: 'rgba(6,6,20,0.97)', border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: 10, padding: 14, fontSize: '0.62rem', color: '#a5d6a7',
-              maxWidth: '100%', maxHeight: 300, overflowY: 'auto', whiteSpace: 'pre-wrap', fontFamily: 'monospace',
+              marginTop: 16, background: '#0d1117', border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: 12, padding: 20, fontSize: '0.8rem', color: '#98c379',
+              maxWidth: '100%', maxHeight: 300, overflowY: 'auto', whiteSpace: 'pre-wrap', fontFamily: "'Fira Code', monospace",
+              textAlign: 'left', boxShadow: 'inset 0 0 20px rgba(0,0,0,0.5)'
             }}>
               {SQL_SCHEMA}
             </pre>
@@ -1155,100 +1242,119 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
       {/* MODAL */}
       {selectedUser && (
         <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100,
-          backdropFilter: 'blur(6px)',
+          backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', padding: 20
         }} onClick={e => e.target === e.currentTarget && setSelectedUser(null)}>
           <div style={{
-            background: '#0c0b18', border: '1px solid rgba(255,255,255,0.08)',
-            borderRadius: 16, padding: 24, width: 360, maxWidth: '90vw',
+            background: 'rgba(20, 24, 32, 0.95)', border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 24, padding: 32, width: 400, maxWidth: '100%',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.05)'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff' }}>{selectedUser.name}</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
+              <div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#fff', marginBottom: 4 }}>{selectedUser.name}</div>
+                <div style={{ fontSize: '0.85rem', color: getRankLabel(selectedUser.hours).color, fontWeight: 600 }}>{getRankLabel(selectedUser.hours).label}</div>
+              </div>
               <button onClick={() => setSelectedUser(null)} style={{
-                background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)',
-                fontSize: '1.2rem', cursor: 'pointer',
-              }}>✕</button>
+                background: 'rgba(255,255,255,0.05)', border: 'none', color: '#8b949e',
+                width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '1rem', cursor: 'pointer', transition: 'all 0.2s'
+              }} className="hover-button">✕</button>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
-              <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: 12, textAlign: 'center' }}>
-                <div style={{ fontSize: '1.8rem', fontWeight: 700, color: '#d4a853' }}>{selectedUser.hours}h</div>
-                <div style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Total Study</div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+              <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: 16, padding: 20, textAlign: 'center' }}>
+                <div style={{ fontSize: '2.2rem', fontWeight: 800, color: '#e5c07b', marginBottom: 4 }}>{selectedUser.hours}</div>
+                <div style={{ fontSize: '0.7rem', color: '#8b949e', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600 }}>Total Hours</div>
               </div>
-              <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: 12, textAlign: 'center' }}>
-                <div style={{ fontSize: '1.8rem', fontWeight: 700, color: '#5c8c6e' }}>🔥{selectedUser.streak}d</div>
-                <div style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Streak</div>
+              <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: 16, padding: 20, textAlign: 'center' }}>
+                <div style={{ fontSize: '2.2rem', fontWeight: 800, color: '#d19a66', marginBottom: 4 }}>{selectedUser.streak}</div>
+                <div style={{ fontSize: '0.7rem', color: '#8b949e', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600 }}>Day Streak</div>
               </div>
             </div>
-            <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: 12, marginBottom: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{
-                  width: 12, height: 12, borderRadius: 2,
-                  background: selectedUser.studying
-                    ? selectedUser.mode === 'deep' ? 'rgba(80,120,255,0.9)' : 'rgba(255,215,80,0.9)'
-                    : 'rgba(255,255,255,0.08)',
-                  boxShadow: selectedUser.studying ? '0 0 8px rgba(255,215,80,0.7)' : 'none',
-                  flexShrink: 0,
-                }} />
+            
+            <div style={{ background: selectedUser.studying ? 'rgba(152,195,121,0.1)' : 'rgba(0,0,0,0.3)', border: `1px solid ${selectedUser.studying ? 'rgba(152,195,121,0.2)' : 'rgba(255,255,255,0.03)'}`, borderRadius: 16, padding: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <div style={{ position: 'relative', width: 16, height: 16 }}>
+                  <div style={{
+                    position: 'absolute', inset: 0, borderRadius: 4,
+                    background: selectedUser.studying
+                      ? selectedUser.mode === 'deep' ? '#61afef' : selectedUser.mode === 'exam' ? '#e06c75' : '#e5c07b'
+                      : 'rgba(255,255,255,0.1)',
+                    boxShadow: selectedUser.studying ? `0 0 12px ${selectedUser.mode === 'deep' ? '#61afef' : selectedUser.mode === 'exam' ? '#e06c75' : '#e5c07b'}` : 'none',
+                    zIndex: 2
+                  }} />
+                  {selectedUser.studying && (
+                    <div style={{
+                      position: 'absolute', inset: -6, borderRadius: 8,
+                      background: selectedUser.mode === 'deep' ? 'rgba(97,175,239,0.3)' : selectedUser.mode === 'exam' ? 'rgba(224,108,117,0.3)' : 'rgba(229,192,123,0.3)',
+                      animation: 'pulse 1.5s infinite',
+                      zIndex: 1
+                    }} />
+                  )}
+                </div>
                 <div>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 500, color: '#fff' }}>
-                    {selectedUser.studying ? `Studying ${selectedUser.subject || 'right now'}` : 'Offline'}
+                  <div style={{ fontSize: '1rem', fontWeight: 600, color: selectedUser.studying ? '#fff' : '#8b949e' }}>
+                    {selectedUser.studying ? `Active Protocol: ${selectedUser.subject || 'Focus'}` : 'Status: Offline'}
                   </div>
-                  <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)' }}>
-                    {selectedUser.studying ? 'Window is glowing' : 'Window is dark'}
+                  <div style={{ fontSize: '0.8rem', color: selectedUser.studying ? '#98c379' : '#5c6370', marginTop: 4 }}>
+                    {selectedUser.studying ? 'Sector illuminated and broadcasting' : 'Sector powered down'}
                   </div>
                 </div>
               </div>
-            </div>
-            <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.4)', lineHeight: 1.6 }}>
-              {getRankLabel(selectedUser.hours).label} · {selectedUser.hours}h studied
             </div>
           </div>
         </div>
       )}
 
       <style>{`
+        .hover-scale:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); background: rgba(255,255,255,0.05) !important; }
+        .hover-highlight:hover { background: rgba(255,255,255,0.05) !important; border-color: rgba(255,255,255,0.1) !important; }
+        .hover-button:hover { background: rgba(255,255,255,0.1) !important; color: #fff !important; }
+        .building-hover:hover { filter: brightness(1.2); }
+        
         @keyframes pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.5; transform: scale(1.1); }
+        }
+        @keyframes blink {
           0%, 100% { opacity: 1; }
-          50% { opacity: 0.4; }
+          50% { opacity: 0; }
         }
         @keyframes twinkle {
-          0%, 100% { opacity: 0.3; transform: scale(1); }
-          50% { opacity: 1; transform: scale(1.3); }
+          0%, 100% { opacity: 0.2; transform: scale(0.8); }
+          50% { opacity: 1; transform: scale(1.2); }
         }
         @keyframes rainfall {
-          0% { transform: translateY(-10px); opacity: 0; }
+          0% { transform: translateY(-20px) rotate(5deg); opacity: 0; }
           10% { opacity: 1; }
-          90% { opacity: 1; }
-          100% { transform: translateY(460px); opacity: 0; }
+          80% { opacity: 1; }
+          100% { transform: translateY(520px) rotate(5deg); opacity: 0; }
         }
         @keyframes snowfall {
-          0% { transform: translateY(-6px) translateX(0); opacity: 0; }
-          10% { opacity: 0.9; }
-          90% { opacity: 0.9; }
-          100% { transform: translateY(460px) translateX(20px); opacity: 0; }
+          0% { transform: translateY(-10px) translateX(0); opacity: 0; }
+          10% { opacity: 1; }
+          90% { opacity: 1; }
+          100% { transform: translateY(520px) translateX(30px); opacity: 0; }
         }
         @keyframes flash {
           0% { opacity: 0; }
-          50% { opacity: 1; }
+          50% { opacity: 1; background: rgba(255,255,255,0.3); }
           100% { opacity: 0; }
         }
         @keyframes drift {
-          0% { transform: translateX(0); }
-          50% { transform: translateX(20px); }
-          100% { transform: translateX(0); }
-        }
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
+          0% { transform: translateX(0) scale(1); }
+          50% { transform: translateX(30px) scale(1.05); }
+          100% { transform: translateX(0) scale(1); }
         }
         @keyframes walkBob {
           0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-2px); }
+          50% { transform: translateY(-3px); }
         }
         @keyframes legMove {
           0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-2px); }
+          50% { transform: translateY(-3px); }
         }
       `}</style>
     </div>

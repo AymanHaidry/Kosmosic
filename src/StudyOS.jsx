@@ -15,6 +15,15 @@ const QUOTES = [
   { text: 'You don\'t rise to the level of your goals, you fall to the level of your systems.', author: 'James Clear' },
 ]
 
+const MOTIVATION_POOL = [
+  { t: 'Keep going!', b: 'Discipline is doing what needs to be done, even if you don\'t feel like doing it.' },
+  { t: 'Deep Focus', b: 'One hour of deep work is worth five of distracted effort.' },
+  { t: 'Small steps', b: 'Tiny gains compound into life-changing results.' },
+  { t: 'Your future self', b: 'Your future self is watching you right now through memories.' },
+  { t: 'Embrace the suck', b: 'The path to 98% is supposed to be uncomfortable.' },
+  { t: 'Momentum', b: 'You\'ve started — now don\'t break the chain.' },
+]
+
 const AWARDS = [
   { id: 'first_session', icon: '🌱', title: 'First Steps', desc: 'Complete your first session', req: s => (s.sessions || []).length >= 1, criteria: '1 session' },
   { id: 'streak_3', icon: '🔥', title: 'On Fire', desc: '3-day streak', req: s => s.streak >= 3, criteria: '3 day streak' },
@@ -61,6 +70,7 @@ const defaultState = () => ({
     focusSessionMins: 25, breakMins: 5, longBreakMins: 15,
     burnoutDetection: false, moodCheckins: true, dopamineDetox: false,
     theme: 'premium-dark',
+    pushNotifications: true,
   },
   aiHistory: [],
   activityFeed: [],
@@ -69,6 +79,37 @@ const defaultState = () => ({
 function sendBrowserNotif(title, body) {
   if ('Notification' in window && Notification.permission === 'granted') {
     new Notification(title, { body, icon: '/favicon.ico' })
+  }
+}
+
+/* ══════════════════════════════
+   PUSH NOTIFICATIONS (Duolingo-style)
+══════════════════════════════ */
+function requestNotifPerm() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission()
+  }
+}
+
+async function sendPush(title, body, options = {}) {
+  const { icon = '/favicon.ico', tag, requireInteraction = false, actions = [], data = {}, silent = false } = options
+  const payload = { title, body, icon, badge: icon, tag, requireInteraction, actions, data, silent }
+
+  // 1. Try Service Worker (works even if tab is closed/minimized on mobile/desktop PWA)
+  if ('serviceWorker' in navigator) {
+    try {
+      const reg = await navigator.serviceWorker.ready
+      await reg.showNotification(title, payload)
+      return
+    } catch (e) { /* fallback */ }
+  }
+
+  // 2. Fallback to standard Notification API
+  if ('Notification' in window && Notification.permission === 'granted') {
+    const n = new Notification(title, { body, icon, tag, requireInteraction, silent })
+    if (actions.length && 'onclick' in n) {
+      n.onclick = () => { window.focus(); n.close() }
+    }
   }
 }
 
@@ -133,10 +174,10 @@ function JellyfishPet({ daysSinceStudy }) {
           {/* Bell layers */}
           <ellipse cx="35" cy="34" rx="24" ry="22" fill={color} fillOpacity="0.35" />
           <ellipse cx="35" cy="32" rx="24" ry="22" fill={color} fillOpacity="0.6" />
-          
+
           {/* Highlight */}
           <ellipse cx="27" cy="22" rx="7" ry="5" fill="rgba(255,255,255,0.35)" transform="rotate(-15 27 22)" />
-          
+
           {/* Eyes & Mouth */}
           {dead ? (
             <>
@@ -163,7 +204,7 @@ function JellyfishPet({ daysSinceStudy }) {
               <path d="M29 45 Q35 49 41 45" fill="none" stroke="rgba(255,255,255,0.8)" strokeWidth="1.5" strokeLinecap="round" />
             </>
           )}
-          
+
           {/* Tentacles — anchored at rim (y=56) */}
           {[18,26,34,42,50].map((tx, i) => (
             <path key={i} 
@@ -181,7 +222,7 @@ function JellyfishPet({ daysSinceStudy }) {
           ))}
         </svg>
       </div>
-      
+
       {/* Status text */}
       <div style={{ fontSize:'0.68rem', color:'var(--text3)', marginTop:4, fontFamily:"'Anthropic Serif',Georgia,serif" }}>
         {dead ? '💀 Your jellyfish died! Study now to revive.' : sick ? `😰 Lumina is unwell (${daysSinceStudy}d absent)` : `💙 Lumina is happy${health===100?' & thriving':''}`}
@@ -255,6 +296,13 @@ export default function StudyOS({ session }) {
   const [quote] = useState(QUOTES[Math.floor(Math.random() * QUOTES.length)])
   const particlesRef = useRef(null)
 
+  // ─── PUSH NOTIFICATION STATE ───
+  const [notifState, setNotifState] = useState({
+    jellyfishNotified: null,
+    streakNotified: false,
+    motivationIdx: 0,
+  })
+
   useEffect(() => {
     if (!particlesRef.current) return
     for (let i = 0; i < 25; i++) {
@@ -268,6 +316,31 @@ export default function StudyOS({ session }) {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
   }, [theme])
+
+  // ─── REGISTER SERVICE WORKER & REQUEST PERMISSIONS ───
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(console.error)
+    }
+    requestNotifPerm()
+  }, [])
+
+  // ─── LISTEN FOR NOTIFICATION CLICKS FROM SW ───
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return
+    const handler = (event) => {
+      const { action, data } = event.data || {}
+      if (action === 'focus' || action === 'again') {
+        setPage('timer')
+      } else if (action === 'break') {
+        setMode('short', S.settings?.breakMins || 5)
+      } else if (action === 'startBreak') {
+        setMode('short', S.settings?.breakMins || 5)
+      }
+    }
+    navigator.serviceWorker.addEventListener('message', handler)
+    return () => navigator.serviceWorker.removeEventListener('message', handler)
+  }, [S.settings?.breakMins])
 
   // ─── LOAD USER DATA + CLOUD TIMER ───
   useEffect(() => {
@@ -299,7 +372,6 @@ export default function StudyOS({ session }) {
       if (merged.lastStudiedDate && merged.lastStudiedDate !== today) {
         merged.todayMinutes = 0
       }
-      // FIX: Clean corrupted studiedDays and recalculate streak from Supabase data
       merged.studiedDays = cleanStudiedDays(merged.studiedDays || [])
       merged.streak = calcStreakFromDays(merged.studiedDays)
       setS(merged)
@@ -418,14 +490,34 @@ export default function StudyOS({ session }) {
 
   // ─── TIMER COMPLETION ───
   const handleTimerComplete = useCallback((elapsedSecs) => {
+    const mins = Math.round(elapsedSecs / 60)
     notify(isFocusTimerMode(timerMode) ? '✓ Session complete! Take a break.' : 'Break over. Back to work.')
+
+    // PUSH: Session done
+    if (S.settings?.pushNotifications !== false) {
+      sendPush(
+        isFocusTimerMode(timerMode) ? '✅ Session Complete!' : '☕ Break Over',
+        isFocusTimerMode(timerMode) 
+          ? `You crushed ${mins} minutes${activeSubjectRef.current !== 'General' ? ' of ' + activeSubjectRef.current : ''}. ${S.streak > 0 ? `🔥 ${S.streak}-day streak alive.` : ''}`
+          : 'Break finished. Ready to lock in again?',
+        {
+          tag: 'timer-done',
+          requireInteraction: isFocusTimerMode(timerMode),
+          actions: isFocusTimerMode(timerMode) 
+            ? [{ action: 'break', title: 'Start Break' }, { action: 'again', title: 'Again' }]
+            : [{ action: 'focus', title: 'Focus' }],
+          data: { page: 'timer' }
+        }
+      )
+    }
+
     if (isFocusTimerMode(timerMode)) {
       recordFocusSessionDirect(elapsedSecs, S.studyMode, activeSubjectRef.current)
     }
     segmentStartRef.current = null
     timerStartRef.current = null
     saveCloudTimer({ is_running: false, started_at: null, timer_secs: 0, segment_start_secs: null })
-  }, [timerMode, S.studyMode])
+  }, [timerMode, S.studyMode, S.streak, S.settings?.pushNotifications])
 
    // ─── RECORD SESSION (direct, no closure dependencies on timer state) ───
   const recordFocusSessionDirect = (elapsedSecs, studyMode, subject) => {
@@ -439,7 +531,6 @@ export default function StudyOS({ session }) {
       const sessions = [...(prev.sessions || []), { date: today, mins, mode: studyMode || 'focus', ts: Date.now(), subject: activeSub }]
       const totalMinutes = (prev.totalMinutes || 0) + mins
       const todayMinutes = (prev.todayMinutes || 0) + mins
-      // FIX: Clean studiedDays before adding today, dedupe, then recalculate streak
       const cleanDays = cleanStudiedDays(prev.studiedDays || [])
       const studiedDays = cleanDays.includes(today) ? cleanDays : [...cleanDays, today]
       const missedDays = (prev.missedDays || []).filter(d => d !== today)
@@ -466,6 +557,16 @@ export default function StudyOS({ session }) {
     segmentStartRef.current = timerSecs
     timerStartRef.current = Date.now()
     setTimerRunning(true)
+
+    // PUSH: Timer started
+    if (S.settings?.pushNotifications !== false) {
+      sendPush('▶ Timer Started', `Focus session running — ${S.studyMode === 'deep' ? 'Deep Work' : S.studyMode === 'exam' ? 'Exam Mode' : 'Focus'}${activeSubjectRef.current !== 'General' ? ' · ' + activeSubjectRef.current : ''}`, {
+        tag: 'timer-start',
+        silent: true,
+        data: { page: 'timer' }
+      })
+    }
+
     await saveCloudTimer({ is_running: true, started_at: now, segment_start_secs: timerSecs, timer_secs: timerSecs })
     startLocalTimer()
   }
@@ -482,6 +583,16 @@ export default function StudyOS({ session }) {
       if (elapsedSecs > 0) {
         recordFocusSessionDirect(elapsedSecs, S.studyMode, activeSubjectRef.current)
       }
+
+      // PUSH: Timer paused
+      if (S.settings?.pushNotifications !== false) {
+        sendPush('⏸ Timer Paused', `Session paused at ${fmtTime(remaining)}. Come back soon — your streak depends on it.`, {
+          tag: 'timer-pause',
+          silent: true,
+          data: { page: 'timer' }
+        })
+      }
+
       segmentStartRef.current = null
       timerStartRef.current = null
     }
@@ -567,6 +678,75 @@ export default function StudyOS({ session }) {
       updateS(prev => ({ ...prev, todayMinutes: 0 }))
     }
   }, [])
+
+  // ─── PUSH: STREAK SAVER (Duolingo-style evening nudge) ───
+  useEffect(() => {
+    if (!session || S.settings?.pushNotifications === false) return
+    const checkStreak = () => {
+      const today = todayKey()
+      const last = S.lastStudiedDate
+      const hour = new Date().getHours()
+      const minsLeft = (S.dailyGoal || 120) - (S.todayMinutes || 0)
+
+      if (last && last !== today) {
+        const daysSince = Math.floor((Date.now() - new Date(last)) / 86400000)
+        if (daysSince === 1 && hour >= 18 && !notifState.streakNotified && minsLeft > 0) {
+          sendPush(
+            '🔥 Streak at Risk!',
+            `You haven't studied today. ${minsLeft} min to save your ${S.streak || 0}-day streak!`,
+            {
+              tag: 'streak-risk',
+              requireInteraction: true,
+              actions: [{ action: 'focus', title: 'Start Session' }],
+              data: { page: 'timer' }
+            }
+          )
+          setNotifState(prev => ({ ...prev, streakNotified: true }))
+        }
+      }
+    }
+    checkStreak()
+    const interval = setInterval(checkStreak, 30 * 60 * 1000) // every 30 min
+    return () => clearInterval(interval)
+  }, [session, S.lastStudiedDate, S.todayMinutes, S.dailyGoal, S.streak, notifState.streakNotified, S.settings?.pushNotifications])
+
+  // ─── PUSH: JELLYFISH STATUS WATCHER ───
+  useEffect(() => {
+    if (!session || S.settings?.pushNotifications === false) return
+    const lastStudied = (S.studiedDays || []).sort().at(-1)
+    const daysSince = lastStudied ? Math.floor((Date.now() - new Date(lastStudied)) / 86400000) : 999
+
+    if (daysSince !== notifState.jellyfishNotified) {
+      if (daysSince === 1) {
+        sendPush('🪼 Lumina misses you', '1 day without study. Come back before she gets sick!', { tag: 'jellyfish-1', data: { page: 'dash' } })
+      } else if (daysSince === 2) {
+        sendPush('😰 Lumina is sick', '2 days absent! Study now to nurse her back to health.', { tag: 'jellyfish-2', requireInteraction: true, data: { page: 'timer' } })
+      } else if (daysSince > 2) {
+        sendPush('💀 Lumina died', 'Your jellyfish passed away. Start a session to revive her!', { tag: 'jellyfish-dead', requireInteraction: true, actions: [{ action: 'focus', title: 'Revive' }], data: { page: 'timer' } })
+      }
+      setNotifState(prev => ({ ...prev, jellyfishNotified: daysSince }))
+    }
+  }, [session, S.studiedDays, notifState.jellyfishNotified, S.settings?.pushNotifications])
+
+  // ─── PUSH: MOTIVATION DURING FOCUS ───
+  useEffect(() => {
+    if (!timerRunning || !isFocusTimerMode(timerMode) || S.settings?.pushNotifications === false) return
+    const interval = setInterval(() => {
+      const q = MOTIVATION_POOL[Math.floor(Math.random() * MOTIVATION_POOL.length)]
+      sendPush(`⚡ ${q.t}`, q.b, { tag: 'motivation', silent: true, data: { page: 'timer' } })
+    }, 90 * 60 * 1000) // every 90 min
+    return () => clearInterval(interval)
+  }, [timerRunning, timerMode, S.settings?.pushNotifications])
+
+  // ─── RESET NOTIFICATION FLAGS AT MIDNIGHT ───
+  useEffect(() => {
+    const now = new Date()
+    const msToMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1) - now
+    const timeout = setTimeout(() => {
+      setNotifState({ jellyfishNotified: null, streakNotified: false, motivationIdx: 0 })
+    }, msToMidnight)
+    return () => clearTimeout(timeout)
+  }, [S.lastStudiedDate])
 
   const initials = session
     ? (session.user.user_metadata?.full_name || session.user.email || 'U').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
@@ -1831,6 +2011,8 @@ function SettingsPage({ S, updateS, dark, setDark, signOut, session, notify }) {
       {activeSection === 'notifications' && (
         <div className="card settings-section">
           <div className="settings-section-title">Notifications</div>
+          <Toggle skey="pushNotifications" label="Push Notifications" sub="Enable Duolingo-style push on PC & mobile (requires PWA or native app)" />
+          <div className="divider" />
           <Toggle skey="studyReminders" label="Study Reminders" sub="Remind you to start your daily session" />
           <div className="divider" />
           <Toggle skey="breakReminders" label="Break Reminders" sub="Notify when it's time to take a break" />
@@ -1987,7 +2169,7 @@ function SettingsPage({ S, updateS, dark, setDark, signOut, session, notify }) {
 
       <div style={{ marginTop: 20, textAlign: 'center' }}>
         <div style={{ fontFamily: "'Anthropic Serif',Georgia,serif", color: 'var(--accent)', marginBottom: 4, fontSize: '0.9rem' }}>Kosmosic — Study OS</div>
-        <div style={{ fontSize: '0.68rem', color: 'var(--text3)' }}>Version 2.0 · Built for the relentless</div>
+        <div style={{ fontSize: '0.68rem', color: 'var(--text3)' }}>Version 2.1 · Built for the relentless</div>
       </div>
     </div>
   )
