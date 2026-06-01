@@ -3,41 +3,31 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-
   "main": "electron/main.cjs",
-
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-
     "electron": "electron .",
-
     "dist": "vite build && electron-builder",
-
     "dist:win": "vite build && electron-builder --win"
   },
-
   "build": {
     "appId": "com.kosmosic.app",
     "productName": "Kosmosic",
-
     "directories": {
       "output": "dist-electron"
     },
-
     "files": [
       "dist/**/*",
       "electron/**/*"
     ],
-
     "win": {
       "target": [
         "nsis"
       ],
       "icon": "build/icon.ico"
     },
-
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
@@ -45,23 +35,20 @@
       "createStartMenuShortcut": true
     }
   },
-
   "dependencies": {
     "@supabase/supabase-js": "^2.47.0",
+    "@vercel/analytics": "^2.0.1",
     "chart.js": "^4.4.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.28.0"
   },
-
   "devDependencies": {
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.3",
-
     "electron": "^31.0.2",
     "electron-builder": "^24.13.3",
-
     "vite": "^5.4.11"
   }
 }
