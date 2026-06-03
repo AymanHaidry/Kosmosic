@@ -162,7 +162,7 @@ Features, interfaces, APIs, and availability may change at any time without prio
 
 Kosmosic began with a simple idea:
 
-> Students should not have to study alone.
+> To help ambitious people spend less time fighting distractions and more time building their future.
 
 The long-term goal is to build an ecosystem where focus, accountability, and community work together to help people achieve more than they could individually.
 
