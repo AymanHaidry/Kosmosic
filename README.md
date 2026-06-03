@@ -40,7 +40,7 @@ Kosmosic is a community-driven study focus app designed to help you stay motivat
 
 ## Contributing
 
-This project does **not** accept code contributions.  
+This project does accepts code contributions. Please create a new branch, and code their.
 Bug reports and feature requests may be submitted via [GitHub Issues](https://github.com/AymanHaidry/Kosmosic/issues).
 
 ---
