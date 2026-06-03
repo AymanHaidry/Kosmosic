@@ -23,8 +23,8 @@ Kosmosic is a community-driven study focus app designed to help you stay motivat
 | `electron/` | Compiled Electron wrapper (desktop) |
 | `public/` | Static public assets |
 | `.github/` | GitHub metadata & issue templates |
-
-> **Note:** The `src/` directory and all original source files have been removed from this public repository. This repository serves as a distribution and issue-tracking endpoint only.
+| `src/` | Main Components & pages |
+|  `./` | Other minor files & some docs |
 
 ---
 
