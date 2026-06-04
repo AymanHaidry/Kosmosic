@@ -80,31 +80,40 @@ const getTier = (hours) => {
 /* ─── weather helpers ─── */
 const PHASES = { NIGHT: 'night', DAWN: 'dawn', DAY: 'day', EVENING: 'evening' }
 
-function getPhase(now, sunrise, sunset) {
+function getPhase(now, sunrise, sunset, isDay) {
   const t = now.getTime(), sr = sunrise.getTime(), ss = sunset.getTime()
   const dawnLen = 30 * 60 * 1000, eveLen = 40 * 60 * 1000
-  if (t < sr - dawnLen) return PHASES.NIGHT
-  if (t < sr + dawnLen) return PHASES.DAWN
-  if (t < ss - eveLen) return PHASES.DAY
-  if (t < ss + eveLen) return PHASES.EVENING
+  if (isDay === 1) {
+    if (t < sr + dawnLen) return PHASES.DAWN
+    if (t > ss - eveLen) return PHASES.EVENING
+    return PHASES.DAY
+  }
+  if (t > ss && t < ss + eveLen) return PHASES.EVENING
+  if (t > sr - dawnLen && t < sr) return PHASES.DAWN
   return PHASES.NIGHT
 }
 
 function getSkyGradient(phase, weather) {
-  const w = weather
-  if (w.snow) {
+  const cc = weather.cloudCover ?? 0
+  if (weather.snow) {
     if (phase === PHASES.NIGHT)   return 'linear-gradient(180deg, #04080f 0%, #0a111a 40%, #15202b 100%)'
     if (phase === PHASES.DAWN)    return 'linear-gradient(180deg, #151b24 0%, #25303d 50%, #3d4f61 100%)'
     if (phase === PHASES.EVENING) return 'linear-gradient(180deg, #18222b 0%, #253342 50%, #3d5066 100%)'
     return 'linear-gradient(180deg, #6c869e 0%, #8ca6bd 40%, #bed4e6 100%)'
   }
-  if (w.rain || w.heavyRain) {
+  if (weather.rain || weather.heavyRain) {
     if (phase === PHASES.NIGHT)   return 'linear-gradient(180deg, #03050a 0%, #080c14 50%, #101721 100%)'
     if (phase === PHASES.DAWN)    return 'linear-gradient(180deg, #12151e 0%, #1d2230 50%, #2a3245 100%)'
     if (phase === PHASES.EVENING) return 'linear-gradient(180deg, #141421 0%, #1d1b30 50%, #2b2545 100%)'
     return 'linear-gradient(180deg, #384254 0%, #4a566e 40%, #62728f 100%)'
   }
-  if (w.cloudy) {
+  if (cc > 80) {
+    if (phase === PHASES.NIGHT)   return 'linear-gradient(180deg, #080a10 0%, #10141d 40%, #1a1f2e 100%)'
+    if (phase === PHASES.DAWN)    return 'linear-gradient(180deg, #1a1e28 0%, #2a3040 50%, #3a4050 100%)'
+    if (phase === PHASES.EVENING) return 'linear-gradient(180deg, #1a1e28 0%, #2a3040 50%, #3a4050 100%)'
+    return 'linear-gradient(180deg, #4a5568 0%, #5a6a7a 40%, #6a7a8a 100%)'
+  }
+  if (cc > 40) {
     if (phase === PHASES.NIGHT)   return 'linear-gradient(180deg, #050810 0%, #0d121c 60%, #151d2b 100%)'
     if (phase === PHASES.DAWN)    return 'linear-gradient(180deg, #211926 0%, #322840 50%, #463c5c 100%)'
     if (phase === PHASES.EVENING) return 'linear-gradient(180deg, #211720 0%, #322130 50%, #463143 100%)'
@@ -116,16 +125,17 @@ function getSkyGradient(phase, weather) {
   return 'linear-gradient(180deg, #094080 0%, #155ba1 30%, #3f8ed4 70%, #8cd2ff 100%)'
 }
 
-function getWeatherCondition(data) {
-  const p = data.current.precipitation || 0
-  const r = data.current.rain || 0
-  const s = data.current.snowfall || 0
-  const c = data.hourly?.cloud_cover?.[0] ?? 50
-  if (s > 0.5) return { snow: true, rain: false, heavyRain: false, cloudy: true, label: 'Snowing' }
-  if (p > 2.5) return { snow: false, rain: true, heavyRain: true, cloudy: true, label: 'Heavy Rain' }
-  if (p > 0.1 || r > 0.1) return { snow: false, rain: true, heavyRain: false, cloudy: true, label: 'Rain' }
-  if (c > 70) return { snow: false, rain: false, heavyRain: false, cloudy: true, label: 'Cloudy' }
-  return { snow: false, rain: false, heavyRain: false, cloudy: false, label: 'Clear' }
+function getWeatherCondition(current) {
+  const p = current.precipitation || 0
+  const r = current.rain || 0
+  const s = current.snowfall || 0
+  const c = current.cloud_cover ?? 50
+  const isDay = current.is_day === 1
+  if (s > 0.5) return { snow: true, rain: false, heavyRain: false, cloudy: true, label: 'Snowing', isDay, cloudCover: c }
+  if (p > 2.5) return { snow: false, rain: true, heavyRain: true, cloudy: true, label: 'Heavy Rain', isDay, cloudCover: c }
+  if (p > 0.1 || r > 0.1) return { snow: false, rain: true, heavyRain: false, cloudy: true, label: 'Rain', isDay, cloudCover: c }
+  if (c > 70) return { snow: false, rain: false, heavyRain: false, cloudy: true, label: 'Cloudy', isDay, cloudCover: c }
+  return { snow: false, rain: false, heavyRain: false, cloudy: false, label: 'Clear', isDay, cloudCover: c }
 }
 
 /* ─── celestial positioning ─── */
@@ -408,11 +418,13 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
   const [weather, setWeather] = useState({
     data: null,
     phase: PHASES.NIGHT,
-    condition: { snow: false, rain: false, heavyRain: false, cloudy: false, label: 'Clear' },
+    condition: { snow: false, rain: false, heavyRain: false, cloudy: false, label: 'Clear', isDay: false, cloudCover: 0 },
     temp: null,
     sunrise: null,
     sunset: null,
     loc: { lat: 51.5074, lon: -0.1278, name: 'London' },
+    isDay: false,
+    cloudCover: 0,
   })
 
   /* animated entities (refs to avoid re-renders) */
@@ -449,8 +461,7 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
     const url = new URL('https://api.open-meteo.com/v1/forecast')
     url.searchParams.set('latitude', String(lat))
     url.searchParams.set('longitude', String(lon))
-    url.searchParams.set('current', 'temperature_2m,is_day,precipitation,rain,showers,snowfall')
-    url.searchParams.set('hourly', 'temperature_2m,cloud_cover')
+    url.searchParams.set('current', 'temperature_2m,is_day,precipitation,rain,showers,snowfall,cloud_cover')
     url.searchParams.set('daily', 'sunrise,sunset')
     url.searchParams.set('timezone', 'auto')
     try {
@@ -460,8 +471,8 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
       const now = new Date()
       const sunrise = json.daily?.sunrise?.[0] ? new Date(json.daily.sunrise[0]) : new Date(now.getFullYear(), now.getMonth(), now.getDate(), 6, 0)
       const sunset = json.daily?.sunset?.[0] ? new Date(json.daily.sunset[0]) : new Date(now.getFullYear(), now.getMonth(), now.getDate(), 18, 0)
-      const phase = getPhase(now, sunrise, sunset)
-      const condition = getWeatherCondition({ current: json.current, hourly: { cloud_cover: json.hourly?.cloud_cover } })
+      const phase = getPhase(now, sunrise, sunset, json.current.is_day)
+      const condition = getWeatherCondition(json.current)
       setWeather(prev => ({
         ...prev,
         data: json,
@@ -470,6 +481,8 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
         temp: json.current.temperature_2m,
         sunrise,
         sunset,
+        isDay: json.current.is_day === 1,
+        cloudCover: json.current.cloud_cover ?? 0,
       }))
     } catch (e) {
       console.error('weather fetch error', e)
@@ -740,8 +753,8 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
   const sunPos = useMemo(() => getSunPosition(time, weather.sunrise || new Date(), weather.sunset || new Date()), [time, weather.sunrise, weather.sunset])
   const moonPos = useMemo(() => getMoonPosition(time, weather.sunrise || new Date(), weather.sunset || new Date()), [time, weather.sunrise, weather.sunset])
   const liveCount = allResidents.filter(u => u.studying).length
-  const showStars = (weather.phase === PHASES.NIGHT || weather.phase === PHASES.DAWN) && !weather.condition.rain && !weather.condition.heavyRain
-  const isNightish = weather.phase === PHASES.NIGHT || weather.phase === PHASES.EVENING || weather.phase === PHASES.DAWN
+  const showStars = (weather.phase === PHASES.NIGHT || weather.phase === PHASES.DAWN) && !weather.condition.rain && !weather.condition.heavyRain && (weather.cloudCover ?? 0) < 50
+  const isNightish = weather.phase === PHASES.NIGHT || weather.phase === PHASES.EVENING || weather.phase === PHASES.DAWN || (weather.cloudCover ?? 0) > 85
 
   return (
     <div className="city-container" style={{ position: 'relative', zIndex: 2, fontFamily: "'Inter', system-ui, sans-serif", background: '#090a0f', minHeight: '100vh', overflowX: 'hidden' }}>
