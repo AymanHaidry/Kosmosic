@@ -5,15 +5,49 @@ import CityPage from './CityPage.jsx'
 import StudyRoom from './StudyRoom.jsx'
 
 const QUOTES = [
-  { text: 'Stay hungry, stay foolish.', author: 'Steve Jobs' },
-  { text: 'The only way to do great work is to love what you do.', author: 'Steve Jobs' },
-  { text: 'Success is not final, failure is not fatal.', author: 'Winston Churchill' },
-  { text: 'An investment in knowledge pays the best interest.', author: 'Benjamin Franklin' },
-  { text: 'The secret of getting ahead is getting started.', author: 'Mark Twain' },
-  { text: 'Hard work beats talent when talent doesn\'t work hard.', author: 'Tim Notke' },
-  { text: 'Discipline is the bridge between goals and accomplishment.', author: 'Jim Rohn' },
-  { text: 'You don\'t rise to the level of your goals, you fall to the level of your systems.', author: 'James Clear' },
+{ text: 'Stay hungry, stay foolish.', author: 'Steve Jobs' },
+{ text: 'The only way to do great work is to love what you do.', author: 'Steve Jobs' },
+{ text: 'Innovation distinguishes between a leader and a follower.', author: 'Steve Jobs' },
+
+{ text: 'Discipline is choosing between what you want now and what you want most.', author: 'Abraham Lincoln (attributed)' },
+{ text: 'Discipline is the bridge between goals and accomplishment.', author: 'Jim Rohn' },
+{ text: 'We are what we repeatedly do. Excellence, then, is not an act but a habit.', author: 'Will Durant' },
+{ text: 'You do not rise to the level of your goals. You fall to the level of your systems.', author: 'James Clear' },
+
+{ text: 'Hard work beats talent when talent does not work hard.', author: 'Tim Notke' },
+{ text: 'Success is the sum of small efforts repeated day in and day out.', author: 'Robert Collier' },
+{ text: 'The secret of getting ahead is getting started.', author: 'Mark Twain' },
+{ text: 'Do the hard jobs first. The easy jobs will take care of themselves.', author: 'Dale Carnegie' },
+
+{ text: 'An investment in knowledge pays the best interest.', author: 'Benjamin Franklin' },
+{ text: 'Live as if you were to die tomorrow. Learn as if you were to live forever.', author: 'Mahatma Gandhi' },
+{ text: 'The beautiful thing about learning is that nobody can take it away from you.', author: 'B.B. King' },
+
+{ text: 'Dreams do not work unless you do.', author: 'John C. Maxwell' },
+{ text: 'A year from now you may wish you had started today.', author: 'Karen Lamb' },
+{ text: 'Small disciplines repeated with consistency lead to great achievements.', author: 'John C. Maxwell' },
+
+{ text: 'Focus is saying no to a hundred other good ideas.', author: 'Steve Jobs' },
+{ text: 'The successful warrior is the average person with laser-like focus.', author: 'Bruce Lee' },
+{ text: 'Where focus goes, energy flows.', author: 'Tony Robbins' },
+
+{ text: 'The future depends on what you do today.', author: 'Mahatma Gandhi' },
+{ text: 'Do not watch the clock. Do what it does. Keep going.', author: 'Sam Levenson' },
+{ text: 'It always seems impossible until it is done.', author: 'Nelson Mandela' },
+
+{ text: 'Great things are done by a series of small things brought together.', author: 'Vincent van Gogh' },
+{ text: 'First solve the problem. Then write the code.', author: 'John Johnson' },
+{ text: 'Every expert was once a beginner.', author: 'Helen Hayes' },
+
+{ text: 'Success is not final, failure is not fatal: it is the courage to continue that counts.', author: 'Winston Churchill' },
+{ text: 'Fall seven times, stand up eight.', author: 'Japanese Proverb' },
+{ text: 'The difference between ordinary and extraordinary is that little extra.', author: 'Jimmy Johnson' },
+
+{ text: 'The best time to plant a tree was 20 years ago. The second best time is now.', author: 'Chinese Proverb' },
+{ text: 'What you do today can improve all your tomorrows.', author: 'Ralph Marston' },
+{ text: 'Your future is created by what you do today, not tomorrow.', author: 'Robert Kiyosaki' }
 ]
+
 
 const MOTIVATION_POOL = [
   { t: 'Keep going!', b: 'Discipline is doing what needs to be done, even if you don\'t feel like doing it.' },
