@@ -593,36 +593,142 @@ export default function CityPage({ S, session, isStudying, studyMode }) {
   /* 7. animated cars & pedestrians (rAF, no state churn) */
   useEffect(() => {
     const W = Math.max(totalWidth, 1200)
-    carData.current = Array.from({ length: 9 }, (_, i) => ({
-      x: Math.random() * W,
-      speed: (1.2 + Math.random() * 2) * (i % 2 === 0 ? 1 : -1), // Faster, sleeker movement
-      y: 8 + Math.random() * 28,
-      width: 30 + Math.random() * 20,
-      color: ['#e06c75','#61afef','#98c379','#e5c07b','#c678dd','#56b6c2','#d19a66'][i % 7],
-    }))
-    pedData.current = Array.from({ length: 7 }, (_, i) => ({
-      x: Math.random() * W,
-      speed: (0.15 + Math.random() * 0.25) * (i % 2 === 0 ? 1 : -1),
-      y: 4 + Math.random() * 4,
-    }))
+
+    // Realistic car types with distinct silhouettes
+    const carTypes = [
+      { name: 'sedan', width: 42, height: 16, wheelOffset: [8, 32], roofY: 4, roofWidth: 22, roofX: 10 },
+      { name: 'suv', width: 46, height: 20, wheelOffset: [8, 34], roofY: 2, roofWidth: 26, roofX: 10 },
+      { name: 'hatchback', width: 36, height: 15, wheelOffset: [6, 26], roofY: 3, roofWidth: 18, roofX: 9 },
+      { name: 'truck', width: 52, height: 22, wheelOffset: [8, 40], roofY: 0, roofWidth: 14, roofX: 4, hasBed: true },
+      { name: 'sports', width: 44, height: 13, wheelOffset: [8, 34], roofY: 5, roofWidth: 18, roofX: 13, isLow: true },
+      { name: 'van', width: 50, height: 22, wheelOffset: [8, 40], roofY: 0, roofWidth: 30, roofX: 10 },
+      { name: 'compact', width: 32, height: 14, wheelOffset: [6, 24], roofY: 3, roofWidth: 16, roofX: 8 },
+    ]
+
+    // Realistic car colors with metallic variants
+    const carColors = [
+      { body: '#c0392b', roof: '#a93226', glass: '#85c1e9', glassOpacity: 0.6 },      // Red
+      { body: '#2980b9', roof: '#2471a3', glass: '#aed6f1', glassOpacity: 0.55 },       // Blue
+      { body: '#27ae60', roof: '#229954', glass: '#a9dfbf', glassOpacity: 0.5 },        // Green
+      { body: '#f39c12', roof: '#d68910', glass: '#f9e79f', glassOpacity: 0.5 },          // Orange
+      { body: '#8e44ad', roof: '#7d3c98', glass: '#d2b4de', glassOpacity: 0.5 },          // Purple
+      { body: '#1abc9c', roof: '#17a589', glass: '#a3e4d7', glassOpacity: 0.55 },         // Teal
+      { body: '#e74c3c', roof: '#cb4335', glass: '#f5b7b1', glassOpacity: 0.5 },         // Coral
+      { body: '#34495e', roof: '#2c3e50', glass: '#85929e', glassOpacity: 0.6 },         // Dark
+      { body: '#ecf0f1', roof: '#bdc3c7', glass: '#d5dbdb', glassOpacity: 0.5 },          // White
+      { body: '#95a5a6', roof: '#7f8c8d', glass: '#bdc3c7', glassOpacity: 0.5 },           // Silver
+      { body: '#d35400', roof: '#ba4a00', glass: '#edbb99', glassOpacity: 0.5 },          // Burnt Orange
+      { body: '#c2185b', roof: '#ad1457', glass: '#f8bbd9', glassOpacity: 0.5 },         // Pink/Magenta
+    ]
+
+    // Pedestrian types with different sizes and walking styles
+    const pedTypes = [
+      { name: 'adult', height: 14, width: 6, headR: 3.5, stride: 1 },
+      { name: 'child', height: 10, width: 4.5, headR: 2.8, stride: 0.7 },
+      { name: 'tall', height: 16, width: 6.5, headR: 3.8, stride: 1.1 },
+      { name: 'elderly', height: 12, width: 6, headR: 3.2, stride: 0.6 },
+    ]
+
+    const pedColors = [
+      '#e74c3c', '#3498db', '#2ecc71', '#f1c40f', '#9b59b6',
+      '#1abc9c', '#e67e22', '#34495e', '#e91e63', '#00bcd4',
+      '#ff5722', '#795548', '#607d8b', '#8bc34a', '#ff9800',
+    ]
+
+    // Initialize cars with varied types and realistic properties
+    carData.current = Array.from({ length: 14 }, (_, i) => {
+      const type = carTypes[i % carTypes.length]
+      const color = carColors[i % carColors.length]
+      const lane = Math.floor(Math.random() * 3) // 3 lanes
+      const direction = i % 2 === 0 ? 1 : -1
+      const baseSpeed = direction === 1 
+        ? (1.8 + Math.random() * 2.5) // Right lane: faster
+        : (1.2 + Math.random() * 2.0)  // Left lane: slightly slower
+
+      return {
+        x: Math.random() * W,
+        speed: baseSpeed * direction,
+        y: 6 + lane * 14 + Math.random() * 4, // Lane positioning
+        type,
+        color,
+        direction,
+        headlightOn: Math.random() > 0.3, // 70% have headlights
+        taillightOn: Math.random() > 0.2,  // 80% have taillights
+        blinkerState: 0,
+        blinkerTimer: Math.random() * 60,
+      }
+    })
+
+    // Initialize pedestrians
+    pedData.current = Array.from({ length: 10 }, (_, i) => {
+      const type = pedTypes[i % pedTypes.length]
+      return {
+        x: Math.random() * W,
+        speed: (0.2 + Math.random() * 0.3) * (i % 2 === 0 ? 1 : -1),
+        y: 2 + Math.random() * 5,
+        type,
+        color: pedColors[i % pedColors.length],
+        walkCycle: Math.random() * Math.PI * 2,
+        walkSpeed: 0.08 + Math.random() * 0.06,
+      }
+    })
 
     const loop = () => {
+      // Update cars
       carData.current.forEach((car, i) => {
         const el = carRefs.current[i]
         if (!el) return
+
         car.x += car.speed
-        if (car.x > W + 80) car.x = -80
-        if (car.x < -80) car.x = W + 80
-        el.style.transform = `translateX(${car.x}px)`
+        car.blinkerTimer++
+        if (car.blinkerTimer > 45) {
+          car.blinkerState = car.blinkerState === 0 ? 1 : 0
+          car.blinkerTimer = 0
+        }
+
+        // Wrap around
+        const buffer = car.type.width + 20
+        if (car.x > W + buffer) car.x = -buffer
+        if (car.x < -buffer) car.x = W + buffer
+
+        // Apply transform with subtle bounce for suspension feel
+        const bounce = Math.sin(Date.now() * 0.01 + i) * 0.3
+        el.style.transform = `translateX(${car.x}px) translateY(${bounce}px)`
+
+        // Update blinkers if element supports it
+        const blinkerEl = el.querySelector('.blinker')
+        if (blinkerEl) {
+          blinkerEl.style.opacity = car.blinkerState
+        }
       })
+
+      // Update pedestrians with walking animation
       pedData.current.forEach((ped, i) => {
         const el = pedRefs.current[i]
         if (!el) return
+
         ped.x += ped.speed
-        if (ped.x > W + 20) ped.x = -10
-        if (ped.x < -10) ped.x = W + 20
-        el.style.transform = `translateX(${ped.x}px)`
+        ped.walkCycle += ped.walkSpeed
+
+        const buffer = 15
+        if (ped.x > W + buffer) ped.x = -buffer
+        if (ped.x < -buffer) ped.x = W + buffer
+
+        // Walking bob and leg swing
+        const bob = Math.sin(ped.walkCycle * 2) * 1.5
+        const legSwing = Math.sin(ped.walkCycle) * 8
+        el.style.transform = `translateX(${ped.x}px) translateY(${-bob}px)`
+
+        // Animate legs if present
+        const legs = el.querySelectorAll('.ped-leg')
+        legs.forEach((leg, li) => {
+          const phase = li === 0 ? 0 : Math.PI
+          const swing = Math.sin(ped.walkCycle + phase) * 6
+          leg.style.transform = `rotate(${swing}deg)`
+          leg.style.transformOrigin = 'top center'
+        })
       })
+
       rafRef.current = requestAnimationFrame(loop)
     }
     rafRef.current = requestAnimationFrame(loop)
