@@ -45,7 +45,7 @@ Version Range:
 
 2.x.x
 
-### Generation 3 — 
+### Generation 3 — Aphrodite
 
 Expansion beyond the original vision.
 
